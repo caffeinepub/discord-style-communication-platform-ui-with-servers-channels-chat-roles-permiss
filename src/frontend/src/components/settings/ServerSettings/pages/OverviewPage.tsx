@@ -90,7 +90,7 @@ export default function OverviewPage() {
         <div className="space-y-0.5">
           <Label>Community Mode</Label>
           <p className="text-sm text-muted-foreground">
-            Enable community features for your server
+            Enable to make your server discoverable in Server Discovery
           </p>
         </div>
         <Switch checked={communityMode} onCheckedChange={setCommunityMode} />

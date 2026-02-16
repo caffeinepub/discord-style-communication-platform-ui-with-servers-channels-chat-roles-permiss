@@ -60,6 +60,36 @@ export const FriendRequest = IDL.Record({
   'from' : IDL.Principal,
   'timestamp' : IDL.Nat,
 });
+export const AuditEventType = IDL.Variant({
+  'UserJoinedVoiceChannel' : IDL.Null,
+  'ServerCreated' : IDL.Null,
+  'RoleAssignedToUser' : IDL.Null,
+  'VoiceChannelAdded' : IDL.Null,
+  'RoleRemovedFromUser' : IDL.Null,
+  'RolePermissionsSet' : IDL.Null,
+  'MessageSent' : IDL.Null,
+  'ServerLeft' : IDL.Null,
+  'UserLeftVoiceChannel' : IDL.Null,
+  'ServerRenamed' : IDL.Null,
+  'CategoryAdded' : IDL.Null,
+  'ChannelMoved' : IDL.Null,
+  'ServerJoined' : IDL.Null,
+  'TextChannelAdded' : IDL.Null,
+  'SettingsUpdated' : IDL.Null,
+  'RoleAdded' : IDL.Null,
+});
+export const AuditLogEntry = IDL.Record({
+  'id' : IDL.Nat,
+  'userId' : IDL.Principal,
+  'timestamp' : IDL.Int,
+  'details' : IDL.Text,
+  'serverId' : IDL.Nat,
+  'eventType' : AuditEventType,
+});
+export const ServerMemberWithUsername = IDL.Record({
+  'member' : ServerMember,
+  'username' : IDL.Text,
+});
 export const TextChannelMessage = IDL.Record({
   'id' : IDL.Nat,
   'content' : IDL.Text,
@@ -98,18 +128,46 @@ export const idlService = IDL.Service({
   'blockUser' : IDL.Func([IDL.Principal], [], []),
   'createServer' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
   'declineFriendRequest' : IDL.Func([IDL.Principal], [], []),
-  'discoverServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
   'getAllServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCallerUsername' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
   'getCategories' : IDL.Func([IDL.Nat], [IDL.Vec(ChannelCategory)], ['query']),
+  'getCategoryChannelOrdering' : IDL.Func(
+      [IDL.Nat],
+      [
+        IDL.Opt(
+          IDL.Record({
+            'categoryOrder' : IDL.Vec(IDL.Nat),
+            'voiceChannelOrder' : IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat))),
+            'textChannelOrder' : IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat))),
+          })
+        ),
+      ],
+      ['query'],
+    ),
   'getFriendRequests' : IDL.Func([], [IDL.Vec(FriendRequest)], ['query']),
   'getFriends' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+  'getMemberDisplayColor' : IDL.Func(
+      [IDL.Nat, IDL.Principal],
+      [IDL.Opt(IDL.Text)],
+      ['query'],
+    ),
   'getRoles' : IDL.Func([IDL.Nat], [IDL.Vec(Role)], ['query']),
   'getServer' : IDL.Func([IDL.Nat], [Server], ['query']),
+  'getServerAuditLog' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(AuditLogEntry)],
+      ['query'],
+    ),
   'getServerMembers' : IDL.Func([IDL.Nat], [IDL.Vec(ServerMember)], ['query']),
+  'getServerMembersWithUsernames' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(ServerMemberWithUsername)],
+      ['query'],
+    ),
   'getServerOrdering' : IDL.Func([], [IDL.Vec(IDL.Nat)], ['query']),
+  'getServerRoles' : IDL.Func([IDL.Nat], [IDL.Vec(Role)], ['query']),
   'getTextChannelMessages' : IDL.Func(
       [IDL.Nat, IDL.Nat, IDL.Opt(IDL.Nat)],
       [IDL.Vec(TextChannelMessage)],
@@ -121,6 +179,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getUserStatus' : IDL.Func([IDL.Principal], [IDL.Opt(UserStatus)], ['query']),
+  'getUsernameForUser' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(IDL.Text)],
+      ['query'],
+    ),
   'getVoiceChannelParticipants' : IDL.Func(
       [IDL.Nat, IDL.Nat],
       [IDL.Vec(VoiceChannelPresence)],
@@ -150,8 +213,13 @@ export const idlService = IDL.Service({
   'setServerOrdering' : IDL.Func([IDL.Vec(IDL.Nat)], [], []),
   'setUserStatus' : IDL.Func([UserStatus], [], []),
   'setUsername' : IDL.Func([IDL.Text], [], []),
-  'updateServerSettings' : IDL.Func(
-      [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Bool],
+  'updateCategoryChannelOrdering' : IDL.Func(
+      [
+        IDL.Nat,
+        IDL.Vec(IDL.Nat),
+        IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat))),
+        IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat))),
+      ],
       [],
       [],
     ),
@@ -212,6 +280,36 @@ export const idlFactory = ({ IDL }) => {
     'from' : IDL.Principal,
     'timestamp' : IDL.Nat,
   });
+  const AuditEventType = IDL.Variant({
+    'UserJoinedVoiceChannel' : IDL.Null,
+    'ServerCreated' : IDL.Null,
+    'RoleAssignedToUser' : IDL.Null,
+    'VoiceChannelAdded' : IDL.Null,
+    'RoleRemovedFromUser' : IDL.Null,
+    'RolePermissionsSet' : IDL.Null,
+    'MessageSent' : IDL.Null,
+    'ServerLeft' : IDL.Null,
+    'UserLeftVoiceChannel' : IDL.Null,
+    'ServerRenamed' : IDL.Null,
+    'CategoryAdded' : IDL.Null,
+    'ChannelMoved' : IDL.Null,
+    'ServerJoined' : IDL.Null,
+    'TextChannelAdded' : IDL.Null,
+    'SettingsUpdated' : IDL.Null,
+    'RoleAdded' : IDL.Null,
+  });
+  const AuditLogEntry = IDL.Record({
+    'id' : IDL.Nat,
+    'userId' : IDL.Principal,
+    'timestamp' : IDL.Int,
+    'details' : IDL.Text,
+    'serverId' : IDL.Nat,
+    'eventType' : AuditEventType,
+  });
+  const ServerMemberWithUsername = IDL.Record({
+    'member' : ServerMember,
+    'username' : IDL.Text,
+  });
   const TextChannelMessage = IDL.Record({
     'id' : IDL.Nat,
     'content' : IDL.Text,
@@ -250,7 +348,6 @@ export const idlFactory = ({ IDL }) => {
     'blockUser' : IDL.Func([IDL.Principal], [], []),
     'createServer' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
     'declineFriendRequest' : IDL.Func([IDL.Principal], [], []),
-    'discoverServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
     'getAllServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -260,16 +357,49 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(ChannelCategory)],
         ['query'],
       ),
+    'getCategoryChannelOrdering' : IDL.Func(
+        [IDL.Nat],
+        [
+          IDL.Opt(
+            IDL.Record({
+              'categoryOrder' : IDL.Vec(IDL.Nat),
+              'voiceChannelOrder' : IDL.Vec(
+                IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat))
+              ),
+              'textChannelOrder' : IDL.Vec(
+                IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat))
+              ),
+            })
+          ),
+        ],
+        ['query'],
+      ),
     'getFriendRequests' : IDL.Func([], [IDL.Vec(FriendRequest)], ['query']),
     'getFriends' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
+    'getMemberDisplayColor' : IDL.Func(
+        [IDL.Nat, IDL.Principal],
+        [IDL.Opt(IDL.Text)],
+        ['query'],
+      ),
     'getRoles' : IDL.Func([IDL.Nat], [IDL.Vec(Role)], ['query']),
     'getServer' : IDL.Func([IDL.Nat], [Server], ['query']),
+    'getServerAuditLog' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(AuditLogEntry)],
+        ['query'],
+      ),
     'getServerMembers' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(ServerMember)],
         ['query'],
       ),
+    'getServerMembersWithUsernames' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(ServerMemberWithUsername)],
+        ['query'],
+      ),
     'getServerOrdering' : IDL.Func([], [IDL.Vec(IDL.Nat)], ['query']),
+    'getServerRoles' : IDL.Func([IDL.Nat], [IDL.Vec(Role)], ['query']),
     'getTextChannelMessages' : IDL.Func(
         [IDL.Nat, IDL.Nat, IDL.Opt(IDL.Nat)],
         [IDL.Vec(TextChannelMessage)],
@@ -283,6 +413,11 @@ export const idlFactory = ({ IDL }) => {
     'getUserStatus' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserStatus)],
+        ['query'],
+      ),
+    'getUsernameForUser' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(IDL.Text)],
         ['query'],
       ),
     'getVoiceChannelParticipants' : IDL.Func(
@@ -314,8 +449,13 @@ export const idlFactory = ({ IDL }) => {
     'setServerOrdering' : IDL.Func([IDL.Vec(IDL.Nat)], [], []),
     'setUserStatus' : IDL.Func([UserStatus], [], []),
     'setUsername' : IDL.Func([IDL.Text], [], []),
-    'updateServerSettings' : IDL.Func(
-        [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Bool],
+    'updateCategoryChannelOrdering' : IDL.Func(
+        [
+          IDL.Nat,
+          IDL.Vec(IDL.Nat),
+          IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat))),
+          IDL.Vec(IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat))),
+        ],
         [],
         [],
       ),

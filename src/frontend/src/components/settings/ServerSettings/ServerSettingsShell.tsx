@@ -6,6 +6,7 @@ import { useNavigation } from '../../../state/navigation';
 import OverviewPage from './pages/OverviewPage';
 import RolesPage from './pages/RolesPage';
 import ChannelsPage from './pages/ChannelsPage';
+import AuditLogPage from './pages/AuditLogPage';
 import { cn } from '@/lib/utils';
 
 type SettingsPage = 'overview' | 'roles' | 'channels' | 'moderation' | 'audit' | 'integrations' | 'emoji' | 'boost' | 'safety' | 'community';
@@ -65,7 +66,8 @@ export default function ServerSettingsShell() {
             {currentPage === 'overview' && <OverviewPage />}
             {currentPage === 'roles' && <RolesPage />}
             {currentPage === 'channels' && <ChannelsPage />}
-            {currentPage !== 'overview' && currentPage !== 'roles' && currentPage !== 'channels' && (
+            {currentPage === 'audit' && <AuditLogPage />}
+            {currentPage !== 'overview' && currentPage !== 'roles' && currentPage !== 'channels' && currentPage !== 'audit' && (
               <div className="text-center py-12 text-muted-foreground">
                 <p>This section is coming soon</p>
               </div>

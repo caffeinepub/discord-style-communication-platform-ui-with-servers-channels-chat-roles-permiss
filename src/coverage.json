@@ -1,70 +1,100 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-16T05:58:45.904Z",
+  "generatedAt": "2026-02-16T07:53:14.385Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 6,
+    "implemented": 4,
     "items": [
       {
-        "id": "REQ-38",
-        "summary": "Add a user profile overlay (modal on desktop, sheet or modal on mobile) that opens when a user is selected, and renders the selected user's profile details using existing profile data (display name, username/handle if available, avatar, banner, About Me, custom status, badges). The overlay must have an explicit close control that clears the current selection and returns the user to what they were doing (no navigation away from the current view).",
+        "id": "REQ-1",
+        "summary": "Expose server member role data needed by the UI: provide backend APIs to (a) list a server’s roles, (b) fetch a server’s members including each member’s assigned role IDs, and (c) resolve a member’s effective display role color (use the highest-position role when multiple roles are assigned; if none, return null/empty so the UI can use the default text color).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Implement role assignment management in the backend: add/update methods that allow authorized users (server owner/admins or users with a suitable role permission) to assign and remove roles for a specific server member, and record audit log entries for role assignment/removal.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Add React Query hooks in frontend/src/hooks/useQueries.ts for: fetching server roles, fetching server members with role IDs, and assigning/removing a role for a server member; ensure mutations invalidate the relevant cached queries so Member List and Profile overlay reflect changes immediately.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/profile/UserProfileOverlay.tsx",
-          "frontend/src/hooks/useIsMobile.ts",
-          "frontend/src/App.tsx",
-          "frontend/src/state/navigation.ts"
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/profile/UserProfileOverlay.tsx",
-          "frontend/src/hooks/useIsMobile.ts",
-          "frontend/src/App.tsx"
+          "frontend/src/hooks/useQueries.ts"
         ]
       },
       {
-        "id": "REQ-39",
-        "summary": "Make clicking a member in the right-side Members list open that member's profile overlay.",
+        "id": "REQ-4",
+        "summary": "Show a member’s roles on their server profile overlay (frontend/src/components/profile/UserProfileOverlay.tsx) when the overlay is opened from within a server context: display role chips/badges with the role name and role color; if the member has no roles, do not show a roles section.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/members/MemberListPanel.tsx",
+          "frontend/src/components/profile/UserProfileOverlay.tsx",
+          "frontend/src/utils/roleColor.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/profile/UserProfileOverlay.tsx",
+          "frontend/src/utils/roleColor.ts"
+        ]
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Allow assigning roles to users in a server from the UI: add role assignment controls accessible from the server member profile overlay and/or member list, including a list of available roles with current assignments indicated, and actions to add/remove roles (restricted/hidden for unauthorized users).",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/profile/RoleAssignmentDialog.tsx",
           "frontend/src/components/profile/UserProfileOverlay.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/members/MemberListPanel.tsx",
+          "frontend/src/components/profile/RoleAssignmentDialog.tsx",
           "frontend/src/components/profile/UserProfileOverlay.tsx"
         ]
       },
       {
-        "id": "REQ-40",
-        "summary": "Make clicking a message author's avatar or display name in the chat message list open that author's profile overlay.",
+        "id": "REQ-6",
+        "summary": "Apply role color to usernames in server contexts: update message author name rendering (frontend/src/components/chat/MessageItem.tsx) and server member list rendering (frontend/src/components/members/MemberListPanel.tsx) so the displayed name uses the member’s effective role color; if the member has no roles, keep the default text color.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/components/chat/MessageItem.tsx",
-          "frontend/src/components/chat/ChatView.tsx",
-          "frontend/src/components/profile/UserProfileOverlay.tsx"
+          "frontend/src/components/members/MemberListPanel.tsx",
+          "frontend/src/utils/roleColor.ts"
         ],
         "matchedFiles": [
           "frontend/src/components/chat/MessageItem.tsx",
-          "frontend/src/components/profile/UserProfileOverlay.tsx"
+          "frontend/src/components/members/MemberListPanel.tsx",
+          "frontend/src/utils/roleColor.ts"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
     "frontend/src/components/chat/MessageItem.tsx",
     "frontend/src/components/members/MemberListPanel.tsx",
+    "frontend/src/components/profile/RoleAssignmentDialog.tsx",
     "frontend/src/components/profile/UserProfileOverlay.tsx",
-    "frontend/src/hooks/useIsMobile.ts",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/utils/roleColor.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

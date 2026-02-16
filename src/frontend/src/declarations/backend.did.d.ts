@@ -10,6 +10,30 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export type AuditEventType = { 'UserJoinedVoiceChannel' : null } |
+  { 'ServerCreated' : null } |
+  { 'RoleAssignedToUser' : null } |
+  { 'VoiceChannelAdded' : null } |
+  { 'RoleRemovedFromUser' : null } |
+  { 'RolePermissionsSet' : null } |
+  { 'MessageSent' : null } |
+  { 'ServerLeft' : null } |
+  { 'UserLeftVoiceChannel' : null } |
+  { 'ServerRenamed' : null } |
+  { 'CategoryAdded' : null } |
+  { 'ChannelMoved' : null } |
+  { 'ServerJoined' : null } |
+  { 'TextChannelAdded' : null } |
+  { 'SettingsUpdated' : null } |
+  { 'RoleAdded' : null };
+export interface AuditLogEntry {
+  'id' : bigint,
+  'userId' : Principal,
+  'timestamp' : bigint,
+  'details' : string,
+  'serverId' : bigint,
+  'eventType' : AuditEventType,
+}
 export interface ChannelCategory {
   'id' : bigint,
   'name' : string,
@@ -46,6 +70,10 @@ export interface ServerMember {
   'userId' : Principal,
   'joinedAt' : bigint,
   'roles' : Array<bigint>,
+}
+export interface ServerMemberWithUsername {
+  'member' : ServerMember,
+  'username' : string,
 }
 export interface TextChannel { 'id' : bigint, 'name' : string }
 export interface TextChannelMessage {
@@ -91,24 +119,41 @@ export interface _SERVICE {
   'blockUser' : ActorMethod<[Principal], undefined>,
   'createServer' : ActorMethod<[string, string], bigint>,
   'declineFriendRequest' : ActorMethod<[Principal], undefined>,
-  'discoverServers' : ActorMethod<[], Array<Server>>,
   'getAllServers' : ActorMethod<[], Array<Server>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCallerUsername' : ActorMethod<[], [] | [string]>,
   'getCategories' : ActorMethod<[bigint], Array<ChannelCategory>>,
+  'getCategoryChannelOrdering' : ActorMethod<
+    [bigint],
+    [] | [
+      {
+        'categoryOrder' : Array<bigint>,
+        'voiceChannelOrder' : Array<[bigint, Array<bigint>]>,
+        'textChannelOrder' : Array<[bigint, Array<bigint>]>,
+      }
+    ]
+  >,
   'getFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
   'getFriends' : ActorMethod<[], Array<Principal>>,
+  'getMemberDisplayColor' : ActorMethod<[bigint, Principal], [] | [string]>,
   'getRoles' : ActorMethod<[bigint], Array<Role>>,
   'getServer' : ActorMethod<[bigint], Server>,
+  'getServerAuditLog' : ActorMethod<[bigint], Array<AuditLogEntry>>,
   'getServerMembers' : ActorMethod<[bigint], Array<ServerMember>>,
+  'getServerMembersWithUsernames' : ActorMethod<
+    [bigint],
+    Array<ServerMemberWithUsername>
+  >,
   'getServerOrdering' : ActorMethod<[], Array<bigint>>,
+  'getServerRoles' : ActorMethod<[bigint], Array<Role>>,
   'getTextChannelMessages' : ActorMethod<
     [bigint, bigint, [] | [bigint]],
     Array<TextChannelMessage>
   >,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getUserStatus' : ActorMethod<[Principal], [] | [UserStatus]>,
+  'getUsernameForUser' : ActorMethod<[Principal], [] | [string]>,
   'getVoiceChannelParticipants' : ActorMethod<
     [bigint, bigint],
     Array<VoiceChannelPresence>
@@ -132,8 +177,13 @@ export interface _SERVICE {
   'setServerOrdering' : ActorMethod<[Array<bigint>], undefined>,
   'setUserStatus' : ActorMethod<[UserStatus], undefined>,
   'setUsername' : ActorMethod<[string], undefined>,
-  'updateServerSettings' : ActorMethod<
-    [bigint, string, string, string, boolean],
+  'updateCategoryChannelOrdering' : ActorMethod<
+    [
+      bigint,
+      Array<bigint>,
+      Array<[bigint, Array<bigint>]>,
+      Array<[bigint, Array<bigint>]>,
+    ],
     undefined
   >,
 }

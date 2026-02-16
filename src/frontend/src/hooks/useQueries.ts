@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useActor } from './useActor';
-import type { UserProfile, Server, ChannelCategory, Role, ServerMember, FriendRequest, UserStatus, Permission, TextChannelMessage, VoiceChannelPresence } from '../backend';
+import { useBackendConnection } from './useBackendConnection';
+import type { UserProfile, Server, ChannelCategory, Role, ServerMember, FriendRequest, UserStatus, Permission, TextChannelMessage, VoiceChannelPresence, AuditLogEntry, ServerMemberWithUsername } from '../backend';
 import { Principal } from '@dfinity/principal';
 import { toast } from 'sonner';
 
@@ -9,12 +9,17 @@ function getFriendlyErrorMessage(error: Error): string {
   const message = error.message;
   
   // Check for common backend connection errors
-  if (message.includes('Actor not available') || message.includes('not available')) {
-    return 'Backend connection not ready. Please wait or retry.';
+  if (message.includes('Actor not available') || message.includes('not available') || message.includes('not ready')) {
+    return 'Backend connection not ready. Please wait or press Retry.';
   }
   
-  if (message.includes('not reachable') || message.includes('connection')) {
-    return 'Cannot reach backend. Please ensure the replica is running.';
+  if (message.includes('not reachable') || message.includes('connection') || message.includes('replica')) {
+    return 'Cannot reach backend. Please ensure the local replica is running.';
+  }
+  
+  // Check for permission errors
+  if (message.includes('Unauthorized') || message.includes('permission')) {
+    return message; // Return the original message for permission errors
   }
   
   // Return the original message for other errors
@@ -23,7 +28,7 @@ function getFriendlyErrorMessage(error: Error): string {
 
 // User Profile Queries
 export function useGetCallerUserProfile() {
-  const { actor, isFetching: actorFetching } = useActor();
+  const { actor, isReady } = useBackendConnection();
 
   const query = useQuery<UserProfile | null>({
     queryKey: ['currentUserProfile'],
@@ -31,19 +36,19 @@ export function useGetCallerUserProfile() {
       if (!actor) throw new Error('Backend connection not ready');
       return actor.getCallerUserProfile();
     },
-    enabled: !!actor && !actorFetching,
+    enabled: isReady && !!actor,
     retry: false,
   });
 
   return {
     ...query,
-    isLoading: actorFetching || query.isLoading,
-    isFetched: !!actor && query.isFetched,
+    isLoading: !isReady || query.isLoading,
+    isFetched: isReady && query.isFetched,
   };
 }
 
 export function useGetUserProfile(userId: Principal | null) {
-  const { actor, isFetching: actorFetching } = useActor();
+  const { actor, isReady } = useBackendConnection();
 
   return useQuery<UserProfile | null>({
     queryKey: ['userProfile', userId?.toString()],
@@ -51,17 +56,17 @@ export function useGetUserProfile(userId: Principal | null) {
       if (!actor || !userId) return null;
       return actor.getUserProfile(userId);
     },
-    enabled: !!actor && !actorFetching && !!userId,
+    enabled: isReady && !!actor && !!userId,
   });
 }
 
 export function useSaveCallerUserProfile() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (profile: UserProfile) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.saveCallerUserProfile(profile);
     },
     onSuccess: () => {
@@ -76,7 +81,7 @@ export function useSaveCallerUserProfile() {
 
 // Username Queries
 export function useGetCallerUsername() {
-  const { actor, isFetching: actorFetching } = useActor();
+  const { actor, isReady } = useBackendConnection();
 
   return useQuery<string | null>({
     queryKey: ['currentUsername'],
@@ -84,17 +89,30 @@ export function useGetCallerUsername() {
       if (!actor) throw new Error('Backend connection not ready');
       return actor.getCallerUsername();
     },
-    enabled: !!actor && !actorFetching,
+    enabled: isReady && !!actor,
+  });
+}
+
+export function useGetUsernameForUser(userId: Principal | null) {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<string | null>({
+    queryKey: ['username', userId?.toString()],
+    queryFn: async () => {
+      if (!actor || !userId) return null;
+      return actor.getUsernameForUser(userId);
+    },
+    enabled: isReady && !!actor && !!userId,
   });
 }
 
 export function useSetUsername() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (username: string) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.setUsername(username);
     },
     onSuccess: () => {
@@ -107,9 +125,23 @@ export function useSetUsername() {
   });
 }
 
+// Admin Check Query
+export function useIsCallerAdmin() {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<boolean>({
+    queryKey: ['isCallerAdmin'],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerAdmin();
+    },
+    enabled: isReady && !!actor,
+  });
+}
+
 // Server Queries
 export function useGetAllServers() {
-  const { actor, isFetching } = useActor();
+  const { actor, isReady } = useBackendConnection();
 
   return useQuery<Server[]>({
     queryKey: ['servers'],
@@ -117,12 +149,12 @@ export function useGetAllServers() {
       if (!actor) return [];
       return actor.getAllServers();
     },
-    enabled: !!actor && !isFetching,
+    enabled: isReady && !!actor,
   });
 }
 
 export function useGetServer(serverId: bigint | null) {
-  const { actor, isFetching } = useActor();
+  const { actor, isReady } = useBackendConnection();
 
   return useQuery<Server | null>({
     queryKey: ['server', serverId?.toString()],
@@ -130,17 +162,17 @@ export function useGetServer(serverId: bigint | null) {
       if (!actor || serverId === null) return null;
       return actor.getServer(serverId);
     },
-    enabled: !!actor && !isFetching && serverId !== null,
+    enabled: isReady && !!actor && serverId !== null,
   });
 }
 
 export function useCreateServer() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ name, description }: { name: string; description: string }) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.createServer(name, description);
     },
     onSuccess: () => {
@@ -154,12 +186,12 @@ export function useCreateServer() {
 }
 
 export function useRenameServer() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ serverId, newName }: { serverId: bigint; newName: string }) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.renameServer(serverId, newName);
     },
     onSuccess: (_, variables) => {
@@ -174,7 +206,7 @@ export function useRenameServer() {
 }
 
 export function useUpdateServerSettings() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -191,27 +223,29 @@ export function useUpdateServerSettings() {
       iconUrl: string;
       communityMode: boolean;
     }) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.updateServerSettings(serverId, description, bannerUrl, iconUrl, communityMode);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['servers'] });
       queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      toast.success('Server settings updated');
+      queryClient.invalidateQueries({ queryKey: ['discoverServers'] });
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Server settings updated successfully');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update settings: ${getFriendlyErrorMessage(error)}`);
+      toast.error(`Failed to update server settings: ${getFriendlyErrorMessage(error)}`);
     },
   });
 }
 
 export function useJoinServer() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (serverId: bigint) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.joinServer(serverId);
     },
     onSuccess: () => {
@@ -225,12 +259,12 @@ export function useJoinServer() {
 }
 
 export function useLeaveServer() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (serverId: bigint) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.leaveServer(serverId);
     },
     onSuccess: () => {
@@ -243,8 +277,26 @@ export function useLeaveServer() {
   });
 }
 
+export function useSetServerOrdering() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ordering: bigint[]) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return actor.setServerOrdering(ordering);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['serverOrdering'] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update server ordering: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
 export function useGetServerOrdering() {
-  const { actor, isFetching } = useActor();
+  const { actor, isReady } = useBackendConnection();
 
   return useQuery<bigint[]>({
     queryKey: ['serverOrdering'],
@@ -252,28 +304,27 @@ export function useGetServerOrdering() {
       if (!actor) return [];
       return actor.getServerOrdering();
     },
-    enabled: !!actor && !isFetching,
+    enabled: isReady && !!actor,
   });
 }
 
-export function useSetServerOrdering() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
+// Discovery
+export function useDiscoverServers() {
+  const { actor, isReady } = useBackendConnection();
 
-  return useMutation({
-    mutationFn: async (ordering: bigint[]) => {
-      if (!actor) throw new Error('Backend connection not ready');
-      return actor.setServerOrdering(ordering);
+  return useQuery<Server[]>({
+    queryKey: ['discoverServers'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.discoverServers();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['serverOrdering'] });
-    },
+    enabled: isReady && !!actor,
   });
 }
 
-// Channel Queries
+// Category and Channel Queries
 export function useGetCategories(serverId: bigint | null) {
-  const { actor, isFetching } = useActor();
+  const { actor, isReady } = useBackendConnection();
 
   return useQuery<ChannelCategory[]>({
     queryKey: ['categories', serverId?.toString()],
@@ -281,23 +332,24 @@ export function useGetCategories(serverId: bigint | null) {
       if (!actor || serverId === null) return [];
       return actor.getCategories(serverId);
     },
-    enabled: !!actor && !isFetching && serverId !== null,
+    enabled: isReady && !!actor && serverId !== null,
   });
 }
 
-export function useAddCategory() {
-  const { actor } = useActor();
+export function useAddCategoryToServer() {
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ serverId, categoryName }: { serverId: bigint; categoryName: string }) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.addCategoryToServer(serverId, categoryName);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      toast.success('Category created');
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Category created successfully');
     },
     onError: (error: Error) => {
       toast.error(`Failed to create category: ${getFriendlyErrorMessage(error)}`);
@@ -306,7 +358,7 @@ export function useAddCategory() {
 }
 
 export function useAddTextChannel() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -319,22 +371,23 @@ export function useAddTextChannel() {
       categoryId: bigint;
       channelName: string;
     }) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.addTextChannel(serverId, categoryId, channelName);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      toast.success('Text channel created');
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Text channel created successfully');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create channel: ${getFriendlyErrorMessage(error)}`);
+      toast.error(`Failed to create text channel: ${getFriendlyErrorMessage(error)}`);
     },
   });
 }
 
 export function useAddVoiceChannel() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -347,23 +400,122 @@ export function useAddVoiceChannel() {
       categoryId: bigint;
       channelName: string;
     }) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.addVoiceChannel(serverId, categoryId, channelName);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      toast.success('Voice channel created');
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Voice channel created successfully');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to create channel: ${getFriendlyErrorMessage(error)}`);
+      toast.error(`Failed to create voice channel: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+// Category and Channel Ordering
+export function useGetCategoryChannelOrdering(serverId: bigint | null) {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<{
+    categoryOrder: bigint[];
+    textChannelOrder: [bigint, bigint[]][];
+    voiceChannelOrder: [bigint, bigint[]][];
+  } | null>({
+    queryKey: ['categoryChannelOrdering', serverId?.toString()],
+    queryFn: async () => {
+      if (!actor || serverId === null) return null;
+      return actor.getCategoryChannelOrdering(serverId);
+    },
+    enabled: isReady && !!actor && serverId !== null,
+  });
+}
+
+export function useUpdateCategoryChannelOrdering() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      serverId,
+      categoryOrder,
+      textChannelOrderEntries,
+      voiceChannelOrderEntries,
+    }: {
+      serverId: bigint;
+      categoryOrder: bigint[];
+      textChannelOrderEntries: [bigint, bigint[]][];
+      voiceChannelOrderEntries: [bigint, bigint[]][];
+    }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return actor.updateCategoryChannelOrdering(
+        serverId,
+        categoryOrder,
+        textChannelOrderEntries,
+        voiceChannelOrderEntries
+      );
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['categoryChannelOrdering', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Channel order updated successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update channel order: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+// Channel Move
+export function useMoveChannelToCategory() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      serverId,
+      sourceCategoryId,
+      targetCategoryId,
+      channelId,
+      isTextChannel,
+      position,
+    }: {
+      serverId: bigint;
+      sourceCategoryId: bigint;
+      targetCategoryId: bigint;
+      channelId: bigint;
+      isTextChannel: boolean;
+      position: bigint | null;
+    }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return actor.moveChannelToCategory(
+        serverId,
+        sourceCategoryId,
+        targetCategoryId,
+        channelId,
+        isTextChannel,
+        position
+      );
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['categoryChannelOrdering', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Channel moved successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to move channel: ${getFriendlyErrorMessage(error)}`);
     },
   });
 }
 
 // Role Queries
 export function useGetRoles(serverId: bigint | null) {
-  const { actor, isFetching } = useActor();
+  const { actor, isReady } = useBackendConnection();
 
   return useQuery<Role[]>({
     queryKey: ['roles', serverId?.toString()],
@@ -371,12 +523,25 @@ export function useGetRoles(serverId: bigint | null) {
       if (!actor || serverId === null) return [];
       return actor.getRoles(serverId);
     },
-    enabled: !!actor && !isFetching && serverId !== null,
+    enabled: isReady && !!actor && serverId !== null,
+  });
+}
+
+export function useGetServerRoles(serverId: bigint | null) {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<Role[]>({
+    queryKey: ['serverRoles', serverId?.toString()],
+    queryFn: async () => {
+      if (!actor || serverId === null) return [];
+      return actor.getServerRoles(serverId);
+    },
+    enabled: isReady && !!actor && serverId !== null,
   });
 }
 
 export function useAddRole() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -391,13 +556,15 @@ export function useAddRole() {
       color: string;
       permissions: Permission[];
     }) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.addRole(serverId, name, color, permissions);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['roles', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['serverRoles', variables.serverId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      toast.success('Role created');
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Role created successfully');
     },
     onError: (error: Error) => {
       toast.error(`Failed to create role: ${getFriendlyErrorMessage(error)}`);
@@ -406,7 +573,7 @@ export function useAddRole() {
 }
 
 export function useSetRolePermissions() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -419,36 +586,24 @@ export function useSetRolePermissions() {
       roleId: bigint;
       permissions: Permission[];
     }) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.setRolePermissions(serverId, roleId, permissions);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['roles', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['serverRoles', variables.serverId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      toast.success('Permissions updated');
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Role permissions updated successfully');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to update permissions: ${getFriendlyErrorMessage(error)}`);
+      toast.error(`Failed to update role permissions: ${getFriendlyErrorMessage(error)}`);
     },
-  });
-}
-
-// Member Queries
-export function useGetServerMembers(serverId: bigint | null) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<ServerMember[]>({
-    queryKey: ['serverMembers', serverId?.toString()],
-    queryFn: async () => {
-      if (!actor || serverId === null) return [];
-      return actor.getServerMembers(serverId);
-    },
-    enabled: !!actor && !isFetching && serverId !== null,
   });
 }
 
 export function useAssignRoleToUser() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -461,13 +616,15 @@ export function useAssignRoleToUser() {
       roleId: bigint;
       userId: Principal;
     }) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.assignRoleToUser(serverId, roleId, userId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['serverMembers', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      toast.success('Role assigned');
+      queryClient.invalidateQueries({ queryKey: ['serverMembersWithUsernames', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['memberDisplayColor', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Role assigned successfully');
     },
     onError: (error: Error) => {
       toast.error(`Failed to assign role: ${getFriendlyErrorMessage(error)}`);
@@ -476,7 +633,7 @@ export function useAssignRoleToUser() {
 }
 
 export function useRemoveRoleFromUser() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -489,13 +646,15 @@ export function useRemoveRoleFromUser() {
       roleId: bigint;
       userId: Principal;
     }) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.removeRoleFromUser(serverId, roleId, userId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['serverMembers', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      toast.success('Role removed');
+      queryClient.invalidateQueries({ queryKey: ['serverMembersWithUsernames', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['memberDisplayColor', variables.serverId.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Role removed successfully');
     },
     onError: (error: Error) => {
       toast.error(`Failed to remove role: ${getFriendlyErrorMessage(error)}`);
@@ -503,22 +662,150 @@ export function useRemoveRoleFromUser() {
   });
 }
 
-// Friend Queries
-export function useGetFriends() {
-  const { actor, isFetching } = useActor();
+// Server Members Queries
+export function useGetServerMembers(serverId: bigint | null) {
+  const { actor, isReady } = useBackendConnection();
 
-  return useQuery<Principal[]>({
-    queryKey: ['friends'],
+  return useQuery<ServerMember[]>({
+    queryKey: ['serverMembers', serverId?.toString()],
     queryFn: async () => {
-      if (!actor) return [];
-      return actor.getFriends();
+      if (!actor || serverId === null) return [];
+      return actor.getServerMembers(serverId);
     },
-    enabled: !!actor && !isFetching,
+    enabled: isReady && !!actor && serverId !== null,
   });
 }
 
+export function useGetServerMembersWithUsernames(serverId: bigint | null) {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<ServerMemberWithUsername[]>({
+    queryKey: ['serverMembersWithUsernames', serverId?.toString()],
+    queryFn: async () => {
+      if (!actor || serverId === null) return [];
+      return actor.getServerMembersWithUsernames(serverId);
+    },
+    enabled: isReady && !!actor && serverId !== null,
+  });
+}
+
+export function useGetMemberDisplayColor(serverId: bigint | null, userId: Principal | null) {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<string | null>({
+    queryKey: ['memberDisplayColor', serverId?.toString(), userId?.toString()],
+    queryFn: async () => {
+      if (!actor || serverId === null || userId === null) return null;
+      return actor.getMemberDisplayColor(serverId, userId);
+    },
+    enabled: isReady && !!actor && serverId !== null && userId !== null,
+  });
+}
+
+// Text Channel Messages
+export function useGetTextChannelMessages(serverId: bigint | null, textChannelId: bigint | null) {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<TextChannelMessage[]>({
+    queryKey: ['textChannelMessages', serverId?.toString(), textChannelId?.toString()],
+    queryFn: async () => {
+      if (!actor || serverId === null || textChannelId === null) return [];
+      return actor.getTextChannelMessages(serverId, textChannelId, null);
+    },
+    enabled: isReady && !!actor && serverId !== null && textChannelId !== null,
+  });
+}
+
+export function useSendTextChannelMessage() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      serverId,
+      textChannelId,
+      content,
+    }: {
+      serverId: bigint;
+      textChannelId: bigint;
+      content: string;
+    }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return actor.sendTextChannelMessage(serverId, textChannelId, content);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['textChannelMessages', variables.serverId.toString(), variables.textChannelId.toString()],
+      });
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to send message: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+// Voice Channel Presence
+export function useGetVoiceChannelParticipants(serverId: bigint | null, voiceChannelId: bigint | null) {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<VoiceChannelPresence[]>({
+    queryKey: ['voiceChannelParticipants', serverId?.toString(), voiceChannelId?.toString()],
+    queryFn: async () => {
+      if (!actor || serverId === null || voiceChannelId === null) return [];
+      return actor.getVoiceChannelParticipants(serverId, voiceChannelId);
+    },
+    enabled: isReady && !!actor && serverId !== null && voiceChannelId !== null,
+  });
+}
+
+export function useJoinVoiceChannel() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, voiceChannelId }: { serverId: bigint; voiceChannelId: bigint }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return actor.joinVoiceChannel(serverId, voiceChannelId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['voiceChannelParticipants', variables.serverId.toString(), variables.voiceChannelId.toString()],
+      });
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Joined voice channel');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to join voice channel: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+export function useLeaveVoiceChannel() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, voiceChannelId }: { serverId: bigint; voiceChannelId: bigint }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return actor.leaveVoiceChannel(serverId, voiceChannelId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['voiceChannelParticipants', variables.serverId.toString(), variables.voiceChannelId.toString()],
+      });
+      queryClient.invalidateQueries({ queryKey: ['auditLog', variables.serverId.toString()] });
+      toast.success('Left voice channel');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to leave voice channel: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+// Friend System
 export function useGetFriendRequests() {
-  const { actor, isFetching } = useActor();
+  const { actor, isReady } = useBackendConnection();
 
   return useQuery<FriendRequest[]>({
     queryKey: ['friendRequests'],
@@ -526,17 +813,30 @@ export function useGetFriendRequests() {
       if (!actor) return [];
       return actor.getFriendRequests();
     },
-    enabled: !!actor && !isFetching,
+    enabled: isReady && !!actor,
+  });
+}
+
+export function useGetFriends() {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<Principal[]>({
+    queryKey: ['friends'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getFriends();
+    },
+    enabled: isReady && !!actor,
   });
 }
 
 export function useSendFriendRequest() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (to: Principal) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.sendFriendRequest(to);
     },
     onSuccess: () => {
@@ -544,18 +844,18 @@ export function useSendFriendRequest() {
       toast.success('Friend request sent');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to send request: ${getFriendlyErrorMessage(error)}`);
+      toast.error(`Failed to send friend request: ${getFriendlyErrorMessage(error)}`);
     },
   });
 }
 
 export function useAcceptFriendRequest() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (from: Principal) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.acceptFriendRequest(from);
     },
     onSuccess: () => {
@@ -564,18 +864,18 @@ export function useAcceptFriendRequest() {
       toast.success('Friend request accepted');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to accept request: ${getFriendlyErrorMessage(error)}`);
+      toast.error(`Failed to accept friend request: ${getFriendlyErrorMessage(error)}`);
     },
   });
 }
 
 export function useDeclineFriendRequest() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (from: Principal) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.declineFriendRequest(from);
     },
     onSuccess: () => {
@@ -583,18 +883,18 @@ export function useDeclineFriendRequest() {
       toast.success('Friend request declined');
     },
     onError: (error: Error) => {
-      toast.error(`Failed to decline request: ${getFriendlyErrorMessage(error)}`);
+      toast.error(`Failed to decline friend request: ${getFriendlyErrorMessage(error)}`);
     },
   });
 }
 
 export function useRemoveFriend() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (friend: Principal) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.removeFriend(friend);
     },
     onSuccess: () => {
@@ -608,17 +908,16 @@ export function useRemoveFriend() {
 }
 
 export function useBlockUser() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (user: Principal) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.blockUser(user);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['friends'] });
-      queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
       toast.success('User blocked');
     },
     onError: (error: Error) => {
@@ -627,9 +926,9 @@ export function useBlockUser() {
   });
 }
 
-// User Status Queries
+// User Status
 export function useGetUserStatus(userId: Principal | null) {
-  const { actor, isFetching } = useActor();
+  const { actor, isReady } = useBackendConnection();
 
   return useQuery<UserStatus | null>({
     queryKey: ['userStatus', userId?.toString()],
@@ -637,17 +936,17 @@ export function useGetUserStatus(userId: Principal | null) {
       if (!actor || !userId) return null;
       return actor.getUserStatus(userId);
     },
-    enabled: !!actor && !isFetching && !!userId,
+    enabled: isReady && !!actor && !!userId,
   });
 }
 
 export function useSetUserStatus() {
-  const { actor } = useActor();
+  const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (status: UserStatus) => {
-      if (!actor) throw new Error('Backend connection not ready');
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
       return actor.setUserStatus(status);
     },
     onSuccess: () => {
@@ -660,115 +959,16 @@ export function useSetUserStatus() {
   });
 }
 
-// Text Channel Message Queries
-export function useGetTextChannelMessages(serverId: bigint | null, textChannelId: bigint | null) {
-  const { actor, isFetching } = useActor();
+// Audit Log
+export function useGetServerAuditLog(serverId: bigint | null) {
+  const { actor, isReady } = useBackendConnection();
 
-  return useQuery<TextChannelMessage[]>({
-    queryKey: ['textChannelMessages', serverId?.toString(), textChannelId?.toString()],
+  return useQuery<AuditLogEntry[]>({
+    queryKey: ['auditLog', serverId?.toString()],
     queryFn: async () => {
-      if (!actor || serverId === null || textChannelId === null) return [];
-      return actor.getTextChannelMessages(serverId, textChannelId, null);
+      if (!actor || serverId === null) return [];
+      return actor.getServerAuditLog(serverId);
     },
-    enabled: !!actor && !isFetching && serverId !== null && textChannelId !== null,
-  });
-}
-
-export function useSendTextChannelMessage() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      serverId,
-      textChannelId,
-      content,
-    }: {
-      serverId: bigint;
-      textChannelId: bigint;
-      content: string;
-    }) => {
-      if (!actor) throw new Error('Backend connection not ready');
-      return actor.sendTextChannelMessage(serverId, textChannelId, content);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['textChannelMessages', variables.serverId.toString(), variables.textChannelId.toString()],
-      });
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to send message: ${getFriendlyErrorMessage(error)}`);
-    },
-  });
-}
-
-// Voice Channel Presence Queries
-export function useGetVoiceChannelParticipants(serverId: bigint | null, voiceChannelId: bigint | null) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<VoiceChannelPresence[]>({
-    queryKey: ['voiceChannelParticipants', serverId?.toString(), voiceChannelId?.toString()],
-    queryFn: async () => {
-      if (!actor || serverId === null || voiceChannelId === null) return [];
-      return actor.getVoiceChannelParticipants(serverId, voiceChannelId);
-    },
-    enabled: !!actor && !isFetching && serverId !== null && voiceChannelId !== null,
-    refetchInterval: 5000, // Poll every 5 seconds
-  });
-}
-
-export function useJoinVoiceChannel() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ serverId, voiceChannelId }: { serverId: bigint; voiceChannelId: bigint }) => {
-      if (!actor) throw new Error('Backend connection not ready');
-      return actor.joinVoiceChannel(serverId, voiceChannelId);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['voiceChannelParticipants', variables.serverId.toString(), variables.voiceChannelId.toString()],
-      });
-      toast.success('Joined voice channel');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to join voice channel: ${getFriendlyErrorMessage(error)}`);
-    },
-  });
-}
-
-export function useLeaveVoiceChannel() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ serverId, voiceChannelId }: { serverId: bigint; voiceChannelId: bigint }) => {
-      if (!actor) throw new Error('Backend connection not ready');
-      return actor.leaveVoiceChannel(serverId, voiceChannelId);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['voiceChannelParticipants', variables.serverId.toString(), variables.voiceChannelId.toString()],
-      });
-      toast.success('Left voice channel');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to leave voice channel: ${getFriendlyErrorMessage(error)}`);
-    },
-  });
-}
-
-// Discovery Queries
-export function useDiscoverServers() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Server[]>({
-    queryKey: ['discoverServers'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.discoverServers();
-    },
-    enabled: !!actor && !isFetching,
+    enabled: isReady && !!actor && serverId !== null,
   });
 }

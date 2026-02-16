@@ -1,12 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Let users open a profile overlay for any user by clicking them in the Members list or by clicking a chat message author (avatar/name), without navigating away from the current server/channel.
+**Goal:** Add server member role display and management so roles appear on server profiles, authorized users can assign/remove roles, and usernames are colored by a member’s effective role color in server contexts.
 
 **Planned changes:**
-- Add a user profile overlay component (modal on desktop; sheet or modal on mobile) that renders selected user profile details from existing profile data (display name, username/handle if available, avatar, banner, About Me, custom status, badges).
-- Add selection state + open/close behavior for the overlay, including an explicit Close control and standard dismiss interactions (e.g., Escape/outside click where appropriate) that clear the selection.
-- Make each row in the right-side Members list clickable to open that member’s profile overlay.
-- Make chat message author avatar and display name clickable to open that author’s profile overlay, with appropriate hover/pointer affordance and without disrupting scrolling or causing navigation/rerender that loses context.
+- Backend: add APIs to list server roles, fetch server members including assigned role IDs, and provide each member’s effective display role color based on highest-position assigned role (or none).
+- Backend: add authorized role assignment/removal endpoints for server members and write audit log entries for role changes.
+- Frontend: add React Query hooks to fetch roles, fetch members with role IDs, and mutate role assignments/removals with proper cache invalidation and error toasts.
+- Frontend: show role chips/badges on the server profile overlay when opened in a server context (hide the section when none).
+- Frontend: add role assignment controls in the server member profile overlay and/or member list, visible/enabled only for authorized users.
+- Frontend: apply effective role color to usernames in server chat messages and the server member list, falling back to default text color when no role color is available.
 
-**User-visible outcome:** Clicking a member in the Members list or a message author’s avatar/name opens a profile overlay showing their existing profile details, and closing it returns you to the same channel view without navigation.
+**User-visible outcome:** In servers, users can see members’ roles on profiles and see role-colored usernames in the member list and chat; authorized users can assign or remove roles and changes reflect immediately.

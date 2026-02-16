@@ -2,12 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-a-user-profile-overlay-modal-on-desktop-sheet-or-modal-on-mobile-that-opens-when-a-user-is-selected-and-renders-the-selected-user-s-profile-details-using-existing-profile-data-display-name-username-handle-if-available-avatar-banner-about-me-custom-status-badges-the-overlay-must-have-an-explicit-close-control-that-clears-the-current-selection-and-returns-the-user-to-what-they-were-doing-no-navigation-away-from-the-current-view",
-      "featureTitle": "Add a user profile overlay (modal on desktop, sheet or modal on mobile) that opens when a user is selected, and renders the selected user's profile details using existing profile data (display name, username/handle if available, avatar, banner, About Me, custom status, badges). The overlay must have an explicit close control that clears the current selection and returns the user to what they were doing (no navigation away from the current view).",
+      "featureId": "feature-add-react-query-hooks-in-frontend-src-hooks-usequeries-ts-for-fetching-server-roles-fetching-server-members-with-role-ids-and-assigning-removing-a-role-for-a-server-member-ensure-mutations-invalidate-the-relevant-cached-queries-so-member-list-and-profile-overlay-reflect-changes-immediately",
+      "featureTitle": "Add React Query hooks in frontend/src/hooks/useQueries.ts for: fetching server roles, fetching server members with role IDs, and assigning/removing a role for a server member; ensure mutations invalidate the relevant cached queries so Member List and Profile overlay reflect changes immediately.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/profile/UserProfileOverlay.tsx",
-        "frontend/src/hooks/useIsMobile.ts"
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,15 +16,35 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-38"
+        "REQ-3"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-make-clicking-a-member-in-the-right-side-members-list-open-that-member-s-profile-overlay",
-      "featureTitle": "Make clicking a member in the right-side Members list open that member's profile overlay.",
+      "featureId": "feature-show-a-member-s-roles-on-their-server-profile-overlay-frontend-src-components-profile-userprofileoverlay-tsx-when-the-overlay-is-opened-from-within-a-server-context-display-role-chips-badges-with-the-role-name-and-role-color-if-the-member-has-no-roles-do-not-show-a-roles-section",
+      "featureTitle": "Show a member’s roles on their server profile overlay (frontend/src/components/profile/UserProfileOverlay.tsx) when the overlay is opened from within a server context: display role chips/badges with the role name and role color; if the member has no roles, do not show a roles section.",
       "files": [
-        "frontend/src/components/members/MemberListPanel.tsx",
+        "frontend/src/components/profile/UserProfileOverlay.tsx",
+        "frontend/src/utils/roleColor.ts"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-allow-assigning-roles-to-users-in-a-server-from-the-ui-add-role-assignment-controls-accessible-from-the-server-member-profile-overlay-and-or-member-list-including-a-list-of-available-roles-with-current-assignments-indicated-and-actions-to-add-remove-roles-restricted-hidden-for-unauthorized-users",
+      "featureTitle": "Allow assigning roles to users in a server from the UI: add role assignment controls accessible from the server member profile overlay and/or member list, including a list of available roles with current assignments indicated, and actions to add/remove roles (restricted/hidden for unauthorized users).",
+      "files": [
+        "frontend/src/components/profile/RoleAssignmentDialog.tsx",
         "frontend/src/components/profile/UserProfileOverlay.tsx"
       ],
       "components": [
@@ -38,16 +56,17 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-39"
+        "REQ-5"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-make-clicking-a-message-author-s-avatar-or-display-name-in-the-chat-message-list-open-that-author-s-profile-overlay",
-      "featureTitle": "Make clicking a message author's avatar or display name in the chat message list open that author's profile overlay.",
+      "featureId": "feature-apply-role-color-to-usernames-in-server-contexts-update-message-author-name-rendering-frontend-src-components-chat-messageitem-tsx-and-server-member-list-rendering-frontend-src-components-members-memberlistpanel-tsx-so-the-displayed-name-uses-the-member-s-effective-role-color-if-the-member-has-no-roles-keep-the-default-text-color",
+      "featureTitle": "Apply role color to usernames in server contexts: update message author name rendering (frontend/src/components/chat/MessageItem.tsx) and server member list rendering (frontend/src/components/members/MemberListPanel.tsx) so the displayed name uses the member’s effective role color; if the member has no roles, keep the default text color.",
       "files": [
         "frontend/src/components/chat/MessageItem.tsx",
-        "frontend/src/components/profile/UserProfileOverlay.tsx"
+        "frontend/src/components/members/MemberListPanel.tsx",
+        "frontend/src/utils/roleColor.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -58,7 +77,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-40"
+        "REQ-6"
       ],
       "confidence": "high"
     }

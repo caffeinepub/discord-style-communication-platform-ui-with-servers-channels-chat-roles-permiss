@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAddCategory } from '../../hooks/useQueries';
+import { useAddCategoryToServer } from '../../hooks/useQueries';
 import { useBackendActionGuard } from '@/hooks/useBackendActionGuard';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -26,7 +26,7 @@ export default function CreateCategoryDialog({
   serverId,
 }: CreateCategoryDialogProps) {
   const [categoryName, setCategoryName] = useState('');
-  const addCategory = useAddCategory();
+  const addCategory = useAddCategoryToServer();
   const { disabled: backendDisabled, reason: backendReason } = useBackendActionGuard();
 
   const handleSubmit = async (e: React.FormEvent) => {

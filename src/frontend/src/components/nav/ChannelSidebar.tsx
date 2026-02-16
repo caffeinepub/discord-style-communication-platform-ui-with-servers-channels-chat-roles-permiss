@@ -9,7 +9,7 @@ import CreateCategoryDialog from '../channels/CreateCategoryDialog';
 import { cn } from '@/lib/utils';
 
 export default function ChannelSidebar() {
-  const { currentView, selectedServerId, homeTab, setHomeTab, setShowServerSettings } = useNavigation();
+  const { currentView, selectedServerId, homeTab, setHomeTab, setShowServerSettings, setShowUserSettings } = useNavigation();
   const { data: server } = useGetServer(selectedServerId);
   const { data: categories = [] } = useGetCategories(selectedServerId);
   const [showCreateCategory, setShowCreateCategory] = useState(false);
@@ -20,28 +20,42 @@ export default function ChannelSidebar() {
         <div className="flex h-12 items-center justify-between px-4 shadow-sm border-b border-border">
           <h2 className="font-semibold">Direct Messages</h2>
         </div>
-        <div className="flex flex-col p-2">
+        <ScrollArea className="flex-1">
+          <div className="flex flex-col p-2">
+            <Button
+              variant="ghost"
+              className={cn(
+                'justify-start',
+                homeTab === 'friends' && 'bg-accent text-accent-foreground'
+              )}
+              onClick={() => setHomeTab('friends')}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Friends
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn(
+                'justify-start',
+                homeTab === 'dms' && 'bg-accent text-accent-foreground'
+              )}
+              onClick={() => setHomeTab('dms')}
+            >
+              <Hash className="mr-2 h-4 w-4" />
+              Direct Messages
+            </Button>
+          </div>
+        </ScrollArea>
+        
+        {/* Pinned Settings Button */}
+        <div className="p-2 border-t border-border">
           <Button
             variant="ghost"
-            className={cn(
-              'justify-start',
-              homeTab === 'friends' && 'bg-accent text-accent-foreground'
-            )}
-            onClick={() => setHomeTab('friends')}
+            className="w-full justify-start"
+            onClick={() => setShowUserSettings(true)}
           >
-            <Users className="mr-2 h-4 w-4" />
-            Friends
-          </Button>
-          <Button
-            variant="ghost"
-            className={cn(
-              'justify-start',
-              homeTab === 'dms' && 'bg-accent text-accent-foreground'
-            )}
-            onClick={() => setHomeTab('dms')}
-          >
-            <Hash className="mr-2 h-4 w-4" />
-            Direct Messages
+            <Settings className="mr-2 h-4 w-4" />
+            User Settings
           </Button>
         </div>
       </div>
@@ -84,6 +98,18 @@ export default function ChannelSidebar() {
           </Button>
         </div>
       </ScrollArea>
+
+      {/* Pinned Settings Button */}
+      <div className="p-2 border-t border-border">
+        <Button
+          variant="ghost"
+          className="w-full justify-start"
+          onClick={() => setShowUserSettings(true)}
+        >
+          <Settings className="mr-2 h-4 w-4" />
+          User Settings
+        </Button>
+      </div>
 
       <CreateCategoryDialog
         open={showCreateCategory}

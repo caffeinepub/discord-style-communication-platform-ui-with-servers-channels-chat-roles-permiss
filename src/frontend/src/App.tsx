@@ -8,7 +8,6 @@ import { NavigationProvider } from './state/navigation';
 import { SettingsProvider } from './state/settings';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from 'next-themes';
-import BackendConnectionBanner from './components/system/BackendConnectionBanner';
 import UserProfileOverlay from './components/profile/UserProfileOverlay';
 
 export default function App() {
@@ -48,11 +47,8 @@ export default function App() {
       <TooltipProvider>
         <SettingsProvider>
           <NavigationProvider>
-            <div className="flex flex-col h-screen">
-              <BackendConnectionBanner />
-              <div className="flex-1 overflow-hidden">
-                <ResponsiveShell />
-              </div>
+            <div className="h-screen overflow-hidden">
+              <ResponsiveShell />
             </div>
             <ProfileSetupDialog
               open={showProfileSetup}

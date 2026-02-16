@@ -7,7 +7,28 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface VoiceChannel {
+export interface ServerMemberWithUsername {
+    member: ServerMember;
+    username: string;
+}
+export interface AuditLogEntry {
+    id: bigint;
+    userId: Principal;
+    timestamp: bigint;
+    details: string;
+    serverId: bigint;
+    eventType: AuditEventType;
+}
+export interface TextChannelMessage {
+    id: bigint;
+    content: string;
+    createdAt: bigint;
+    createdBy: Principal;
+    isPersistent: boolean;
+    textChannelId: bigint;
+    serverId: bigint;
+}
+export interface TextChannel {
     id: bigint;
     name: string;
 }
@@ -53,21 +74,8 @@ export interface VoiceChannelPresence {
     voiceChannelId: bigint;
     serverId: bigint;
 }
-export interface TextChannelMessage {
-    id: bigint;
-    content: string;
-    createdAt: bigint;
-    createdBy: Principal;
-    isPersistent: boolean;
-    textChannelId: bigint;
-    serverId: bigint;
-}
 export interface Permission {
     value: boolean;
-    name: string;
-}
-export interface TextChannel {
-    id: bigint;
     name: string;
 }
 export interface UserProfile {
@@ -77,6 +85,28 @@ export interface UserProfile {
     badges: Array<string>;
     avatarUrl: string;
     bannerUrl: string;
+}
+export interface VoiceChannel {
+    id: bigint;
+    name: string;
+}
+export enum AuditEventType {
+    UserJoinedVoiceChannel = "UserJoinedVoiceChannel",
+    ServerCreated = "ServerCreated",
+    RoleAssignedToUser = "RoleAssignedToUser",
+    VoiceChannelAdded = "VoiceChannelAdded",
+    RoleRemovedFromUser = "RoleRemovedFromUser",
+    RolePermissionsSet = "RolePermissionsSet",
+    MessageSent = "MessageSent",
+    ServerLeft = "ServerLeft",
+    UserLeftVoiceChannel = "UserLeftVoiceChannel",
+    ServerRenamed = "ServerRenamed",
+    CategoryAdded = "CategoryAdded",
+    ChannelMoved = "ChannelMoved",
+    ServerJoined = "ServerJoined",
+    TextChannelAdded = "TextChannelAdded",
+    SettingsUpdated = "SettingsUpdated",
+    RoleAdded = "RoleAdded"
 }
 export enum UserRole {
     admin = "admin",
@@ -100,21 +130,30 @@ export interface backendInterface {
     blockUser(user: Principal): Promise<void>;
     createServer(_name: string, description: string): Promise<bigint>;
     declineFriendRequest(from: Principal): Promise<void>;
-    discoverServers(): Promise<Array<Server>>;
     getAllServers(): Promise<Array<Server>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCallerUsername(): Promise<string | null>;
     getCategories(serverId: bigint): Promise<Array<ChannelCategory>>;
+    getCategoryChannelOrdering(serverId: bigint): Promise<{
+        categoryOrder: Array<bigint>;
+        voiceChannelOrder: Array<[bigint, Array<bigint>]>;
+        textChannelOrder: Array<[bigint, Array<bigint>]>;
+    } | null>;
     getFriendRequests(): Promise<Array<FriendRequest>>;
     getFriends(): Promise<Array<Principal>>;
+    getMemberDisplayColor(serverId: bigint, userId: Principal): Promise<string | null>;
     getRoles(serverId: bigint): Promise<Array<Role>>;
     getServer(serverId: bigint): Promise<Server>;
+    getServerAuditLog(serverId: bigint): Promise<Array<AuditLogEntry>>;
     getServerMembers(serverId: bigint): Promise<Array<ServerMember>>;
+    getServerMembersWithUsernames(serverId: bigint): Promise<Array<ServerMemberWithUsername>>;
     getServerOrdering(): Promise<Array<bigint>>;
+    getServerRoles(serverId: bigint): Promise<Array<Role>>;
     getTextChannelMessages(serverId: bigint, textChannelId: bigint, startFromMessageId: bigint | null): Promise<Array<TextChannelMessage>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getUserStatus(user: Principal): Promise<UserStatus | null>;
+    getUsernameForUser(user: Principal): Promise<string | null>;
     getVoiceChannelParticipants(serverId: bigint, voiceChannelId: bigint): Promise<Array<VoiceChannelPresence>>;
     healthCheck(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
@@ -132,5 +171,5 @@ export interface backendInterface {
     setServerOrdering(ordering: Array<bigint>): Promise<void>;
     setUserStatus(status: UserStatus): Promise<void>;
     setUsername(desiredUsername: string): Promise<void>;
-    updateServerSettings(serverId: bigint, description: string, bannerUrl: string, iconUrl: string, communityMode: boolean): Promise<void>;
+    updateCategoryChannelOrdering(serverId: bigint, categoryOrder: Array<bigint>, textChannelOrderEntries: Array<[bigint, Array<bigint>]>, voiceChannelOrderEntries: Array<[bigint, Array<bigint>]>): Promise<void>;
 }

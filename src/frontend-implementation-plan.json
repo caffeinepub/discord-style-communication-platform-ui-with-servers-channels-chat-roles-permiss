@@ -1,85 +1,92 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "User profile overlay opened from member list and chat author clicks",
+  "title": "Server roles on profiles, assignment controls, and role-colored usernames (frontend)",
   "requirements": [
     {
-      "id": "REQ-38",
-      "summary": "Add a responsive user profile overlay that renders existing profile data and can be dismissed without navigation.",
+      "id": "REQ-3",
+      "summary": "Add React Query hooks for server roles, server members (with role IDs), and role assign/remove mutations with proper cache invalidation and friendly errors.",
       "acceptanceCriteria": [
-        "When a user is selected for profile viewing, an overlay appears above the current UI without changing the selected server/channel.",
-        "The overlay shows the selected user's profile data using the existing profile query hook (no placeholder-only content).",
-        "The overlay includes a Close button (and supports standard dismiss behavior like Escape/outside click where appropriate) that clears the selection and hides the overlay.",
-        "All user-facing text in the overlay is in English."
+        "There are query hooks to load roles for the selected server and member role IDs for the selected server.",
+        "There are mutation hooks to assign/remove roles for a server member.",
+        "After a successful assign/remove mutation, the server members query and any role-related queries used by the profile overlay/message list are invalidated/refetched so UI updates without a full reload.",
+        "Errors are surfaced using the existing friendly toast/error patterns in useQueries.ts."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/profile/UserProfileOverlay.tsx",
-          "operation": "create",
-          "description": "Create a composed overlay component that reads the currently selected user from navigation state and displays their profile details via the existing useGetUserProfile hook (avatar, banner, display name, about me, custom status, badges; show a handle-like label when available). Use shadcn-ui composed primitives (e.g., Dialog for desktop and Sheet or mobile-friendly modal behavior for small screens) and include an explicit Close control that clears selection; support standard dismiss interactions (Escape/outside click) as appropriate. For fallbacks, wire generated assets as needed (e.g., frontend/public/assets/generated/profile-banner-default.dim_1200x400.png and frontend/public/assets/generated/avatar-default-01.dim_256x256.png). Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/hooks/useIsMobile.ts",
-          "operation": "create",
-          "description": "Add a small hook to detect mobile/desktop viewport (used by the profile overlay to choose modal vs sheet-style presentation) without changing routing or navigation. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/App.tsx",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Mount the new UserProfileOverlay at the app shell level (inside NavigationProvider) so it can appear above any current view without navigation changes, and ensure closing the overlay clears the current selection. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/state/navigation.ts",
-          "operation": "modify",
-          "description": "Ensure navigation state cleanly supports 'selected user for profile viewing' (reuse selectedMemberId) and expose a clear action via setSelectedMemberId(null) that the overlay can call on dismiss, without altering server/channel selection behavior."
+          "description": "Add/align hooks and query keys for: fetching server roles (use existing getServerRoles/getRoles backend capability as appropriate), fetching server members with role IDs (use existing getServerMembers backend capability), fetching a member’s effective display color (use getMemberDisplayColor backend capability), and mutations for assign/remove role (use assignRoleToUser/removeRoleFromUser backend capabilities). Ensure mutations invalidate/refetch member lists, any per-member display color queries, and any overlay/member-related queries; continue using existing toast + friendly error handling patterns."
         }
       ]
     },
     {
-      "id": "REQ-39",
-      "summary": "Open the profile overlay when clicking a member in the Members list.",
+      "id": "REQ-4",
+      "summary": "Show a member’s roles on the server profile overlay in server context using colored role chips/badges.",
       "acceptanceCriteria": [
-        "Clicking a row in the Members list opens the profile overlay for that member.",
-        "The opened profile corresponds to the clicked member (correct user identity displayed).",
-        "Closing the overlay returns to the same server/channel view with the member list still accessible."
+        "When viewing a member profile while a server is selected, the overlay includes a ‘Roles’ section listing the member’s assigned roles.",
+        "Each displayed role uses its configured color (e.g., colored dot or colored chip accent) and shows the role name in readable contrast.",
+        "If no server is selected, or the member has no roles in that server, the overlay does not show an empty roles section."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/members/MemberListPanel.tsx",
-          "operation": "modify",
-          "description": "Confirm member rows set the selected user id for profile viewing (setSelectedMemberId) and ensure the row remains a clear, clickable target to open the overlay while keeping the user in the same server/channel view. Verify the component's usage instructions before implementing."
-        },
-        {
           "path": "frontend/src/components/profile/UserProfileOverlay.tsx",
           "operation": "modify",
-          "description": "Ensure the overlay correctly resolves and renders the clicked member's identity and profile data when selection comes from the Members list, and that dismissal returns to the same underlying view with the member list still accessible. Verify the component's usage instructions before implementing."
+          "description": "When the overlay is opened with a selected server context, fetch the server’s roles and the selected member’s role IDs (via hooks in frontend/src/hooks/useQueries.ts), then render a conditional ‘Roles’ section. Map role IDs to role objects and render role chips/badges showing the role name and role color (with readable contrast). Do not render the section when no server is selected or the member has no roles. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/utils/roleColor.ts",
+          "operation": "create",
+          "description": "Add small shared utilities to (a) validate/sanitize role color strings for safe inline styling and (b) choose a readable foreground/contrast strategy for chips where needed (light/dark). This is used by UserProfileOverlay, MessageItem, and MemberListPanel."
         }
       ]
     },
     {
-      "id": "REQ-40",
-      "summary": "Open the profile overlay when clicking a chat message author's avatar or name, with proper affordance and minimal disruption.",
+      "id": "REQ-5",
+      "summary": "Add role assignment controls in the server member profile overlay with current assignments shown and unauthorized users hidden/disabled.",
       "acceptanceCriteria": [
-        "In the chat message list, clicking the author avatar opens the profile overlay for the message author.",
-        "In the chat message list, clicking the author name opens the profile overlay for the message author.",
-        "The click targets have appropriate affordance (pointer cursor / hover style) and do not interfere with message scrolling.",
-        "Closing the overlay returns to the same channel and scroll position remains reasonable (no full rerender/navigation)."
+        "When a user with permission views another member’s profile in a server, they can assign and remove roles using a clear control (e.g., dialog/sheet with role checkboxes).",
+        "Current role assignments for that member are shown as selected/checked.",
+        "Users without permission do not see role assignment controls (or controls are disabled with a clear unauthorized state).",
+        "After changing roles, the member list and profile overlay update to reflect the new roles."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/profile/RoleAssignmentDialog.tsx",
+          "operation": "create",
+          "description": "Create a profile-overlay-scoped dialog/sheet component that lists available server roles with selection state matching the target member’s current role IDs, and supports toggling roles using assign/remove mutation hooks from frontend/src/hooks/useQueries.ts. Include a clear interaction pattern (e.g., checkbox list) and loading/disabled states. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/profile/UserProfileOverlay.tsx",
+          "operation": "modify",
+          "description": "Wire the new RoleAssignmentDialog into the overlay (only when a server is selected). Determine whether to show/enable the control using existing frontend signals (e.g., isCallerAdmin via existing hook and/or server owner match via server data + current identity if already available in the app). Hide the control for clearly unauthorized users (or disable with an unauthorized hint), and rely on mutation error handling for any backend authorization failures. Ensure successful mutations update the overlay state via React Query invalidation. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Apply effective role color to usernames in server contexts for chat messages and the member list, falling back to default styling.",
+      "acceptanceCriteria": [
+        "In chat messages, the author name text is styled with the effective role color when the message is in a server channel context.",
+        "In the member list, each member’s display name is styled with the effective role color when they have a role with a color.",
+        "If a member has no roles (or role color is unavailable), names render with the existing default text color (no forced coloring).",
+        "Color styling does not reduce readability in light/dark themes (e.g., ensure adequate contrast by using the provided role color primarily for text and falling back safely if invalid)."
       ],
       "file_operations": [
         {
           "path": "frontend/src/components/chat/MessageItem.tsx",
           "operation": "modify",
-          "description": "Wrap the author avatar and author display name with click handlers that set the selected user id for profile viewing (via navigation state), add appropriate affordance (e.g., hover/pointer styling) and ensure clicks don’t break scrolling behavior. Verify the component's usage instructions before implementing."
+          "description": "In server channel contexts, fetch the author’s effective display role color using a new hook from frontend/src/hooks/useQueries.ts (backed by getMemberDisplayColor) keyed by selected server and author userId. Apply the color to the author name text only when a valid color is available; otherwise keep current default styling. Use frontend/src/utils/roleColor.ts to validate/sanitize colors and avoid unreadable/invalid values. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/components/chat/ChatView.tsx",
+          "path": "frontend/src/components/members/MemberListPanel.tsx",
           "operation": "modify",
-          "description": "Ensure the chat view does not reroute or fully remount when the profile overlay is opened/closed (overlay should be layered above), preserving a reasonable scroll position by avoiding navigation changes. Verify the component's usage instructions before implementing."
+          "description": "For each member row in a selected server, fetch that member’s effective display role color using a new hook from frontend/src/hooks/useQueries.ts (backed by getMemberDisplayColor). Style the displayed member name with the effective color when present and valid; otherwise keep existing default text color. Use frontend/src/utils/roleColor.ts to validate/sanitize colors and ensure safe fallbacks for readability. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/components/profile/UserProfileOverlay.tsx",
+          "path": "frontend/src/utils/roleColor.ts",
           "operation": "modify",
-          "description": "Confirm overlay open/close behavior is purely state-driven (no route changes) so dismissing returns to the same channel context after clicking chat author elements. Verify the component's usage instructions before implementing."
+          "description": "Extend utilities (if needed) to support consistent validation/sanitization and safe fallback behavior for text coloring in both message list and member list, preserving readability across light/dark themes."
         }
       ]
     }

@@ -8,9 +8,13 @@ import Principal "mo:core/Principal";
 import Iter "mo:core/Iter";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
+import Migration "migration";
+
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
+// Apply migration module on upgrade
+(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -143,12 +147,54 @@ actor {
     };
   };
 
+  public type CategoryChannelOrder = {
+    categoryOrder : [Nat];
+    textChannelOrder : Map.Map<Nat, [Nat]>;
+    voiceChannelOrder : Map.Map<Nat, [Nat]>;
+  };
+
+  // Audit Log Types
+  public type AuditEventType = {
+    #ServerCreated;
+    #ServerRenamed;
+    #SettingsUpdated;
+    #CategoryAdded;
+    #TextChannelAdded;
+    #VoiceChannelAdded;
+    #ChannelMoved;
+    #RoleAdded;
+    #RolePermissionsSet;
+    #RoleAssignedToUser;
+    #RoleRemovedFromUser;
+    #MessageSent;
+    #UserJoinedVoiceChannel;
+    #UserLeftVoiceChannel;
+    #ServerJoined;
+    #ServerLeft;
+  };
+
+  public type AuditLogEntry = {
+    id : Nat;
+    timestamp : Int;
+    eventType : AuditEventType;
+    serverId : Nat;
+    userId : Principal;
+    details : Text;
+  };
+
+  // Exposed member details with username for UI display
+  public type ServerMemberWithUsername = {
+    member : ServerMember;
+    username : Text;
+  };
+
   // State
   var nextServerId = 1;
   var nextCategoryId = 1;
   var nextChannelId = 1;
   var nextRoleId = 1;
   var nextMessageId = 1;
+  var nextAuditLogId = 1;
 
   let servers = Map.empty<Nat, Server>();
   let userProfiles = Map.empty<Principal, UserProfile>();
@@ -160,13 +206,11 @@ actor {
   let persistentTextChannelMessages = Map.empty<Nat, Map.Map<Nat, [TextChannelMessage]>>();
   let voiceChannelPresences = Map.empty<Nat, Map.Map<Nat, [VoiceChannelPresence]>>();
   let userUsernames = Map.empty<Principal, Text>();
-
-  // Health Check Method
-  public query ({ caller }) func healthCheck() : async Bool {
-    true;
-  };
+  let auditLogs = Map.empty<Nat, [AuditLogEntry]>();
+  let categoryChannelOrders = Map.empty<Nat, CategoryChannelOrder>();
 
   // Helper Functions
+
   func isServerOwner(serverId : Nat, caller : Principal) : Bool {
     switch (servers.get(serverId)) {
       case (null) { false };
@@ -211,7 +255,36 @@ actor {
     };
   };
 
-  // User Profile & Username Functions
+  func getHighestRole(colorRoles : [Role]) : ?Role {
+    if (colorRoles.size() == 0) { return null };
+
+    let sortedRoles = colorRoles.sort();
+    ?sortedRoles[0];
+  };
+
+  // Audit Logging
+  func logAuditEvent(serverId : Nat, userId : Principal, eventType : AuditEventType, details : Text) {
+    let logEntry : AuditLogEntry = {
+      id = nextAuditLogId;
+      timestamp = Time.now();
+      eventType;
+      serverId;
+      userId;
+      details;
+    };
+    nextAuditLogId += 1;
+
+    let currentLogs = switch (auditLogs.get(serverId)) {
+      case (null) { [] };
+      case (?logs) { logs };
+    };
+    auditLogs.add(serverId, currentLogs.concat([logEntry]));
+  };
+
+  public query ({ caller }) func healthCheck() : async Bool {
+    true;
+  };
+
   public shared ({ caller }) func setUsername(desiredUsername : Text) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can set username");
@@ -237,6 +310,13 @@ actor {
       Runtime.trap("Unauthorized: Only users can access username");
     };
     userUsernames.get(caller);
+  };
+
+  public query ({ caller }) func getUsernameForUser(user : Principal) : async ?Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view usernames");
+    };
+    userUsernames.get(user);
   };
 
   // User Profile Functions (Required by instructions)
@@ -413,6 +493,10 @@ actor {
     };
 
     servers.add(serverId, newServer);
+
+    // Log server creation
+    logAuditEvent(serverId, caller, #ServerCreated, "Server created: " # _name);
+
     serverId;
   };
 
@@ -427,25 +511,9 @@ actor {
     };
     let updatedServer = { server with name = newName };
     servers.add(serverId, updatedServer);
-  };
 
-  public shared ({ caller }) func updateServerSettings(serverId : Nat, description : Text, bannerUrl : Text, iconUrl : Text, communityMode : Bool) : async () {
-    if (not hasServerAdminPermission(serverId, caller)) {
-      Runtime.trap("Unauthorized: Only server admins can update server settings");
-    };
-
-    let server = switch (servers.get(serverId)) {
-      case (null) { Runtime.trap("Server not found") };
-      case (?s) { s };
-    };
-    let updatedServer = {
-      server with
-      description = description;
-      bannerUrl = bannerUrl;
-      iconUrl = iconUrl;
-      communityMode = communityMode;
-    };
-    servers.add(serverId, updatedServer);
+    // Log server rename
+    logAuditEvent(serverId, caller, #ServerRenamed, "Server renamed to: " # newName);
   };
 
   public shared ({ caller }) func joinServer(serverId : Nat) : async () {
@@ -473,6 +541,9 @@ actor {
       members = server.members.concat([newMember]);
     };
     servers.add(serverId, updatedServer);
+
+    // Log server join
+    logAuditEvent(serverId, caller, #ServerJoined, "User joined server");
   };
 
   public shared ({ caller }) func leaveServer(serverId : Nat) : async () {
@@ -492,6 +563,9 @@ actor {
     let updatedMembers = server.members.filter(func(m) { not Principal.equal(m.userId, caller) });
     let updatedServer = { server with members = updatedMembers };
     servers.add(serverId, updatedServer);
+
+    // Log server leave
+    logAuditEvent(serverId, caller, #ServerLeft, "User left server");
   };
 
   public shared ({ caller }) func setServerOrdering(ordering : [Nat]) : async () {
@@ -535,6 +609,10 @@ actor {
     let updatedCategories = server.channels.concat([newCategory]);
     let updatedServer = { server with channels = updatedCategories };
     servers.add(serverId, updatedServer);
+
+    // Log category addition
+    logAuditEvent(serverId, caller, #CategoryAdded, "Category added: " # categoryName);
+
     categoryId;
   };
 
@@ -568,6 +646,10 @@ actor {
 
     let updatedServer = { server with channels = updatedCategories };
     servers.add(serverId, updatedServer);
+
+    // Log text channel addition
+    logAuditEvent(serverId, caller, #TextChannelAdded, "Text channel added: " # channelName);
+
     channelId;
   };
 
@@ -601,10 +683,59 @@ actor {
 
     let updatedServer = { server with channels = updatedCategories };
     servers.add(serverId, updatedServer);
+
+    // Log voice channel addition
+    logAuditEvent(serverId, caller, #VoiceChannelAdded, "Voice channel added: " # channelName);
+
     channelId;
   };
 
-  // Role Management Functions
+  public shared ({ caller }) func updateCategoryChannelOrdering(
+    serverId : Nat,
+    categoryOrder : [Nat],
+    textChannelOrderEntries : [(Nat, [Nat])],
+    voiceChannelOrderEntries : [(Nat, [Nat])]
+  ) : async () {
+    if (not hasServerAdminPermission(serverId, caller)) {
+      Runtime.trap("Unauthorized: Only server admins can update ordering");
+    };
+
+    let textChannelOrderMap = Map.empty<Nat, [Nat]>();
+    textChannelOrderEntries.forEach(func((k, v)) { textChannelOrderMap.add(k, v) });
+
+    let voiceChannelOrderMap = Map.empty<Nat, [Nat]>();
+    voiceChannelOrderEntries.forEach(func((k, v)) { voiceChannelOrderMap.add(k, v) });
+
+    let ordering = {
+      categoryOrder;
+      textChannelOrder = textChannelOrderMap;
+      voiceChannelOrder = voiceChannelOrderMap;
+    };
+    categoryChannelOrders.add(serverId, ordering);
+  };
+
+  public query ({ caller }) func getCategoryChannelOrdering(serverId : Nat) : async ?{
+    categoryOrder : [Nat];
+    textChannelOrder : [(Nat, [Nat])];
+    voiceChannelOrder : [(Nat, [Nat])];
+  } {
+    if (not isServerMember(serverId, caller)) {
+      Runtime.trap("Unauthorized: Only server members can view channel ordering");
+    };
+
+    switch (categoryChannelOrders.get(serverId)) {
+      case (null) { null };
+      case (?ordering) {
+        ?{
+          categoryOrder = ordering.categoryOrder;
+          textChannelOrder = ordering.textChannelOrder.toArray();
+          voiceChannelOrder = ordering.voiceChannelOrder.toArray();
+        };
+      };
+    };
+  };
+
+  // Role Management
   public shared ({ caller }) func addRole(serverId : Nat, _name : Text, color : Text, permissions : [Permission]) : async Nat {
     if (not hasServerAdminPermission(serverId, caller)) {
       Runtime.trap("Unauthorized: Only server admins can add roles");
@@ -628,6 +759,10 @@ actor {
 
     let updatedServer = { server with roles = server.roles.concat([newRole]) };
     servers.add(serverId, updatedServer);
+
+    // Log role addition
+    logAuditEvent(serverId, caller, #RoleAdded, "Role added: " # _name);
+
     roleId;
   };
 
@@ -653,6 +788,19 @@ actor {
 
     let updatedServer = { server with roles = updatedRoles };
     servers.add(serverId, updatedServer);
+
+    // Log role permissions update
+    logAuditEvent(serverId, caller, #RolePermissionsSet, "Role permissions updated for role ID: " # _roleId.toText());
+  };
+
+  public query ({ caller }) func getServerRoles(serverId : Nat) : async [Role] {
+    if (not isServerMember(serverId, caller)) {
+      Runtime.trap("Unauthorized: Only server members can view roles");
+    };
+    switch (servers.get(serverId)) {
+      case (null) { [] };
+      case (?server) { server.roles };
+    };
   };
 
   public shared ({ caller }) func assignRoleToUser(serverId : Nat, _roleId : Nat, _user : Principal) : async () {
@@ -665,10 +813,28 @@ actor {
       case (?s) { s };
     };
 
+    // Verify the role exists
+    let roleExists = server.roles.find(func(r) { r.id == _roleId }) != null;
+    if (not roleExists) {
+      Runtime.trap("Role not found in server");
+    };
+
+    // Verify the user is a member
+    let memberExists = server.members.find(func(m) { Principal.equal(m.userId, _user) }) != null;
+    if (not memberExists) {
+      Runtime.trap("User is not a member of this server");
+    };
+
     let updatedMembers = server.members.map(
       func(member) {
         if (Principal.equal(member.userId, _user)) {
-          { member with roles = member.roles.concat([_roleId]) };
+          // Check if role is already assigned
+          let hasRole = member.roles.find(func(r) { r == _roleId }) != null;
+          if (hasRole) {
+            member; // Role already assigned, no change
+          } else {
+            { member with roles = member.roles.concat([_roleId]) };
+          };
         } else {
           member;
         };
@@ -677,6 +843,9 @@ actor {
 
     let updatedServer = { server with members = updatedMembers };
     servers.add(serverId, updatedServer);
+
+    // Log role assignment
+    logAuditEvent(serverId, caller, #RoleAssignedToUser, "Role " # _roleId.toText() # " assigned to user");
   };
 
   public shared ({ caller }) func removeRoleFromUser(serverId : Nat, _roleId : Nat, _user : Principal) : async () {
@@ -687,6 +856,12 @@ actor {
     let server = switch (servers.get(serverId)) {
       case (null) { Runtime.trap("Server not found") };
       case (?s) { s };
+    };
+
+    // Verify the user is a member
+    let memberExists = server.members.find(func(m) { Principal.equal(m.userId, _user) }) != null;
+    if (not memberExists) {
+      Runtime.trap("User is not a member of this server");
     };
 
     let updatedMembers = server.members.map(
@@ -701,6 +876,74 @@ actor {
 
     let updatedServer = { server with members = updatedMembers };
     servers.add(serverId, updatedServer);
+
+    // Log role removal
+    logAuditEvent(serverId, caller, #RoleRemovedFromUser, "Role " # _roleId.toText() # " removed from user");
+  };
+
+  public query ({ caller }) func getServerMembersWithUsernames(serverId : Nat) : async [ServerMemberWithUsername] {
+    if (not isServerMember(serverId, caller)) {
+      Runtime.trap("Unauthorized: Only server members can view member list");
+    };
+    switch (servers.get(serverId)) {
+      case (null) { [] };
+      case (?server) {
+        server.members.map<ServerMember, ServerMemberWithUsername>(
+          func(member) {
+            let username = switch (userUsernames.get(member.userId)) {
+              case (null) { "" };
+              case (?name) { name };
+            };
+            {
+              member;
+              username;
+            };
+          }
+        );
+      };
+    };
+  };
+
+  public query ({ caller }) func getMemberDisplayColor(serverId : Nat, userId : Principal) : async ?Text {
+    if (not isServerMember(serverId, caller)) {
+      Runtime.trap("Unauthorized: Only server members can view display color");
+    };
+
+    switch (servers.get(serverId)) {
+      case (null) { null };
+      case (?server) {
+        let memberOpt = server.members.find(func(m) { Principal.equal(m.userId, userId) });
+        switch (memberOpt) {
+          case (null) { null };
+          case (?member) {
+            let colorRoles = member.roles.map(
+              func(roleId) {
+                switch (server.roles.find(func(r) { r.id == roleId })) {
+                  case (null) {
+                    {
+                      id = roleId;
+                      name = "";
+                      color = "#000000";
+                      permissions = [];
+                      position = 0;
+                    };
+                  };
+                  case (?role) { role };
+                };
+              }
+            ).filter(func(role) { role.color != "#000000" });
+
+            let highestRole = getHighestRole(colorRoles);
+            switch (highestRole) {
+              case (null) { null };
+              case (?role) {
+                if (role.color == "#000000") { null } else { ?role.color };
+              };
+            };
+          };
+        };
+      };
+    };
   };
 
   // Query Functions
@@ -723,10 +966,6 @@ actor {
     allServers.filter<Server>(func(server) {
       isServerMember(server.id, caller);
     });
-  };
-
-  public query func discoverServers() : async [Server] {
-    servers.values().toArray();
   };
 
   public query ({ caller }) func getCategories(serverId : Nat) : async [ChannelCategory] {
@@ -797,6 +1036,9 @@ actor {
     };
     serverMessages.add(textChannelId, existingMessages.concat([message]));
 
+    // Log message sent
+    logAuditEvent(serverId, caller, #MessageSent, "Message sent in channel " # textChannelId.toText());
+
     messageId;
   };
 
@@ -860,6 +1102,9 @@ actor {
     };
 
     channelMap.add(voiceChannelId, existingUsers.concat([presence]));
+
+    // Log voice channel join
+    logAuditEvent(serverId, caller, #UserJoinedVoiceChannel, "User joined voice channel " # voiceChannelId.toText());
   };
 
   public shared ({ caller }) func leaveVoiceChannel(serverId : Nat, voiceChannelId : Nat) : async () {
@@ -885,6 +1130,9 @@ actor {
       func(presence) { not Principal.equal(presence.userId, caller) }
     );
     channelMap.add(voiceChannelId, filteredUsers);
+
+    // Log voice channel leave
+    logAuditEvent(serverId, caller, #UserLeftVoiceChannel, "User left voice channel " # voiceChannelId.toText());
   };
 
   public query ({ caller }) func getVoiceChannelParticipants(serverId : Nat, voiceChannelId : Nat) : async [VoiceChannelPresence] {
@@ -906,5 +1154,16 @@ actor {
       case (?users) { users };
     };
     users.sort<VoiceChannelPresence>();
+  };
+
+  // Audit Log Query Function
+  public query ({ caller }) func getServerAuditLog(serverId : Nat) : async [AuditLogEntry] {
+    if (not hasServerAdminPermission(serverId, caller)) {
+      Runtime.trap("Unauthorized: Only server admins can view audit log");
+    };
+    switch (auditLogs.get(serverId)) {
+      case (null) { [] };
+      case (?logs) { logs };
+    };
   };
 };

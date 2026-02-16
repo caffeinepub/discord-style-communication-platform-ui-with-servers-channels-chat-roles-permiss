@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Hash, Pin, Users, Search } from 'lucide-react';
+import { Hash, Pin, Search } from 'lucide-react';
 import ChatComposer from './ChatComposer';
 import MessageItem from './MessageItem';
 import { useNavigation } from '@/state/navigation';
@@ -53,9 +53,6 @@ export default function ChatView() {
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon">
             <Pin className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <Users className="h-5 w-5" />
           </Button>
           <Button variant="ghost" size="icon">
             <Search className="h-5 w-5" />

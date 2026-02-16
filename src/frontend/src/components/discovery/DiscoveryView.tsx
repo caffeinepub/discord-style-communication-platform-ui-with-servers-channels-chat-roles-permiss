@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { useDiscoverServers, useJoinServer } from '../../hooks/useQueries';
 import ServerPreviewCard from './ServerPreviewCard';
@@ -10,7 +9,10 @@ export default function DiscoveryView() {
   const { data: servers = [] } = useDiscoverServers();
   const joinServer = useJoinServer();
 
-  const filteredServers = servers.filter((server) =>
+  // Filter servers: only show community-enabled servers
+  const communityServers = servers.filter((server) => server.communityMode);
+
+  const filteredServers = communityServers.filter((server) =>
     server.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -44,6 +46,9 @@ export default function DiscoveryView() {
         {filteredServers.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <p>No servers found</p>
+            {communityServers.length === 0 && (
+              <p className="text-sm mt-2">No community servers are available yet</p>
+            )}
           </div>
         )}
       </div>

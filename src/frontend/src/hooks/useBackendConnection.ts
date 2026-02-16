@@ -1,6 +1,6 @@
-import { useActor } from './useActor';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, useCallback } from 'react';
+import { useSafeActor } from './useSafeActor';
+import { useQuery } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 export type ConnectionState = 'loading' | 'ready' | 'error';
 
@@ -11,49 +11,51 @@ export interface BackendConnectionStatus {
   isLoading: boolean;
   isReady: boolean;
   isError: boolean;
+  actor: any | null;
 }
 
 export function useBackendConnection(): BackendConnectionStatus {
-  const { actor, isFetching: actorFetching } = useActor();
-  const queryClient = useQueryClient();
-  const [retryTrigger, setRetryTrigger] = useState(0);
+  const { actor, state: actorState, error: actorError, retry: retryActor } = useSafeActor();
 
   // Probe the backend with a lightweight health check
   const healthQuery = useQuery({
-    queryKey: ['backend-health', retryTrigger],
+    queryKey: ['backend-health', actor ? 'available' : 'unavailable'],
     queryFn: async () => {
       if (!actor) {
-        throw new Error('Backend connection not available. Please ensure the replica is running.');
+        throw new Error('Backend actor not available');
       }
       try {
         const result = await actor.healthCheck();
         return result;
       } catch (error: any) {
-        throw new Error('Backend is not reachable. Please ensure the replica is running and try again.');
+        console.error('Health check failed:', error);
+        throw new Error('Backend health check failed. The local replica may not be running.');
       }
     },
-    enabled: !!actor && !actorFetching,
+    enabled: actorState === 'ready' && !!actor,
     retry: false,
     staleTime: 30000, // 30 seconds
+    refetchOnWindowFocus: false,
   });
 
   const retry = useCallback(() => {
-    // Invalidate actor query to force re-creation
-    queryClient.invalidateQueries({ queryKey: ['actor'] });
-    // Trigger health check retry
-    setRetryTrigger((prev) => prev + 1);
-  }, [queryClient]);
+    // Retry actor initialization first
+    retryActor();
+  }, [retryActor]);
 
   // Determine connection state
   let state: ConnectionState;
   let error: string | null = null;
 
-  if (actorFetching || healthQuery.isLoading) {
+  if (actorState === 'loading' || (actorState === 'ready' && healthQuery.isLoading)) {
     state = 'loading';
-  } else if (!actor || healthQuery.isError) {
+  } else if (actorState === 'error') {
     state = 'error';
-    error = healthQuery.error?.message || 'Backend connection not available. Please ensure the replica is running.';
-  } else if (healthQuery.isSuccess) {
+    error = actorError || 'Failed to initialize backend connection';
+  } else if (healthQuery.isError) {
+    state = 'error';
+    error = healthQuery.error?.message || 'Backend is not reachable';
+  } else if (actorState === 'ready' && healthQuery.isSuccess) {
     state = 'ready';
   } else {
     state = 'loading';
@@ -66,5 +68,6 @@ export function useBackendConnection(): BackendConnectionStatus {
     isLoading: state === 'loading',
     isReady: state === 'ready',
     isError: state === 'error',
+    actor: state === 'ready' ? actor : null,
   };
 }

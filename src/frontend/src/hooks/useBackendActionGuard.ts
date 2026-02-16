@@ -18,7 +18,7 @@ export function useBackendActionGuard(): BackendActionGuard {
   if (state === 'error') {
     return {
       disabled: true,
-      reason: error || 'Backend connection not ready',
+      reason: error || 'Backend connection error. Please retry.',
     };
   }
 
