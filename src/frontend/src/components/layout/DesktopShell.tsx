@@ -1,5 +1,5 @@
 import ServerRail from '../nav/ServerRail';
-import ChannelSidebar from '../nav/ChannelSidebar';
+import { ChannelSidebar } from '../nav/ChannelSidebar';
 import MemberListPanel from '../members/MemberListPanel';
 import MainContent from './MainContent';
 import { useNavigation } from '../../state/navigation';

@@ -1,523 +1,239 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Plus, Hash, Volume2, ChevronUp, ChevronDown, MoveHorizontal } from 'lucide-react';
-import { useNavigation } from '../../../../state/navigation';
-import { useGetCategories, useIsCallerAdmin, useGetCategoryChannelOrdering, useUpdateCategoryChannelOrdering, useMoveChannelToCategory } from '../../../../hooks/useQueries';
+import React, { useState } from 'react';
+import { Hash, Volume2, ChevronUp, ChevronDown, MoreVertical, Trash2 } from 'lucide-react';
+import { useGetCategories, useGetCategoryChannelOrdering, useUpdateCategoryChannelOrdering, useIsCallerAdmin } from '../../../../hooks/useQueries';
+import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering } from '../../../../backend';
 import CreateChannelInSettingsDialog from '../components/CreateChannelInSettingsDialog';
-import MoveChannelDialog from '../components/MoveChannelDialog';
-import { Separator } from '@/components/ui/separator';
-import type { ChannelCategory, TextChannel, VoiceChannel } from '../../../../backend';
-import { toast } from 'sonner';
+import { Button } from '../../../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../../ui/dropdown-menu';
+import { applyOrderingToCategories, applyOrderingToTextChannels, applyOrderingToVoiceChannels, buildCategoryLevelOrdering } from '../../../../utils/channelOrdering';
 
-export default function ChannelsPage() {
-  const { selectedServerId } = useNavigation();
-  const { data: categories = [], isLoading } = useGetCategories(selectedServerId);
-  const { data: isAdmin = false } = useIsCallerAdmin();
-  const { data: ordering } = useGetCategoryChannelOrdering(selectedServerId);
-  const updateOrderingMutation = useUpdateCategoryChannelOrdering();
-  const moveChannelMutation = useMoveChannelToCategory();
-  
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<bigint | null>(null);
-  
-  const [showMoveDialog, setShowMoveDialog] = useState(false);
-  const [moveChannelData, setMoveChannelData] = useState<{
-    channelId: bigint;
-    channelName: string;
-    isTextChannel: boolean;
-    currentCategoryId: bigint;
-  } | null>(null);
+interface ChannelsPageProps {
+  serverId: bigint;
+}
 
-  const handleCreateChannel = (categoryId?: bigint) => {
-    setSelectedCategoryId(categoryId || null);
-    setShowCreateDialog(true);
-  };
+export function ChannelsPage({ serverId }: ChannelsPageProps) {
+  const { data: categories = [] } = useGetCategories(serverId);
+  const { data: isAdmin } = useIsCallerAdmin();
+  const { data: persistedOrdering } = useGetCategoryChannelOrdering(serverId);
+  const updateOrdering = useUpdateCategoryChannelOrdering();
 
-  const handleOpenMoveDialog = (
-    channelId: bigint,
-    channelName: string,
-    isTextChannel: boolean,
-    currentCategoryId: bigint
-  ) => {
-    if (!isAdmin) {
-      toast.error("You don't have permission to move channels in this server");
-      return;
-    }
-    setMoveChannelData({ channelId, channelName, isTextChannel, currentCategoryId });
-    setShowMoveDialog(true);
-  };
+  const [createChannelOpen, setCreateChannelOpen] = useState(false);
 
-  const handleMoveChannel = (targetCategoryId: bigint) => {
-    if (!selectedServerId || !moveChannelData) return;
+  // Apply persisted ordering
+  const orderedCategories = applyOrderingToCategories(categories, persistedOrdering ?? null);
 
-    moveChannelMutation.mutate({
-      serverId: selectedServerId,
-      sourceCategoryId: moveChannelData.currentCategoryId,
-      targetCategoryId,
-      channelId: moveChannelData.channelId,
-      isTextChannel: moveChannelData.isTextChannel,
-      position: null,
-    });
-  };
+  const handleMoveUp = (categoryId: bigint, channelId: bigint, isTextChannel: boolean) => {
+    if (!isAdmin) return;
 
-  // Apply ordering to categories
-  const orderedCategories = (() => {
-    if (!ordering || !ordering.categoryOrder || ordering.categoryOrder.length === 0) {
-      return categories;
-    }
-    
-    const ordered: ChannelCategory[] = [];
-    const categoryMap = new Map(categories.map(c => [c.id.toString(), c]));
-    
-    // Add categories in the specified order
-    ordering.categoryOrder.forEach(catId => {
-      const cat = categoryMap.get(catId.toString());
-      if (cat) {
-        ordered.push(cat);
-        categoryMap.delete(catId.toString());
-      }
-    });
-    
-    // Add any remaining categories not in the ordering
-    categoryMap.forEach(cat => ordered.push(cat));
-    
-    return ordered;
-  })();
+    const category = orderedCategories.find(c => c.id === categoryId);
+    if (!category) return;
 
-  // Apply ordering to channels within a category
-  const getOrderedTextChannels = (category: ChannelCategory): TextChannel[] => {
-    if (!ordering || !ordering.textChannelOrder) {
-      return category.textChannels;
-    }
-    
-    const orderArray = ordering.textChannelOrder.find(([catId]) => catId === category.id)?.[1];
-    if (!orderArray || orderArray.length === 0) {
-      return category.textChannels;
-    }
-    
-    const ordered: TextChannel[] = [];
-    const channelMap = new Map(category.textChannels.map(ch => [ch.id.toString(), ch]));
-    
-    orderArray.forEach(chId => {
-      const ch = channelMap.get(chId.toString());
-      if (ch) {
-        ordered.push(ch);
-        channelMap.delete(chId.toString());
-      }
-    });
-    
-    channelMap.forEach(ch => ordered.push(ch));
-    return ordered;
-  };
+    const orderedChannels = isTextChannel
+      ? applyOrderingToTextChannels(category, persistedOrdering ?? null)
+      : applyOrderingToVoiceChannels(category, persistedOrdering ?? null);
 
-  const getOrderedVoiceChannels = (category: ChannelCategory): VoiceChannel[] => {
-    if (!ordering || !ordering.voiceChannelOrder) {
-      return category.voiceChannels;
-    }
-    
-    const orderArray = ordering.voiceChannelOrder.find(([catId]) => catId === category.id)?.[1];
-    if (!orderArray || orderArray.length === 0) {
-      return category.voiceChannels;
-    }
-    
-    const ordered: VoiceChannel[] = [];
-    const channelMap = new Map(category.voiceChannels.map(ch => [ch.id.toString(), ch]));
-    
-    orderArray.forEach(chId => {
-      const ch = channelMap.get(chId.toString());
-      if (ch) {
-        ordered.push(ch);
-        channelMap.delete(chId.toString());
-      }
-    });
-    
-    channelMap.forEach(ch => ordered.push(ch));
-    return ordered;
-  };
+    const currentOrder = orderedChannels.map(ch => ch.id);
+    const index = currentOrder.findIndex(id => id === channelId);
 
-  // Move category up/down
-  const moveCategoryUp = (index: number) => {
-    if (!isAdmin) {
-      toast.error("You don't have permission to reorder channels in this server");
-      return;
-    }
-    if (index === 0) return;
-    
-    const newOrder = [...orderedCategories.map(c => c.id)];
+    if (index <= 0) return;
+
+    const newOrder = [...currentOrder];
     [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
-    
-    saveOrdering(newOrder, ordering?.textChannelOrder || [], ordering?.voiceChannelOrder || []);
-  };
 
-  const moveCategoryDown = (index: number) => {
-    if (!isAdmin) {
-      toast.error("You don't have permission to reorder channels in this server");
-      return;
-    }
-    if (index === orderedCategories.length - 1) return;
-    
-    const newOrder = [...orderedCategories.map(c => c.id)];
-    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-    
-    saveOrdering(newOrder, ordering?.textChannelOrder || [], ordering?.voiceChannelOrder || []);
-  };
+    // Build the full ordering structure
+    const categoryLevelOrdering = buildCategoryLevelOrdering(orderedCategories, persistedOrdering ?? null);
+    const updatedCategoryOrdering = categoryLevelOrdering.map(cat => {
+      if (cat.id === categoryId) {
+        return isTextChannel
+          ? { ...cat, textChannels: newOrder }
+          : { ...cat, voiceChannels: newOrder };
+      }
+      return cat;
+    });
 
-  // Move text channel up/down
-  const moveTextChannelUp = (category: ChannelCategory, channelIndex: number) => {
-    if (!isAdmin) {
-      toast.error("You don't have permission to reorder channels in this server");
-      return;
-    }
-    if (channelIndex === 0) return;
-    
-    const orderedChannels = getOrderedTextChannels(category);
-    const newOrder = [...orderedChannels.map(ch => ch.id)];
-    [newOrder[channelIndex - 1], newOrder[channelIndex]] = [newOrder[channelIndex], newOrder[channelIndex - 1]];
-    
-    const newTextChannelOrder = [...(ordering?.textChannelOrder || [])];
-    const existingIndex = newTextChannelOrder.findIndex(([catId]) => catId === category.id);
-    
-    if (existingIndex >= 0) {
-      newTextChannelOrder[existingIndex] = [category.id, newOrder];
-    } else {
-      newTextChannelOrder.push([category.id, newOrder]);
-    }
-    
-    saveOrdering(
-      ordering?.categoryOrder || orderedCategories.map(c => c.id),
-      newTextChannelOrder,
-      ordering?.voiceChannelOrder || []
-    );
-  };
+    const newServerOrdering: ServerOrdering = {
+      categoryOrder: persistedOrdering?.categoryOrder ?? orderedCategories.map(c => c.id),
+      categories: updatedCategoryOrdering,
+    };
 
-  const moveTextChannelDown = (category: ChannelCategory, channelIndex: number) => {
-    if (!isAdmin) {
-      toast.error("You don't have permission to reorder channels in this server");
-      return;
-    }
-    const orderedChannels = getOrderedTextChannels(category);
-    if (channelIndex === orderedChannels.length - 1) return;
-    
-    const newOrder = [...orderedChannels.map(ch => ch.id)];
-    [newOrder[channelIndex], newOrder[channelIndex + 1]] = [newOrder[channelIndex + 1], newOrder[channelIndex]];
-    
-    const newTextChannelOrder = [...(ordering?.textChannelOrder || [])];
-    const existingIndex = newTextChannelOrder.findIndex(([catId]) => catId === category.id);
-    
-    if (existingIndex >= 0) {
-      newTextChannelOrder[existingIndex] = [category.id, newOrder];
-    } else {
-      newTextChannelOrder.push([category.id, newOrder]);
-    }
-    
-    saveOrdering(
-      ordering?.categoryOrder || orderedCategories.map(c => c.id),
-      newTextChannelOrder,
-      ordering?.voiceChannelOrder || []
-    );
-  };
-
-  // Move voice channel up/down
-  const moveVoiceChannelUp = (category: ChannelCategory, channelIndex: number) => {
-    if (!isAdmin) {
-      toast.error("You don't have permission to reorder channels in this server");
-      return;
-    }
-    if (channelIndex === 0) return;
-    
-    const orderedChannels = getOrderedVoiceChannels(category);
-    const newOrder = [...orderedChannels.map(ch => ch.id)];
-    [newOrder[channelIndex - 1], newOrder[channelIndex]] = [newOrder[channelIndex], newOrder[channelIndex - 1]];
-    
-    const newVoiceChannelOrder = [...(ordering?.voiceChannelOrder || [])];
-    const existingIndex = newVoiceChannelOrder.findIndex(([catId]) => catId === category.id);
-    
-    if (existingIndex >= 0) {
-      newVoiceChannelOrder[existingIndex] = [category.id, newOrder];
-    } else {
-      newVoiceChannelOrder.push([category.id, newOrder]);
-    }
-    
-    saveOrdering(
-      ordering?.categoryOrder || orderedCategories.map(c => c.id),
-      ordering?.textChannelOrder || [],
-      newVoiceChannelOrder
-    );
-  };
-
-  const moveVoiceChannelDown = (category: ChannelCategory, channelIndex: number) => {
-    if (!isAdmin) {
-      toast.error("You don't have permission to reorder channels in this server");
-      return;
-    }
-    const orderedChannels = getOrderedVoiceChannels(category);
-    if (channelIndex === orderedChannels.length - 1) return;
-    
-    const newOrder = [...orderedChannels.map(ch => ch.id)];
-    [newOrder[channelIndex], newOrder[channelIndex + 1]] = [newOrder[channelIndex + 1], newOrder[channelIndex]];
-    
-    const newVoiceChannelOrder = [...(ordering?.voiceChannelOrder || [])];
-    const existingIndex = newVoiceChannelOrder.findIndex(([catId]) => catId === category.id);
-    
-    if (existingIndex >= 0) {
-      newVoiceChannelOrder[existingIndex] = [category.id, newOrder];
-    } else {
-      newVoiceChannelOrder.push([category.id, newOrder]);
-    }
-    
-    saveOrdering(
-      ordering?.categoryOrder || orderedCategories.map(c => c.id),
-      ordering?.textChannelOrder || [],
-      newVoiceChannelOrder
-    );
-  };
-
-  const saveOrdering = (
-    categoryOrder: bigint[],
-    textChannelOrder: [bigint, bigint[]][],
-    voiceChannelOrder: [bigint, bigint[]][]
-  ) => {
-    if (!selectedServerId) return;
-    
-    updateOrderingMutation.mutate({
-      serverId: selectedServerId,
-      categoryOrder,
-      textChannelOrderEntries: textChannelOrder,
-      voiceChannelOrderEntries: voiceChannelOrder,
+    updateOrdering.mutate({
+      serverId,
+      ordering: newServerOrdering,
     });
   };
 
-  if (!selectedServerId) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p>No server selected</p>
-      </div>
-    );
-  }
+  const handleMoveDown = (categoryId: bigint, channelId: bigint, isTextChannel: boolean) => {
+    if (!isAdmin) return;
 
-  if (isLoading) {
-    return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p>Loading channels...</p>
-      </div>
-    );
-  }
+    const category = orderedCategories.find(c => c.id === categoryId);
+    if (!category) return;
+
+    const orderedChannels = isTextChannel
+      ? applyOrderingToTextChannels(category, persistedOrdering ?? null)
+      : applyOrderingToVoiceChannels(category, persistedOrdering ?? null);
+
+    const currentOrder = orderedChannels.map(ch => ch.id);
+    const index = currentOrder.findIndex(id => id === channelId);
+
+    if (index === -1 || index >= currentOrder.length - 1) return;
+
+    const newOrder = [...currentOrder];
+    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+
+    // Build the full ordering structure
+    const categoryLevelOrdering = buildCategoryLevelOrdering(orderedCategories, persistedOrdering ?? null);
+    const updatedCategoryOrdering = categoryLevelOrdering.map(cat => {
+      if (cat.id === categoryId) {
+        return isTextChannel
+          ? { ...cat, textChannels: newOrder }
+          : { ...cat, voiceChannels: newOrder };
+      }
+      return cat;
+    });
+
+    const newServerOrdering: ServerOrdering = {
+      categoryOrder: persistedOrdering?.categoryOrder ?? orderedCategories.map(c => c.id),
+      categories: updatedCategoryOrdering,
+    };
+
+    updateOrdering.mutate({
+      serverId,
+      ordering: newServerOrdering,
+    });
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Channels</h3>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="text-2xl font-bold">Channels</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Manage your server's text and voice channels
-            {isAdmin && ' • Reorder with arrow buttons or move between categories'}
           </p>
         </div>
-        <Button onClick={() => handleCreateChannel()}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Channel
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setCreateChannelOpen(true)}>Create Channel</Button>
+        )}
       </div>
 
-      <Separator />
+      <div className="space-y-4">
+        {orderedCategories.map((category: ChannelCategory) => {
+          const orderedTextChannels = applyOrderingToTextChannels(category, persistedOrdering ?? null);
+          const orderedVoiceChannels = applyOrderingToVoiceChannels(category, persistedOrdering ?? null);
 
-      {orderedCategories.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <p>No categories yet. Create a category first to add channels.</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {orderedCategories.map((category, categoryIndex) => {
-            const orderedTextChannels = getOrderedTextChannels(category);
-            const orderedVoiceChannels = getOrderedVoiceChannels(category);
-            
-            return (
-              <div key={category.id.toString()} className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide">
-                      {category.name}
-                    </h4>
+          return (
+            <div key={category.id.toString()} className="border border-border rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-3 uppercase tracking-wide text-muted-foreground">
+                {category.name}
+              </h3>
+
+              <div className="space-y-2">
+                {orderedTextChannels.map((channel: TextChannel, index: number) => (
+                  <div
+                    key={channel.id.toString()}
+                    className="flex items-center justify-between p-2 rounded hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{channel.name}</span>
+                    </div>
                     {isAdmin && (
-                      <div className="flex gap-1">
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6"
-                          onClick={() => moveCategoryUp(categoryIndex)}
-                          disabled={categoryIndex === 0}
+                          onClick={() => handleMoveUp(category.id, channel.id, true)}
+                          disabled={index === 0}
                         >
-                          <ChevronUp className="h-3 w-3" />
+                          <ChevronUp className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6"
-                          onClick={() => moveCategoryDown(categoryIndex)}
-                          disabled={categoryIndex === orderedCategories.length - 1}
+                          onClick={() => handleMoveDown(category.id, channel.id, true)}
+                          disabled={index === orderedTextChannels.length - 1}
                         >
-                          <ChevronDown className="h-3 w-3" />
+                          <ChevronDown className="h-4 w-4" />
                         </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem className="text-destructive">
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Channel
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleCreateChannel(category.id)}
+                ))}
+
+                {orderedVoiceChannels.map((channel: VoiceChannel, index: number) => (
+                  <div
+                    key={channel.id.toString()}
+                    className="flex items-center justify-between p-2 rounded hover:bg-accent/50 transition-colors"
                   >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Channel
-                  </Button>
-                </div>
-
-                <div className="space-y-3 pl-4">
-                  {/* Text Channels */}
-                  {orderedTextChannels.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Text Channels
-                      </div>
-                      <div className="space-y-1">
-                        {orderedTextChannels.map((channel, channelIndex) => (
-                          <div
-                            key={channel.id.toString()}
-                            className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
-                          >
-                            <Hash className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm flex-1">{channel.name}</span>
-                            {isAdmin && (
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => moveTextChannelUp(category, channelIndex)}
-                                  disabled={channelIndex === 0}
-                                  title="Move up"
-                                >
-                                  <ChevronUp className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => moveTextChannelDown(category, channelIndex)}
-                                  disabled={channelIndex === orderedTextChannels.length - 1}
-                                  title="Move down"
-                                >
-                                  <ChevronDown className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() =>
-                                    handleOpenMoveDialog(channel.id, channel.name, true, category.id)
-                                  }
-                                  title="Move to another category"
-                                >
-                                  <MoveHorizontal className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Volume2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{channel.name}</span>
                     </div>
-                  )}
-
-                  {/* Voice Channels */}
-                  {orderedVoiceChannels.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        Voice Channels
+                    {isAdmin && (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleMoveUp(category.id, channel.id, false)}
+                          disabled={index === 0}
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleMoveDown(category.id, channel.id, false)}
+                          disabled={index === orderedVoiceChannels.length - 1}
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem className="text-destructive">
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Channel
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-                      <div className="space-y-1">
-                        {orderedVoiceChannels.map((channel, channelIndex) => (
-                          <div
-                            key={channel.id.toString()}
-                            className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 hover:bg-muted transition-colors"
-                          >
-                            <Volume2 className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm flex-1">{channel.name}</span>
-                            {isAdmin && (
-                              <div className="flex gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => moveVoiceChannelUp(category, channelIndex)}
-                                  disabled={channelIndex === 0}
-                                  title="Move up"
-                                >
-                                  <ChevronUp className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() => moveVoiceChannelDown(category, channelIndex)}
-                                  disabled={channelIndex === orderedVoiceChannels.length - 1}
-                                  title="Move down"
-                                >
-                                  <ChevronDown className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() =>
-                                    handleOpenMoveDialog(channel.id, channel.name, false, category.id)
-                                  }
-                                  title="Move to another category"
-                                >
-                                  <MoveHorizontal className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Empty state for category */}
-                  {orderedTextChannels.length === 0 && orderedVoiceChannels.length === 0 && (
-                    <div className="text-sm text-muted-foreground italic py-2">
-                      No channels in this category yet
-                    </div>
-                  )}
-                </div>
-
-                <Separator />
+                    )}
+                  </div>
+                ))}
               </div>
-            );
-          })}
-        </div>
-      )}
+            </div>
+          );
+        })}
+      </div>
 
       <CreateChannelInSettingsDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        serverId={selectedServerId}
-        categories={categories}
-        defaultCategoryId={selectedCategoryId}
+        open={createChannelOpen}
+        onOpenChange={setCreateChannelOpen}
+        serverId={serverId}
+        categories={orderedCategories}
       />
-
-      {moveChannelData && (
-        <MoveChannelDialog
-          open={showMoveDialog}
-          onOpenChange={setShowMoveDialog}
-          channelId={moveChannelData.channelId}
-          channelName={moveChannelData.channelName}
-          isTextChannel={moveChannelData.isTextChannel}
-          currentCategoryId={moveChannelData.currentCategoryId}
-          categories={categories}
-          onMove={handleMoveChannel}
-          isPending={moveChannelMutation.isPending}
-        />
-      )}
     </div>
   );
 }

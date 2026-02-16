@@ -34,6 +34,11 @@ export interface AuditLogEntry {
   'serverId' : bigint,
   'eventType' : AuditEventType,
 }
+export interface CategoryLevelOrdering {
+  'id' : bigint,
+  'voiceChannels' : Array<bigint>,
+  'textChannels' : Array<bigint>,
+}
 export interface ChannelCategory {
   'id' : bigint,
   'name' : string,
@@ -88,10 +93,15 @@ export interface ServerMemberWithUsername {
   'member' : ServerMember,
   'username' : string,
 }
+export interface ServerOrdering {
+  'categories' : Array<CategoryLevelOrdering>,
+  'categoryOrder' : Array<bigint>,
+}
 export interface Session {
   'token' : string,
   'expiresAt' : bigint,
   'accountId' : string,
+  'email' : [] | [string],
 }
 export interface TextChannel { 'id' : bigint, 'name' : string }
 export interface TextChannelMessage {
@@ -138,20 +148,15 @@ export interface _SERVICE {
   'createServer' : ActorMethod<[string, string], bigint>,
   'declineFriendRequest' : ActorMethod<[Principal], undefined>,
   'getAllServers' : ActorMethod<[], Array<Server>>,
+  'getCallerAccountEmail' : ActorMethod<[], [] | [string]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCallerUsername' : ActorMethod<[], [] | [string]>,
   'getCategories' : ActorMethod<[bigint], Array<ChannelCategory>>,
-  'getCategoryChannelOrdering' : ActorMethod<
-    [bigint],
-    [] | [
-      {
-        'categoryOrder' : Array<bigint>,
-        'voiceChannelOrder' : Array<[bigint, Array<bigint>]>,
-        'textChannelOrder' : Array<[bigint, Array<bigint>]>,
-      }
-    ]
-  >,
+  /**
+   * / Get the persisted ordering for categories and channels within each one
+   */
+  'getCategoryChannelOrdering' : ActorMethod<[bigint], [] | [ServerOrdering]>,
   'getFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
   'getFriends' : ActorMethod<[], Array<Principal>>,
   'getMemberDisplayColor' : ActorMethod<[bigint, Principal], [] | [string]>,
@@ -197,6 +202,13 @@ export interface _SERVICE {
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendFriendRequest' : ActorMethod<[Principal], undefined>,
   'sendTextChannelMessage' : ActorMethod<[bigint, bigint, string], bigint>,
+  /**
+   * / Persist the channel ordering per-category/section (passed as a [categoryId, [textChannelIds], [voiceChannelIds]] mapping)
+   */
+  'setCategoryChannelOrdering' : ActorMethod<
+    [bigint, ServerOrdering],
+    undefined
+  >,
   'setRolePermissions' : ActorMethod<
     [bigint, bigint, Array<Permission>],
     undefined
@@ -204,15 +216,6 @@ export interface _SERVICE {
   'setServerOrdering' : ActorMethod<[Array<bigint>], undefined>,
   'setUserStatus' : ActorMethod<[UserStatus], undefined>,
   'setUsername' : ActorMethod<[string], undefined>,
-  'updateCategoryChannelOrdering' : ActorMethod<
-    [
-      bigint,
-      Array<bigint>,
-      Array<[bigint, Array<bigint>]>,
-      Array<[bigint, Array<bigint>]>,
-    ],
-    undefined
-  >,
   /**
    * / Validate session with the persistent store (future: make more secure)
    * / No authorization needed - this is used to validate sessions

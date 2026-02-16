@@ -1,120 +1,159 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { Plus, Settings } from 'lucide-react';
 import { useNavigation } from '../../state/navigation';
-import { useGetServer, useGetCategories } from '../../hooks/useQueries';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
-import { Settings, ChevronDown, Hash, Volume2, Users, Plus } from 'lucide-react';
-import CategorySection from '../channels/CategorySection';
+import { useGetCategories, useIsCallerAdmin, useGetCategoryChannelOrdering, useUpdateCategoryChannelOrdering, useGetServer } from '../../hooks/useQueries';
+import { CategorySection } from '../channels/CategorySection';
 import CreateCategoryDialog from '../channels/CreateCategoryDialog';
-import { cn } from '@/lib/utils';
+import type { ChannelCategory, ServerOrdering } from '../../backend';
+import { applyOrderingToCategories, buildCategoryLevelOrdering } from '../../utils/channelOrdering';
 
-export default function ChannelSidebar() {
-  const { currentView, selectedServerId, homeTab, setHomeTab, setShowServerSettings, setShowUserSettings } = useNavigation();
-  const { data: server } = useGetServer(selectedServerId);
-  const { data: categories = [] } = useGetCategories(selectedServerId);
-  const [showCreateCategory, setShowCreateCategory] = useState(false);
+export function ChannelSidebar() {
+  const { selectedServerId, expandedCategories, toggleCategory, setShowServerSettings } = useNavigation();
+  const { data: categories = [], isLoading } = useGetCategories(selectedServerId);
+  const { data: server, isLoading: serverLoading } = useGetServer(selectedServerId);
+  const { data: isAdmin } = useIsCallerAdmin();
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
+  const { data: persistedOrdering } = useGetCategoryChannelOrdering(selectedServerId);
+  const updateOrdering = useUpdateCategoryChannelOrdering();
 
-  if (currentView === 'home') {
+  const [draggedCategory, setDraggedCategory] = useState<bigint | null>(null);
+
+  // Apply persisted ordering to categories
+  const orderedCategories = applyOrderingToCategories(categories, persistedOrdering ?? null);
+
+  // Merge expansion state
+  const categoriesWithExpansion = orderedCategories.map((cat) => ({
+    ...cat,
+    isExpanded: expandedCategories[cat.id.toString()] ?? cat.isExpanded,
+  }));
+
+  const handleCategoryDragStart = (categoryId: bigint) => {
+    if (!isAdmin) return;
+    setDraggedCategory(categoryId);
+  };
+
+  const handleCategoryDragOver = (e: React.DragEvent, targetCategoryId: bigint) => {
+    if (!isAdmin || !draggedCategory) return;
+    e.preventDefault();
+  };
+
+  const handleCategoryDrop = (e: React.DragEvent, targetCategoryId: bigint) => {
+    e.preventDefault();
+    if (!isAdmin || !draggedCategory || draggedCategory === targetCategoryId || !selectedServerId) {
+      setDraggedCategory(null);
+      return;
+    }
+
+    const currentOrder = orderedCategories.map(cat => cat.id);
+    const draggedIndex = currentOrder.findIndex(id => id === draggedCategory);
+    const targetIndex = currentOrder.findIndex(id => id === targetCategoryId);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedCategory(null);
+      return;
+    }
+
+    const newOrder = [...currentOrder];
+    newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, draggedCategory);
+
+    // Build the full ordering structure
+    const categoryLevelOrdering = buildCategoryLevelOrdering(orderedCategories, persistedOrdering ?? null);
+
+    const newServerOrdering: ServerOrdering = {
+      categoryOrder: newOrder,
+      categories: categoryLevelOrdering,
+    };
+
+    updateOrdering.mutate({
+      serverId: selectedServerId,
+      ordering: newServerOrdering,
+    });
+
+    setDraggedCategory(null);
+  };
+
+  const handleHeaderClick = () => {
+    if (selectedServerId) {
+      setShowServerSettings(true);
+    }
+  };
+
+  const handleCreateCategoryClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCreateCategoryOpen(true);
+  };
+
+  if (!selectedServerId) {
     return (
-      <div className="flex w-60 flex-col bg-[oklch(0.21_0.01_250)]">
-        <div className="flex h-12 items-center justify-between px-4 shadow-sm border-b border-border">
-          <h2 className="font-semibold">Direct Messages</h2>
-        </div>
-        <ScrollArea className="flex-1">
-          <div className="flex flex-col p-2">
-            <Button
-              variant="ghost"
-              className={cn(
-                'justify-start',
-                homeTab === 'friends' && 'bg-accent text-accent-foreground'
-              )}
-              onClick={() => setHomeTab('friends')}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Friends
-            </Button>
-            <Button
-              variant="ghost"
-              className={cn(
-                'justify-start',
-                homeTab === 'dms' && 'bg-accent text-accent-foreground'
-              )}
-              onClick={() => setHomeTab('dms')}
-            >
-              <Hash className="mr-2 h-4 w-4" />
-              Direct Messages
-            </Button>
-          </div>
-        </ScrollArea>
-        
-        {/* Pinned Settings Button */}
-        <div className="p-2 border-t border-border">
-          <Button
-            variant="ghost"
-            className="w-full justify-start"
-            onClick={() => setShowUserSettings(true)}
-          >
-            <Settings className="mr-2 h-4 w-4" />
-            User Settings
-          </Button>
-        </div>
+      <div className="w-60 bg-secondary border-r border-border flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">No server selected</p>
       </div>
     );
   }
 
-  if (!server) {
+  if (isLoading) {
     return (
-      <div className="flex w-60 flex-col bg-[oklch(0.21_0.01_250)]">
-        <div className="flex h-12 items-center px-4">
-          <div className="h-4 w-32 bg-muted animate-pulse rounded" />
-        </div>
+      <div className="w-60 bg-secondary border-r border-border flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading channels...</p>
       </div>
     );
   }
+
+  // Determine the header text
+  const headerText = serverLoading ? 'Loading...' : (server?.name || 'Server');
 
   return (
-    <div className="flex w-60 flex-col bg-[oklch(0.21_0.01_250)]">
-      <button
-        className="flex h-12 items-center justify-between px-4 shadow-sm border-b border-border hover:bg-accent/50 transition-colors"
-        onClick={() => setShowServerSettings(true)}
+    <div className="w-60 bg-secondary border-r border-border flex flex-col">
+      <div 
+        className="h-12 border-b border-border flex items-center justify-between px-4 cursor-pointer hover:bg-accent/50 transition-colors group"
+        onClick={handleHeaderClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleHeaderClick();
+          }
+        }}
+        title="Server Settings"
       >
-        <h2 className="font-semibold truncate">{server.name}</h2>
-        <ChevronDown className="h-4 w-4 shrink-0" />
-      </button>
-
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
-          {categories.map((category) => (
-            <CategorySection key={category.id.toString()} category={category} serverId={server.id} />
-          ))}
-          
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-foreground mt-2"
-            onClick={() => setShowCreateCategory(true)}
+        <h2 className="font-semibold text-sm truncate flex-1">{headerText}</h2>
+        {isAdmin && (
+          <button
+            onClick={handleCreateCategoryClick}
+            className="p-1 hover:bg-accent rounded transition-colors z-10"
+            title="Create Category"
           >
-            <Plus className="mr-2 h-4 w-4" />
-            Create Category
-          </Button>
-        </div>
-      </ScrollArea>
+            <Plus className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
-      {/* Pinned Settings Button */}
-      <div className="p-2 border-t border-border">
-        <Button
-          variant="ghost"
-          className="w-full justify-start"
-          onClick={() => setShowUserSettings(true)}
-        >
-          <Settings className="mr-2 h-4 w-4" />
-          User Settings
-        </Button>
+      <div className="flex-1 overflow-y-auto py-2">
+        {categoriesWithExpansion.map((category: ChannelCategory) => (
+          <div
+            key={category.id.toString()}
+            draggable={isAdmin}
+            onDragStart={() => handleCategoryDragStart(category.id)}
+            onDragOver={(e) => handleCategoryDragOver(e, category.id)}
+            onDrop={(e) => handleCategoryDrop(e, category.id)}
+            className={isAdmin ? 'cursor-move' : ''}
+          >
+            <CategorySection
+              serverId={selectedServerId}
+              category={category}
+              allCategories={orderedCategories}
+              onToggleExpanded={toggleCategory}
+            />
+          </div>
+        ))}
       </div>
 
       <CreateCategoryDialog
-        open={showCreateCategory}
-        onOpenChange={setShowCreateCategory}
-        serverId={server.id}
+        open={createCategoryOpen}
+        onOpenChange={setCreateCategoryOpen}
+        serverId={selectedServerId}
       />
     </div>
   );

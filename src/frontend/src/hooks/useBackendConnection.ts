@@ -1,6 +1,7 @@
 import { useSafeActor } from './useSafeActor';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback } from 'react';
+import { withTimeout } from '../utils/withTimeout';
 
 export type ConnectionState = 'loading' | 'ready' | 'error';
 
@@ -14,6 +15,8 @@ export interface BackendConnectionStatus {
   actor: any | null;
 }
 
+const HEALTH_CHECK_TIMEOUT_MS = 10000; // 10 seconds
+
 export function useBackendConnection(): BackendConnectionStatus {
   const { actor, state: actorState, error: actorError, retry: retryActor } = useSafeActor();
 
@@ -25,11 +28,18 @@ export function useBackendConnection(): BackendConnectionStatus {
         throw new Error('Backend actor not available');
       }
       try {
-        const result = await actor.healthCheck();
+        // Wrap health check with timeout to prevent hanging
+        const result = await withTimeout(
+          actor.healthCheck(),
+          HEALTH_CHECK_TIMEOUT_MS,
+          'Backend health check timed out. The local replica may not be running or is unresponsive.'
+        );
         return result;
       } catch (error: any) {
         console.error('Health check failed:', error);
-        throw new Error('Backend health check failed. The local replica may not be running.');
+        throw new Error(
+          error.message || 'Backend health check failed. The local replica may not be running.'
+        );
       }
     },
     enabled: actorState === 'ready' && !!actor,
@@ -41,7 +51,11 @@ export function useBackendConnection(): BackendConnectionStatus {
   const retry = useCallback(() => {
     // Retry actor initialization first
     retryActor();
-  }, [retryActor]);
+    // Force refetch health check after actor retry
+    if (healthQuery.isError) {
+      healthQuery.refetch();
+    }
+  }, [retryActor, healthQuery]);
 
   // Determine connection state
   let state: ConnectionState;

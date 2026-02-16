@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useGetCallerUserProfile, useSaveCallerUserProfile, useGetCallerUsername, useSetUsername } from '../../../../hooks/useQueries';
+import { useGetCallerUserProfile, useSaveCallerUserProfile, useGetCallerUsername, useSetUsername, useGetCallerAccountEmail } from '../../../../hooks/useQueries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
-import { useAuth } from '../../../../auth/useAuth';
 
 export default function ProfilePage() {
   const { data: userProfile, isLoading: profileLoading } = useGetCallerUserProfile();
   const { data: currentUsername, isLoading: usernameLoading } = useGetCallerUsername();
+  const { data: accountEmail, isLoading: emailLoading } = useGetCallerAccountEmail();
   const saveProfileMutation = useSaveCallerUserProfile();
   const setUsernameMutation = useSetUsername();
-  const { sessionToken, accountId } = useAuth();
 
   // Profile form state
   const [name, setName] = useState('');
@@ -24,9 +23,6 @@ export default function ProfilePage() {
 
   // Username form state
   const [username, setUsername] = useState('');
-
-  // Account email state (placeholder until backend implements getAccountEmail)
-  const [accountEmail, setAccountEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (userProfile) {
@@ -43,31 +39,6 @@ export default function ProfilePage() {
       setUsername(currentUsername);
     }
   }, [currentUsername]);
-
-  // Fetch account email when authenticated
-  useEffect(() => {
-    const fetchAccountEmail = async () => {
-      if (!sessionToken || !accountId) {
-        setAccountEmail(null);
-        return;
-      }
-
-      try {
-        // TODO: Call backend getAccountEmail endpoint when available
-        // Expected backend signature: getAccountEmail(token: Text) -> Text
-        // const email = await actor.getAccountEmail(sessionToken);
-        // setAccountEmail(email);
-        
-        // Temporary: show placeholder until backend implements this
-        setAccountEmail(null);
-      } catch (err) {
-        console.error('Failed to fetch account email:', err);
-        setAccountEmail(null);
-      }
-    };
-
-    fetchAccountEmail();
-  }, [sessionToken, accountId]);
 
   const handleSaveProfile = async () => {
     if (!userProfile) return;
@@ -123,14 +94,14 @@ export default function ProfilePage() {
             <Input
               id="account-email"
               type="email"
-              value={accountEmail || 'Email not available'}
+              value={emailLoading ? 'Loading...' : (accountEmail || 'No email on record')}
               disabled
               className="bg-muted"
             />
             <p className="text-xs text-muted-foreground">
               {accountEmail 
                 ? 'Your email is only visible to you in account settings'
-                : 'Email will be available once backend authentication is implemented'}
+                : 'No email address associated with this account'}
             </p>
           </div>
 

@@ -1,43 +1,43 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/useAuth';
-import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, AlertCircle } from 'lucide-react';
-import AuthLayout from '../components/auth/AuthLayout';
+import { AlertCircle } from 'lucide-react';
+import { BackendConnectionBanner } from '../components/system/BackendConnectionBanner';
 
 export default function LoginScreen() {
-  const { login, register, authStatus, error: authError } = useAuth();
+  const { login, register, error: authError } = useAuth();
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
-  
-  // Sign in form state
+
+  // Sign In form state
   const [signInIdentifier, setSignInIdentifier] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
+  const [signInLoading, setSignInLoading] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = useState(false);
 
-  // Sign up form state
+  // Sign Up form state
   const [signUpUsername, setSignUpUsername] = useState('');
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
   const [signUpConfirmPassword, setSignUpConfirmPassword] = useState('');
+  const [signUpLoading, setSignUpLoading] = useState(false);
   const [signUpError, setSignUpError] = useState<string | null>(null);
-  const [isSigningUp, setIsSigningUp] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignInError(null);
-    setIsSigningIn(true);
+    setSignInLoading(true);
 
     try {
       await login(signInIdentifier, signInPassword);
-      // On success, authStatus will change to 'authenticated' and App.tsx will handle the transition
     } catch (err: any) {
-      setSignInError(err.message || 'Failed to sign in. Please try again.');
+      setSignInError(err.message || 'Sign in failed');
     } finally {
-      setIsSigningIn(false);
+      setSignInLoading(false);
     }
   };
 
@@ -45,204 +45,195 @@ export default function LoginScreen() {
     e.preventDefault();
     setSignUpError(null);
 
-    // Validate passwords match
+    // Validation
+    if (!signUpUsername.trim()) {
+      setSignUpError('Username is required');
+      return;
+    }
+    if (!signUpEmail.trim()) {
+      setSignUpError('Email is required');
+      return;
+    }
+    if (!signUpPassword) {
+      setSignUpError('Password is required');
+      return;
+    }
     if (signUpPassword !== signUpConfirmPassword) {
       setSignUpError('Passwords do not match');
       return;
     }
-
-    // Validate password strength
     if (signUpPassword.length < 8) {
-      setSignUpError('Password must be at least 8 characters long');
+      setSignUpError('Password must be at least 8 characters');
       return;
     }
 
-    // Validate username
-    if (signUpUsername.length < 3) {
-      setSignUpError('Username must be at least 3 characters long');
-      return;
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(signUpEmail)) {
-      setSignUpError('Please enter a valid email address');
-      return;
-    }
-
-    setIsSigningUp(true);
+    setSignUpLoading(true);
 
     try {
       await register(signUpUsername, signUpEmail, signUpPassword);
-      // On success, authStatus will change to 'authenticated' and App.tsx will handle the transition
     } catch (err: any) {
-      setSignUpError(err.message || 'Failed to create account. Please try again.');
+      setSignUpError(err.message || 'Registration failed');
     } finally {
-      setIsSigningUp(false);
+      setSignUpLoading(false);
     }
   };
 
-  const currentError = authError || (activeTab === 'signin' ? signInError : signUpError);
-
   return (
-    <AuthLayout
-      title={activeTab === 'signin' ? 'Welcome Back' : 'Create Account'}
-      description={activeTab === 'signin' ? 'Sign in to continue to your workspace' : 'Join us and start collaborating'}
-    >
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signin' | 'signup')} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="signin">Sign In</TabsTrigger>
-          <TabsTrigger value="signup">Create Account</TabsTrigger>
-        </TabsList>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-6">
+          {/* Logo and Title */}
+          <div className="text-center space-y-2">
+            <img 
+              src="/assets/generated/app-logo.dim_512x128.png" 
+              alt="App Logo" 
+              className="h-16 mx-auto mb-4"
+            />
+            <h1 className="text-3xl font-bold tracking-tight">Welcome</h1>
+            <p className="text-muted-foreground">Sign in to your account or create a new one</p>
+          </div>
 
-        <TabsContent value="signin" className="space-y-4 mt-6">
-          {currentError && activeTab === 'signin' && (
+          {/* Show auth error from context if present */}
+          {authError && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{currentError}</AlertDescription>
+              <AlertDescription>{authError}</AlertDescription>
             </Alert>
           )}
 
-          <form onSubmit={handleSignIn} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="signin-identifier">Username or Email</Label>
-              <Input
-                id="signin-identifier"
-                type="text"
-                value={signInIdentifier}
-                onChange={(e) => setSignInIdentifier(e.target.value)}
-                placeholder="Enter your username or email"
-                required
-                autoComplete="username"
-                disabled={isSigningIn}
-              />
-            </div>
+          <Card>
+            <CardHeader className="space-y-1 pb-4">
+              <CardTitle className="text-2xl text-center">Account</CardTitle>
+              <CardDescription className="text-center">
+                Choose an option below to continue
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signin' | 'signup')}>
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="signin">Sign In</TabsTrigger>
+                  <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                </TabsList>
 
-            <div className="space-y-2">
-              <Label htmlFor="signin-password">Password</Label>
-              <Input
-                id="signin-password"
-                type="password"
-                value={signInPassword}
-                onChange={(e) => setSignInPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-                autoComplete="current-password"
-                disabled={isSigningIn}
-              />
-            </div>
+                {/* Sign In Tab */}
+                <TabsContent value="signin" className="space-y-4">
+                  {signInError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{signInError}</AlertDescription>
+                    </Alert>
+                  )}
 
-            <Button
-              type="submit"
-              className="w-full"
-              size="lg"
-              disabled={isSigningIn || !signInIdentifier || !signInPassword}
-            >
-              {isSigningIn ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                'Sign In'
-              )}
-            </Button>
-          </form>
-        </TabsContent>
+                  <form onSubmit={handleSignIn} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-identifier">Email or Username</Label>
+                      <Input
+                        id="signin-identifier"
+                        type="text"
+                        placeholder="Enter your email or username"
+                        value={signInIdentifier}
+                        onChange={(e) => setSignInIdentifier(e.target.value)}
+                        disabled={signInLoading}
+                        required
+                      />
+                    </div>
 
-        <TabsContent value="signup" className="space-y-4 mt-6">
-          {currentError && activeTab === 'signup' && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{currentError}</AlertDescription>
-            </Alert>
-          )}
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-password">Password</Label>
+                      <Input
+                        id="signin-password"
+                        type="password"
+                        placeholder="Enter your password"
+                        value={signInPassword}
+                        onChange={(e) => setSignInPassword(e.target.value)}
+                        disabled={signInLoading}
+                        required
+                      />
+                    </div>
 
-          <form onSubmit={handleSignUp} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="signup-username">Username</Label>
-              <Input
-                id="signup-username"
-                type="text"
-                value={signUpUsername}
-                onChange={(e) => setSignUpUsername(e.target.value)}
-                placeholder="Choose a username"
-                required
-                autoComplete="username"
-                disabled={isSigningUp}
-                minLength={3}
-              />
-            </div>
+                    <Button type="submit" className="w-full" disabled={signInLoading}>
+                      {signInLoading ? 'Signing in...' : 'Sign In'}
+                    </Button>
+                  </form>
+                </TabsContent>
 
-            <div className="space-y-2">
-              <Label htmlFor="signup-email">Email</Label>
-              <Input
-                id="signup-email"
-                type="email"
-                value={signUpEmail}
-                onChange={(e) => setSignUpEmail(e.target.value)}
-                placeholder="Enter your email"
-                required
-                autoComplete="email"
-                disabled={isSigningUp}
-              />
-              <p className="text-xs text-muted-foreground">
-                Your email will only be visible in account settings
-              </p>
-            </div>
+                {/* Sign Up Tab */}
+                <TabsContent value="signup" className="space-y-4">
+                  {signUpError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{signUpError}</AlertDescription>
+                    </Alert>
+                  )}
 
-            <div className="space-y-2">
-              <Label htmlFor="signup-password">Password</Label>
-              <Input
-                id="signup-password"
-                type="password"
-                value={signUpPassword}
-                onChange={(e) => setSignUpPassword(e.target.value)}
-                placeholder="Create a password (min 8 characters)"
-                required
-                autoComplete="new-password"
-                disabled={isSigningUp}
-                minLength={8}
-              />
-            </div>
+                  <form onSubmit={handleSignUp} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-username">Username</Label>
+                      <Input
+                        id="signup-username"
+                        type="text"
+                        placeholder="Choose a username"
+                        value={signUpUsername}
+                        onChange={(e) => setSignUpUsername(e.target.value)}
+                        disabled={signUpLoading}
+                        required
+                      />
+                    </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="signup-confirm-password">Confirm Password</Label>
-              <Input
-                id="signup-confirm-password"
-                type="password"
-                value={signUpConfirmPassword}
-                onChange={(e) => setSignUpConfirmPassword(e.target.value)}
-                placeholder="Confirm your password"
-                required
-                autoComplete="new-password"
-                disabled={isSigningUp}
-                minLength={8}
-              />
-            </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email">Email</Label>
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={signUpEmail}
+                        onChange={(e) => setSignUpEmail(e.target.value)}
+                        disabled={signUpLoading}
+                        required
+                      />
+                    </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              size="lg"
-              disabled={isSigningUp || !signUpUsername || !signUpEmail || !signUpPassword || !signUpConfirmPassword}
-            >
-              {isSigningUp ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                'Create Account'
-              )}
-            </Button>
-          </form>
-        </TabsContent>
-      </Tabs>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password">Password</Label>
+                      <Input
+                        id="signup-password"
+                        type="password"
+                        placeholder="Create a password (min 8 characters)"
+                        value={signUpPassword}
+                        onChange={(e) => setSignUpPassword(e.target.value)}
+                        disabled={signUpLoading}
+                        required
+                      />
+                    </div>
 
-      <p className="text-center text-xs text-muted-foreground mt-6">
-        By continuing, you agree to our Terms of Service and Privacy Policy
-      </p>
-    </AuthLayout>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                      <Input
+                        id="signup-confirm-password"
+                        type="password"
+                        placeholder="Confirm your password"
+                        value={signUpConfirmPassword}
+                        onChange={(e) => setSignUpConfirmPassword(e.target.value)}
+                        disabled={signUpLoading}
+                        required
+                      />
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={signUpLoading}>
+                      {signUpLoading ? 'Creating account...' : 'Create Account'}
+                    </Button>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+
+          {/* Footer */}
+          <p className="text-center text-sm text-muted-foreground">
+            By continuing, you agree to our Terms of Service and Privacy Policy
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,60 +1,56 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-16T20:51:44.011Z",
-  "summary": "The diff adds some new auth-related types/state and frontend session restore logic, but evidence of the required backend registration + session validation endpoints (with the specified signatures and persistence) is missing or inconsistent. The frontend also appears to include multiple unrelated UI/state changes not requested.",
+  "generatedAt": "2026-02-16T22:05:36.260Z",
+  "summary": "Implemented a backend connection banner with Retry and added a client-side timeout wrapper used for health checks. Auth initialization now reacts to backend connection errors and clears stored sessions, but the bounded-time fallback to exit the global initializing state when the backend/actor never becomes ready cannot be fully verified due to truncation of AuthProvider changes. The diff summary also indicates several unrelated UI/state/query changes not requested by the BuildRequest.",
   "missing_requirements": [
     {
       "id": "REQ-1",
-      "requirement": "Backend exports a callable registration method taking (username, email, password) that creates/persists an account, errors on duplicate usernames, and returns a session object {token, accountId, expiresAt (Nat)}.",
-      "reason": "The backend diff shows new types (RegisterPayload, Session) and a non-stable in-memory map, but no exported registration method is visible in the provided truncated backend/main.mo. Also, Session.expiresAt is shown as Int, not Nat, and the shown session storage (Map.empty) is not stable/persisted across upgrades as required.",
+      "requirement": "Ensure auth initialization always resolves away from authStatus === 'initializing' within a bounded time even if backend readiness never occurs (e.g., actor init hangs), clearing any stored session and returning user to Login with an English backend-not-reachable message.",
+      "reason": "AuthProvider.tsx shows INITIALIZATION_TIMEOUT_MS and mentions a timeout effect, but the implementation is truncated, so it is not verifiable that the timeout actually transitions authStatus out of 'initializing' and clears the session in the 'backend never becomes ready' scenario.",
       "evidence": [
-        "backend/main.mo",
-        "backend/migration.mo"
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "requirement": "Frontend register flow calls backend registration endpoint (removing the hardcoded placeholder registration error), saves session via sessionStorage.save, and transitions authStatus to 'authenticated'; on backend failure, shows an English error in LoginScreen alert.",
-      "reason": "AuthProvider.tsx is truncated right when building the register payload, so there is no visible evidence that it actually calls a backend register method, removes the old placeholder registration error string, saves the returned session, or transitions to 'authenticated' on success.",
-      "evidence": [
-        "frontend/src/auth/AuthProvider.tsx"
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "requirement": "Backend exposes validateSession(token) returning boolean (or equivalent) for valid/unexpired; frontend uses it on session restore and clears local session + sets unauthenticated when invalid.",
-      "reason": "Frontend calls actor.validateSession(session.token) but then treats the result as an object with token/accountId (not a boolean). The backend-side validateSession export is not shown in backend/main.mo. This does not match the specified behavior/signature from the BuildRequest.",
-      "evidence": [
-        "frontend/src/auth/AuthProvider.tsx",
-        "backend/main.mo"
+        "frontend/src/auth/AuthProvider.tsx (truncated)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Added backend/migration.mo and applied migration in backend/main.mo without clear evidence that a conditional migration is required (no stable state changes are shown in the truncated diff).",
-      "reason": "BuildRequest constrained creation of backend/migration.mo to only when required by conditional migration policy due to newly added stable state; the diff adds migration.mo but does not show stable-state additions that necessitate it.",
+      "description": "Changes to React Query hooks for backend operations, including corrected updateCategoryChannelOrdering and optimistic updates for channel reordering.",
+      "reason": "Not requested by REQ-1/2/3, which focus on connection/auth initialization loading behavior and a banner with retry.",
       "evidence": [
-        "backend/migration.mo",
-        "backend/main.mo"
+        "frontend/src/hooks/useQueries.ts (mentioned in frontend-file-summaries.txt)",
+        "frontend-file-summaries.txt"
       ]
     },
     {
-      "description": "Multiple unrelated frontend changes (React Query hooks expansion, navigation/settings/notifications state changes, various UI component behavior/tooltips, mobile/desktop shell changes).",
-      "reason": "These changes are not requested by REQ-1/2/3 and are outside the stated non-goals (no UI redesign beyond necessary to complete registration flow). The diff summary file indicates broad updates unrelated to auth registration/session validation.",
+      "description": "Navigation and settings context refactors/features (mutual exclusion between server/user settings, theme/accent/text scale/keybind persistence, createElement usage to avoid JSX parsing issues).",
+      "reason": "Not requested by the BuildRequest; unrelated to backend connection error surfacing or retry flow.",
       "evidence": [
+        "frontend/src/state/navigation.ts (mentioned in frontend-file-summaries.txt)",
+        "frontend/src/state/settings.ts (mentioned in frontend-file-summaries.txt)",
+        "frontend-file-summaries.txt"
+      ]
+    },
+    {
+      "description": "UI behavior changes that disable/guard actions when backend connection is not ready (e.g., ServerRail \"Add a Server\" disabled with tooltip; CreateServerDialog guarded by useBackendActionGuard).",
+      "reason": "Not requested by the BuildRequest; requirements only ask for preventing infinite loading and surfacing backend connection status with retry.",
+      "evidence": [
+        "frontend/src/components/nav/ServerRail.tsx (mentioned in frontend-file-summaries.txt)",
+        "frontend/src/components/servers/CreateServerDialog.tsx (mentioned in frontend-file-summaries.txt)",
         "frontend-file-summaries.txt"
       ]
     }
   ],
-  "confidence": 0.62,
+  "confidence": 0.66,
   "changed_files": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
+    "frontend/src/App.tsx",
     "frontend/src/auth/AuthProvider.tsx",
     "frontend/src/auth/sessionStorage.ts",
+    "frontend/src/components/system/BackendConnectionBanner.tsx",
+    "frontend/src/hooks/useBackendConnection.ts",
+    "frontend/src/pages/LoginScreen.tsx",
+    "frontend/src/utils/withTimeout.ts",
     "project_state.json"
   ]
 }

@@ -1,12 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Implement a working registration flow and session validation by adding backend auth endpoints and wiring the frontend auth provider to use them.
+**Goal:** Prevent the app from getting stuck on the global “Loading...” screen by surfacing backend connection/health-check failures and providing a user-accessible retry path.
 
 **Planned changes:**
-- Add a backend registration method that accepts (username, email, password), creates and persists a new account, and returns a session object with token, accountId, and expiresAt.
-- Ensure backend registration fails with a clear error when the requested username is already taken.
-- Update the frontend registration flow to call the backend registration endpoint, remove the placeholder thrown error string, save the returned session via the existing sessionStorage helper, and set authStatus to authenticated on success.
-- Add a backend validateSession(token) endpoint and update frontend session-restore logic to validate stored sessions with the backend, clearing local session and setting unauthenticated when invalid/expired.
+- Ensure auth initialization always resolves out of `authStatus === 'initializing'` within a bounded time, even when the backend is unreachable or not ready.
+- If a stored session exists but backend readiness never occurs, clear/mark the session invalid and return the user to the Login screen with an English “backend not reachable” style message.
+- Implement `frontend/src/components/system/BackendConnectionBanner.tsx` to display backend connection state (loading/ready/error) and, on error, show an English error message plus a Retry button.
+- Wire Retry to `useBackendConnection().retry` so users can re-attempt initialization/health checks without a hard refresh.
+- Add a client-side timeout around health checking so slow/hanging health checks transition to a recoverable error state instead of infinite loading.
 
-**User-visible outcome:** Users can create an account without seeing the “registration endpoint not implemented” error, are logged in immediately after successful sign-up, and on reload only remain signed in if their stored session is validated by the backend.
+**User-visible outcome:** When the backend is down, misconfigured, or slow, users no longer see endless loading; they see a clear connection error with a Retry action (and are returned to Login when appropriate) so the app remains usable and recoverable.

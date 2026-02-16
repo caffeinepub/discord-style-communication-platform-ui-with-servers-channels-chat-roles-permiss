@@ -3,7 +3,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
 import ServerRail from '../nav/ServerRail';
-import ChannelSidebar from '../nav/ChannelSidebar';
+import { ChannelSidebar } from '../nav/ChannelSidebar';
 import MemberListPanel from '../members/MemberListPanel';
 import MainContent from './MainContent';
 import MobileTopBar from '../nav/MobileTopBar';

@@ -11,6 +11,7 @@ import { ThemeProvider } from 'next-themes';
 import UserProfileOverlay from './components/profile/UserProfileOverlay';
 import { setupXPathElementRemoval } from './utils/hideElementByXPath';
 import { AuthProvider } from './auth/AuthProvider';
+import { BackendConnectionBanner } from './components/system/BackendConnectionBanner';
 
 function AppContent() {
   const { authStatus } = useAuth();
@@ -37,10 +38,13 @@ function AppContent() {
 
   if (authStatus === 'initializing') {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+      <div className="flex flex-col h-screen bg-background">
+        <BackendConnectionBanner />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
         </div>
       </div>
     );
@@ -48,7 +52,12 @@ function AppContent() {
 
   // Show login screen when unauthenticated or error
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    return (
+      <>
+        <BackendConnectionBanner />
+        <LoginScreen />
+      </>
+    );
   }
 
   return (
@@ -56,8 +65,11 @@ function AppContent() {
       <TooltipProvider>
         <SettingsProvider>
           <NavigationProvider>
-            <div className="h-screen overflow-hidden">
-              <ResponsiveShell />
+            <div className="flex flex-col h-screen overflow-hidden">
+              <BackendConnectionBanner />
+              <div className="flex-1 overflow-hidden">
+                <ResponsiveShell />
+              </div>
             </div>
             <ProfileSetupDialog
               open={showProfileSetup}

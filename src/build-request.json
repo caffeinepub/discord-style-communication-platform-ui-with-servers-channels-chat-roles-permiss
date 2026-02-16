@@ -1,76 +1,72 @@
 {
   "kind": "build_request",
-  "title": "Implement backend registration endpoint and connect frontend auth to it",
-  "projectName": "Community Chat",
+  "title": "Fix infinite loading by surfacing backend connection errors and adding retry",
+  "projectName": "Server Chat",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Implement a backend authentication registration endpoint that the frontend can call instead of throwing the current placeholder error. The endpoint must create a new account using the provided username, email, and password, and return a session object containing token, accountId, and expiresAt (matching the signature expected in frontend/src/auth/AuthProvider.tsx comments).",
-      "target": "backend",
+      "text": "Prevent the app from being stuck on the global \"Loading...\" screen by ensuring auth initialization always resolves to a non-initializing state (authenticated or unauthenticated) even when the backend connection is not ready or becomes unreachable.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "recent-messages-4"
         ],
         "quotes": [
-          "IT STILL SAYS Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\nERROR"
+          "now its just stuck loading"
         ]
       },
       "acceptanceCriteria": [
-        "The backend canister exports a callable method for registration with inputs (username, email, password).",
-        "On successful registration, the method returns a response object containing token, accountId, and expiresAt (Nat) compatible with the frontend expectations.",
-        "Attempting to register with a username that is already taken returns a clear error (trap or variant) rather than silently overwriting.",
-        "The backend persists the created account so that subsequent calls behave consistently after canister upgrade/restart."
+        "If the backend is unreachable or the health check fails, the app does not remain in authStatus === 'initializing' indefinitely.",
+        "Within a bounded time (e.g., after a short timeout) the UI transitions away from the full-screen Loading state to either the Login screen or an explicit connection error state with user action available.",
+        "When a stored session exists but backend readiness never occurs, the session is cleared (or marked invalid) and the user is returned to the Login screen with an English error message indicating the backend is not reachable."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Update the frontend auth flow to call the backend registration endpoint and remove the hardcoded thrown error string \"Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\". On success, store the returned session via sessionStorage.save and transition authStatus to \"authenticated\".",
+      "text": "Implement and render a backend connection status banner/component that clearly shows connection state (loading/ready/error) and provides a Retry action that re-attempts actor initialization and health check.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "recent-messages-4"
         ],
         "quotes": [
-          "IT STILL SAYS Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\nERROR"
+          "now its just stuck loading"
         ]
       },
       "acceptanceCriteria": [
-        "Creating an account from the \"Create Account\" tab no longer shows the placeholder backend-not-implemented error.",
-        "After successful registration, the app persists session data in localStorage using frontend/src/auth/sessionStorage.ts and the UI transitions into the authenticated app state without requiring a refresh.",
-        "If backend registration fails, the UI shows a user-facing error message in English (using the existing alert in frontend/src/pages/LoginScreen.tsx)."
+        "A non-empty implementation exists for frontend/src/components/system/BackendConnectionBanner.tsx.",
+        "When connection state is 'error', the banner shows an English error message and a Retry button.",
+        "Clicking Retry triggers the existing retry flow (via useBackendConnection().retry) and updates the UI state accordingly.",
+        "The banner is visible on the global Loading screen and/or other appropriate top-level surfaces so users are not left without feedback."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Add a backend session validation endpoint and wire it into session restore in the frontend so that when a saved session exists, the app validates it with the backend before setting authStatus to \"authenticated\" (replacing the current 'Temporary: assume stored session is valid' behavior).",
-      "target": "both",
+      "text": "Harden backend health checking so that a hanging/slow healthCheck call cannot keep the UI in a perpetual loading state (e.g., add a client-side timeout and surface a clear error).",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "recent-messages-4"
         ],
         "quotes": [
-          "IT STILL SAYS Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\nERROR"
+          "now its just stuck loading"
         ]
       },
       "acceptanceCriteria": [
-        "Backend exposes a validateSession(token) method that returns a boolean (or equivalent) indicating whether the session is valid and unexpired.",
-        "On page reload with a stored session, AuthProvider calls validateSession and clears local session + sets authStatus to unauthenticated when invalid.",
-        "On page reload with a valid stored session, the user remains authenticated without seeing an auth error state."
+        "If healthCheck does not resolve within the configured timeout, the connection state becomes 'error' with an English error message.",
+        "The error state is recoverable via Retry without requiring a hard refresh.",
+        "The app no longer appears to be endlessly loading when the backend is down or misconfigured."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single-actor Motoko canister with all logic in backend/main.mo (per project architecture).",
-    "Only create backend/migration.mo if required by conditional migration policy due to newly added stable state.",
-    "Do not edit files in frontend immutablePaths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui (compose existing UI components instead).",
-    "Use English for all user-facing strings."
+    "Do not edit files under frontend/src/components/ui (shadcn UI components).",
+    "Do not edit immutable paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx."
   ],
   "nonGoals": [
-    "Implement third-party authentication providers (only Internet Identity is supported).",
-    "Add external databases or non-Motoko backend services.",
-    "Implement real-time auth updates via websockets/push notifications.",
-    "Redesign the entire login/sign-up UI beyond what is necessary to remove the registration-not-implemented error and complete the registration flow."
+    "Implementing the backend login endpoint (login/logout) beyond the existing register/validateSession flow.",
+    "Adding new third-party monitoring/analytics or external services for error reporting."
   ],
   "imageRequirements": {
     "required": [],

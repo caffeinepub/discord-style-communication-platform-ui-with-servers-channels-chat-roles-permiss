@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import { sessionStorage } from './sessionStorage';
 import { useBackendConnection } from '../hooks/useBackendConnection';
 import type { RegisterPayload } from '../backend';
@@ -17,32 +17,51 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const INITIALIZATION_TIMEOUT_MS = 15000; // 15 seconds
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('initializing');
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { actor, isReady } = useBackendConnection();
+  const { actor, isReady, isError: connectionError, state: connectionState } = useBackendConnection();
+  const initializationAttempted = useRef(false);
+  const initializationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize: try to restore session from storage
   useEffect(() => {
     const initializeAuth = async () => {
+      // Prevent multiple initialization attempts
+      if (initializationAttempted.current) {
+        return;
+      }
+
       const session = sessionStorage.load();
       
       if (!session) {
+        initializationAttempted.current = true;
         setAuthStatus('unauthenticated');
         return;
       }
 
       // Validate session with backend when actor is ready
       if (isReady && actor) {
+        initializationAttempted.current = true;
+        
+        // Clear any existing timeout
+        if (initializationTimeoutRef.current) {
+          clearTimeout(initializationTimeoutRef.current);
+          initializationTimeoutRef.current = null;
+        }
+
         try {
           const validatedSession = await actor.validateSession(session.token);
           
           if (!validatedSession) {
             // Session is invalid or expired
-            sessionStorage.clear();
+            sessionStorage.clearWithReason('Session validation returned null');
             setAuthStatus('unauthenticated');
+            setError('Your session has expired. Please sign in again.');
             return;
           }
           
@@ -50,21 +69,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSessionToken(validatedSession.token);
           setAccountId(validatedSession.accountId);
           setAuthStatus('authenticated');
+          setError(null);
         } catch (err) {
           console.error('Session validation failed:', err);
-          sessionStorage.clear();
+          sessionStorage.clearWithReason('Session validation threw error');
           setAuthStatus('unauthenticated');
+          setError('Unable to validate your session. Please sign in again.');
         }
-      } else if (!isReady) {
-        // Wait for backend to be ready before validating
-        return;
+      } else if (connectionError) {
+        // Backend connection failed - clear session and show error
+        initializationAttempted.current = true;
+        
+        // Clear any existing timeout
+        if (initializationTimeoutRef.current) {
+          clearTimeout(initializationTimeoutRef.current);
+          initializationTimeoutRef.current = null;
+        }
+
+        sessionStorage.clearWithReason('Backend connection error during initialization');
+        setAuthStatus('unauthenticated');
+        setError('Unable to connect to the backend. Please check that the local replica is running and try again.');
       }
     };
 
     if (authStatus === 'initializing') {
       initializeAuth();
     }
-  }, [isReady, actor, authStatus]);
+  }, [isReady, actor, authStatus, connectionError]);
+
+  // Set up initialization timeout to prevent infinite loading
+  useEffect(() => {
+    if (authStatus === 'initializing' && !initializationTimeoutRef.current) {
+      initializationTimeoutRef.current = setTimeout(() => {
+        if (authStatus === 'initializing') {
+          console.warn('Auth initialization timed out');
+          initializationAttempted.current = true;
+          
+          // Clear stored session if we couldn't validate it
+          const session = sessionStorage.load();
+          if (session) {
+            sessionStorage.clearWithReason('Initialization timeout - backend not reachable');
+          }
+          
+          setAuthStatus('unauthenticated');
+          setError('Connection timeout. Please check that the local replica is running and refresh the page.');
+        }
+      }, INITIALIZATION_TIMEOUT_MS);
+    }
+
+    // Cleanup timeout on unmount or when auth status changes
+    return () => {
+      if (initializationTimeoutRef.current) {
+        clearTimeout(initializationTimeoutRef.current);
+        initializationTimeoutRef.current = null;
+      }
+    };
+  }, [authStatus]);
 
   const login = useCallback(async (identifier: string, password: string) => {
     setError(null);

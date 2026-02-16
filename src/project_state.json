@@ -4,44 +4,37 @@
   "summary": "New project",
   "architectural_notes": [],
   "known_issues": [
-    "App shows error: 'Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.'"
+    "App is stuck on loading (possible regression after Draft Version 26 deployment)."
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-update-the-frontend-auth-flow-to-call-the-backend-registration-endpoint-and-remove-the-hardcoded-thrown-error-string-registration-endpoint-not-yet-implemented-in-backend-please-wait-for-backend-authentication-system-to-be-updated-on-success-store-the-returned-session-via-sessionstorage-save-and-transition-authstatus-to-authenticated",
-      "title": "Update the frontend auth flow to call the backend registration endpoint and remove the hardcoded thrown error string \"Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\". On success, store the returned session via sessionStorage.save and transition authStatus to \"authenticated\".",
+      "id": "feature-prevent-the-app-from-being-stuck-on-the-global-loading-screen-by-ensuring-auth-initialization-always-resolves-to-a-non-initializing-state-authenticated-or-unauthenticated-even-when-the-backend-connection-is-not-ready-or-becomes-unreachable",
+      "title": "Prevent the app from being stuck on the global \"Loading...\" screen by ensuring auth initialization always resolves to a non-initializing state (authenticated or unauthenticated) even when the backend connection is not ready or becomes unreachable.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-and-render-a-backend-connection-status-banner-component-that-clearly-shows-connection-state-loading-ready-error-and-provides-a-retry-action-that-re-attempts-actor-initialization-and-health-check",
+      "title": "Implement and render a backend connection status banner/component that clearly shows connection state (loading/ready/error) and provides a Retry action that re-attempts actor initialization and health check.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-add-a-backend-session-validation-endpoint-and-wire-it-into-session-restore-in-the-frontend-so-that-when-a-saved-session-exists-the-app-validates-it-with-the-backend-before-setting-authstatus-to-authenticated-replacing-the-current-temporary-assume-stored-session-is-valid-behavior",
-      "title": "Add a backend session validation endpoint and wire it into session restore in the frontend so that when a saved session exists, the app validates it with the backend before setting authStatus to \"authenticated\" (replacing the current 'Temporary: assume stored session is valid' behavior).",
+      "id": "feature-harden-backend-health-checking-so-that-a-hanging-slow-healthcheck-call-cannot-keep-the-ui-in-a-perpetual-loading-state-e-g-add-a-client-side-timeout-and-surface-a-clear-error",
+      "title": "Harden backend health checking so that a hanging/slow healthCheck call cannot keep the UI in a perpetual loading state (e.g., add a client-side timeout and surface a clear error).",
       "reqIds": [
         "REQ-3"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [
-    {
-      "id": "AR-1",
-      "summary": "Implement backend authentication system registration endpoint (remove 'Registration endpoint not yet implemented in backend' error)",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Implement a backend authentication registration endpoint that the frontend can call instead of throwing the current placeholder error. The endpoint must create a new account using the provided username, email, and password, and return a session object containing token, accountId, and expiresAt (matching the signature expected in frontend/src/auth/AuthProvider.tsx comments).",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "status": "pending"
-    }
-  ],
-  "projectName": "Community Chat",
+  "new_feature_requests": [],
+  "projectName": "Server Chat",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

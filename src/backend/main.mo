@@ -1,4 +1,3 @@
-import Migration "migration";
 import Array "mo:core/Array";
 import Map "mo:core/Map";
 import Text "mo:core/Text";
@@ -10,12 +9,10 @@ import Iter "mo:core/Iter";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 
-
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-// Apply migration using with-clause
-(with migration = Migration.run)
+// Apply migration on upgrades
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -31,9 +28,11 @@ actor {
     token : Text;
     accountId : Text;
     expiresAt : Int;
+    email : ?Text; // Persisted email
   };
 
   let persistentSessions = Map.empty<Text, Text>();
+  let userEmails = Map.empty<Principal, Text>();
 
   // User Profile Types (unchanged)
   public type UserProfile = {
@@ -163,10 +162,15 @@ actor {
     };
   };
 
-  public type CategoryChannelOrder = {
+  public type CategoryLevelOrdering = {
+    id : Nat;
+    textChannels : [Nat];
+    voiceChannels : [Nat];
+  };
+
+  public type ServerOrdering = {
     categoryOrder : [Nat];
-    textChannelOrder : Map.Map<Nat, [Nat]>;
-    voiceChannelOrder : Map.Map<Nat, [Nat]>;
+    categories : [CategoryLevelOrdering];
   };
 
   // Audit Log Types (unchanged)
@@ -234,21 +238,38 @@ actor {
   let voiceChannelPresences = Map.empty<Nat, Map.Map<Nat, [VoiceChannelPresence]>>();
   let userUsernames = Map.empty<Principal, Text>();
   let auditLogs = Map.empty<Nat, [AuditLogEntry]>();
-  let categoryChannelOrders = Map.empty<Nat, CategoryChannelOrder>();
+  let newCategoryChannelOrders = Map.empty<Nat, ServerOrdering>();
 
   // Authentication...
   /// Create new session for a new user registration
   /// Allows anonymous/guest users to register (no authorization check needed)
-  public shared ({ caller }) func register(_ : RegisterPayload) : async Session {
+  public shared ({ caller }) func register(payload : RegisterPayload) : async Session {
     let userId = caller.toText();
     let token = userId;
     let session : Session = {
       token;
       accountId = userId;
-      expiresAt = 0; // Never expires yet
+      expiresAt = 0;
+      email = ?payload.email; // Persist email
     };
 
     persistentSessions.add(token, userId);
+    userEmails.add(caller, payload.email);
+
+    // Initialize username to the entered username
+    userUsernames.add(caller, payload.username);
+
+    // Initialize user profile with display name set to the entered username
+    let initialProfile : UserProfile = {
+      name = payload.username;
+      aboutMe = "";
+      customStatus = "";
+      avatarUrl = "";
+      bannerUrl = "";
+      badges = [];
+    };
+    userProfiles.add(caller, initialProfile);
+
     session;
   };
 
@@ -261,6 +282,7 @@ actor {
           token;
           accountId;
           expiresAt = 0;
+          email = null;
         };
       };
       case (null) {
@@ -345,6 +367,8 @@ actor {
     true;
   };
 
+  // 1. Usernames (should only change via explicit set)
+  // 2. Display names (profile `name` field should only be changed via explicit profile updates)
   public shared ({ caller }) func setUsername(desiredUsername : Text) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can set username");
@@ -753,48 +777,24 @@ actor {
     channelId;
   };
 
-  public shared ({ caller }) func updateCategoryChannelOrdering(
-    serverId : Nat,
-    categoryOrder : [Nat],
-    textChannelOrderEntries : [(Nat, [Nat])],
-    voiceChannelOrderEntries : [(Nat, [Nat])]
-  ) : async () {
+  /// Persist the channel ordering per-category/section (passed as a [categoryId, [textChannelIds], [voiceChannelIds]] mapping)
+  public shared ({ caller }) func setCategoryChannelOrdering(serverId : Nat, ordering : ServerOrdering) : async () {
     if (not hasServerAdminPermission(serverId, caller)) {
-      Runtime.trap("Unauthorized: Only server admins can update ordering");
+      Runtime.trap("Unauthorized: Only server admins can update channel ordering");
     };
 
-    let textChannelOrderMap = Map.empty<Nat, [Nat]>();
-    textChannelOrderEntries.forEach(func((k, v)) { textChannelOrderMap.add(k, v) });
-
-    let voiceChannelOrderMap = Map.empty<Nat, [Nat]>();
-    voiceChannelOrderEntries.forEach(func((k, v)) { voiceChannelOrderMap.add(k, v) });
-
-    let ordering = {
-      categoryOrder;
-      textChannelOrder = textChannelOrderMap;
-      voiceChannelOrder = voiceChannelOrderMap;
-    };
-    categoryChannelOrders.add(serverId, ordering);
+    newCategoryChannelOrders.add(serverId, ordering);
   };
 
-  public query ({ caller }) func getCategoryChannelOrdering(serverId : Nat) : async ?{
-    categoryOrder : [Nat];
-    textChannelOrder : [(Nat, [Nat])];
-    voiceChannelOrder : [(Nat, [Nat])];
-  } {
+  /// Get the persisted ordering for categories and channels within each one
+  public query ({ caller }) func getCategoryChannelOrdering(serverId : Nat) : async ?ServerOrdering {
     if (not isServerMember(serverId, caller)) {
       Runtime.trap("Unauthorized: Only server members can view channel ordering");
     };
 
-    switch (categoryChannelOrders.get(serverId)) {
+    switch (newCategoryChannelOrders.get(serverId)) {
       case (null) { null };
-      case (?ordering) {
-        ?{
-          categoryOrder = ordering.categoryOrder;
-          textChannelOrder = ordering.textChannelOrder.toArray();
-          voiceChannelOrder = ordering.voiceChannelOrder.toArray();
-        };
-      };
+      case (?ordering) { ?ordering };
     };
   };
 
@@ -1255,5 +1255,13 @@ actor {
       case (null) { [] };
       case (?logs) { logs };
     };
+  };
+
+  // Retrieve authenticated user email
+  public query ({ caller }) func getCallerAccountEmail() : async ?Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access email");
+    };
+    userEmails.get(caller);
   };
 };

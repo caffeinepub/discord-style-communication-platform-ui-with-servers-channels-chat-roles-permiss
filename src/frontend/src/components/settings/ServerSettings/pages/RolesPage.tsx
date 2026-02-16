@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { useNavigation } from '../../../../state/navigation';
-import { useGetRoles, useAddRole } from '../../../../hooks/useQueries';
+import { useGetServerRoles, useAddRole } from '../../../../hooks/useQueries';
 import { Plus, Loader2 } from 'lucide-react';
 import RoleMemberAssignmentPanel from '../components/RoleMemberAssignmentPanel';
 import type { Permission } from '../../../../backend';
@@ -25,7 +25,7 @@ const AVAILABLE_PERMISSIONS = [
 
 export default function RolesPage() {
   const { selectedServerId } = useNavigation();
-  const { data: roles = [] } = useGetRoles(selectedServerId);
+  const { data: roles = [] } = useGetServerRoles(selectedServerId);
   const addRole = useAddRole();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newRoleName, setNewRoleName] = useState('');

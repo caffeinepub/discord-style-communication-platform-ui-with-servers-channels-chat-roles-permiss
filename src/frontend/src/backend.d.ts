@@ -7,6 +7,10 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface ServerOrdering {
+    categories: Array<CategoryLevelOrdering>;
+    categoryOrder: Array<bigint>;
+}
 export interface GetMembersWithRolesResponse {
     members: Array<ServerMemberInfo>;
     roles: Array<Role>;
@@ -55,10 +59,16 @@ export interface Role {
     color: string;
     position: bigint;
 }
+export interface CategoryLevelOrdering {
+    id: bigint;
+    voiceChannels: Array<bigint>;
+    textChannels: Array<bigint>;
+}
 export interface Session {
     token: string;
     expiresAt: bigint;
     accountId: string;
+    email?: string;
 }
 export interface FriendRequest {
     to: Principal;
@@ -149,15 +159,15 @@ export interface backendInterface {
     createServer(_name: string, description: string): Promise<bigint>;
     declineFriendRequest(from: Principal): Promise<void>;
     getAllServers(): Promise<Array<Server>>;
+    getCallerAccountEmail(): Promise<string | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCallerUsername(): Promise<string | null>;
     getCategories(serverId: bigint): Promise<Array<ChannelCategory>>;
-    getCategoryChannelOrdering(serverId: bigint): Promise<{
-        categoryOrder: Array<bigint>;
-        voiceChannelOrder: Array<[bigint, Array<bigint>]>;
-        textChannelOrder: Array<[bigint, Array<bigint>]>;
-    } | null>;
+    /**
+     * / Get the persisted ordering for categories and channels within each one
+     */
+    getCategoryChannelOrdering(serverId: bigint): Promise<ServerOrdering | null>;
     getFriendRequests(): Promise<Array<FriendRequest>>;
     getFriends(): Promise<Array<Principal>>;
     getMemberDisplayColor(serverId: bigint, userId: Principal): Promise<string | null>;
@@ -184,18 +194,21 @@ export interface backendInterface {
      * / Create new session for a new user registration
      * / Allows anonymous/guest users to register (no authorization check needed)
      */
-    register(arg0: RegisterPayload): Promise<Session>;
+    register(payload: RegisterPayload): Promise<Session>;
     removeFriend(friend: Principal): Promise<void>;
     removeRoleFromUser(serverId: bigint, _roleId: bigint, _user: Principal): Promise<void>;
     renameServer(serverId: bigint, newName: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendFriendRequest(to: Principal): Promise<void>;
     sendTextChannelMessage(serverId: bigint, textChannelId: bigint, content: string): Promise<bigint>;
+    /**
+     * / Persist the channel ordering per-category/section (passed as a [categoryId, [textChannelIds], [voiceChannelIds]] mapping)
+     */
+    setCategoryChannelOrdering(serverId: bigint, ordering: ServerOrdering): Promise<void>;
     setRolePermissions(serverId: bigint, _roleId: bigint, _permissions: Array<Permission>): Promise<void>;
     setServerOrdering(ordering: Array<bigint>): Promise<void>;
     setUserStatus(status: UserStatus): Promise<void>;
     setUsername(desiredUsername: string): Promise<void>;
-    updateCategoryChannelOrdering(serverId: bigint, categoryOrder: Array<bigint>, textChannelOrderEntries: Array<[bigint, Array<bigint>]>, voiceChannelOrderEntries: Array<[bigint, Array<bigint>]>): Promise<void>;
     /**
      * / Validate session with the persistent store (future: make more secure)
      * / No authorization needed - this is used to validate sessions

@@ -66,6 +66,11 @@ export const sessionStorage = {
     }
   },
 
+  clearWithReason(reason: string): void {
+    console.warn('Clearing session:', reason);
+    this.clear();
+  },
+
   isValid(): boolean {
     const session = this.load();
     return session !== null;
