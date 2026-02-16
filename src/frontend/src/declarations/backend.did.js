@@ -86,6 +86,14 @@ export const AuditLogEntry = IDL.Record({
   'serverId' : IDL.Nat,
   'eventType' : AuditEventType,
 });
+export const ServerMemberInfo = IDL.Record({
+  'member' : ServerMember,
+  'username' : IDL.Text,
+});
+export const GetMembersWithRolesResponse = IDL.Record({
+  'members' : IDL.Vec(ServerMemberInfo),
+  'roles' : IDL.Vec(Role),
+});
 export const ServerMemberWithUsername = IDL.Record({
   'member' : ServerMember,
   'username' : IDL.Text,
@@ -161,6 +169,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getServerMembers' : IDL.Func([IDL.Nat], [IDL.Vec(ServerMember)], ['query']),
+  'getServerMembersWithRoles' : IDL.Func(
+      [IDL.Nat],
+      [GetMembersWithRolesResponse],
+      ['query'],
+    ),
   'getServerMembersWithUsernames' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(ServerMemberWithUsername)],
@@ -306,6 +319,14 @@ export const idlFactory = ({ IDL }) => {
     'serverId' : IDL.Nat,
     'eventType' : AuditEventType,
   });
+  const ServerMemberInfo = IDL.Record({
+    'member' : ServerMember,
+    'username' : IDL.Text,
+  });
+  const GetMembersWithRolesResponse = IDL.Record({
+    'members' : IDL.Vec(ServerMemberInfo),
+    'roles' : IDL.Vec(Role),
+  });
   const ServerMemberWithUsername = IDL.Record({
     'member' : ServerMember,
     'username' : IDL.Text,
@@ -391,6 +412,11 @@ export const idlFactory = ({ IDL }) => {
     'getServerMembers' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(ServerMember)],
+        ['query'],
+      ),
+    'getServerMembersWithRoles' : IDL.Func(
+        [IDL.Nat],
+        [GetMembersWithRolesResponse],
         ['query'],
       ),
     'getServerMembersWithUsernames' : IDL.Func(

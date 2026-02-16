@@ -1,92 +1,145 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Server roles on profiles, assignment controls, and role-colored usernames (frontend)",
+  "title": "Custom session-based auth (no Internet Identity) for Roles Admin",
   "requirements": [
     {
-      "id": "REQ-3",
-      "summary": "Add React Query hooks for server roles, server members (with role IDs), and role assign/remove mutations with proper cache invalidation and friendly errors.",
+      "id": "REQ-1",
+      "summary": "Remove Internet Identity from the active login flow and switch the UI to custom credential-based sign-in with a persisted session token.",
       "acceptanceCriteria": [
-        "There are query hooks to load roles for the selected server and member role IDs for the selected server.",
-        "There are mutation hooks to assign/remove roles for a server member.",
-        "After a successful assign/remove mutation, the server members query and any role-related queries used by the profile overlay/message list are invalidated/refetched so UI updates without a full reload.",
-        "Errors are surfaced using the existing friendly toast/error patterns in useQueries.ts."
+        "The app no longer prompts users to sign in with Internet Identity and does not call `AuthClient.login()` anywhere in the active login flow.",
+        "Users can create a new account and sign in using the app’s own credential flow.",
+        "Authentication does not depend on `process.env.II_URL` or any identityProvider URL.",
+        "A logged-in session persists across refresh (until explicit logout or expiration)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Add/align hooks and query keys for: fetching server roles (use existing getServerRoles/getRoles backend capability as appropriate), fetching server members with role IDs (use existing getServerMembers backend capability), fetching a member’s effective display color (use getMemberDisplayColor backend capability), and mutations for assign/remove role (use assignRoleToUser/removeRoleFromUser backend capabilities). Ensure mutations invalidate/refetch member lists, any per-member display color queries, and any overlay/member-related queries; continue using existing toast + friendly error handling patterns."
+          "description": "Replace `useInternetIdentity`-derived authenticated state with the new custom auth context, so the authenticated/unauthenticated app shell is driven by session-token auth (not identity principals). Wire the new AuthProvider in the React tree here since `frontend/src/main.tsx` is immutable."
+        },
+        {
+          "path": "frontend/src/pages/LoginScreen.tsx",
+          "operation": "modify",
+          "description": "Remove usage of `useInternetIdentity()` (and any calls to its `login`) and implement sign-in + registration flows that call the new custom auth provider methods instead; keep the existing logo asset usage and ensure no Internet Identity copy remains. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/auth/sessionStorage.ts",
+          "operation": "create",
+          "description": "Add a small localStorage/sessionStorage utility for storing, reading, and clearing the session token and related metadata (expiry, account identifier if provided) to persist auth across refresh."
+        },
+        {
+          "path": "frontend/src/auth/AuthProvider.tsx",
+          "operation": "create",
+          "description": "Create a custom auth React context/provider exposing `login`, `register`, `logout`, and `authStatus`, and implementing boot-time token restoration + validation with the backend (using an anonymous actor via existing connection hooks)."
+        },
+        {
+          "path": "frontend/src/auth/useAuth.ts",
+          "operation": "create",
+          "description": "Provide a small hook wrapper around the custom auth context so UI code can read `authStatus`, current session token, and call `login/register/logout` without touching immutable auth hooks."
         }
       ]
     },
     {
       "id": "REQ-4",
-      "summary": "Show a member’s roles on the server profile overlay in server context using colored role chips/badges.",
+      "summary": "Replace frontend auth wiring with a custom Auth provider/hook that manages session tokens and supports login, logout, and registration flows.",
       "acceptanceCriteria": [
-        "When viewing a member profile while a server is selected, the overlay includes a ‘Roles’ section listing the member’s assigned roles.",
-        "Each displayed role uses its configured color (e.g., colored dot or colored chip accent) and shows the role name in readable contrast.",
-        "If no server is selected, or the member has no roles in that server, the overlay does not show an empty roles section."
+        "`frontend/src/App.tsx` determines authenticated vs unauthenticated state using the new custom auth context (not `useInternetIdentity`).",
+        "The unauthenticated screen supports both “Create account” and “Sign in” flows.",
+        "Logout clears the session token and resets relevant cached queries similarly to the current behavior."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/profile/UserProfileOverlay.tsx",
-          "operation": "modify",
-          "description": "When the overlay is opened with a selected server context, fetch the server’s roles and the selected member’s role IDs (via hooks in frontend/src/hooks/useQueries.ts), then render a conditional ‘Roles’ section. Map role IDs to role objects and render role chips/badges showing the role name and role color (with readable contrast). Do not render the section when no server is selected or the member has no roles. Verify the component's usage instructions before implementing."
+          "path": "frontend/src/auth/AuthProvider.tsx",
+          "operation": "create",
+          "description": "Implement the new custom auth provider state machine (`authStatus` such as initializing/authenticated/unauthenticated/error), and expose `login`, `register`, `logout`. On success, store token via the session storage helper; on logout, revoke/clear token locally and coordinate cache resets."
         },
         {
-          "path": "frontend/src/utils/roleColor.ts",
-          "operation": "create",
-          "description": "Add small shared utilities to (a) validate/sanitize role color strings for safe inline styling and (b) choose a readable foreground/contrast strategy for chips where needed (light/dark). This is used by UserProfileOverlay, MessageItem, and MemberListPanel."
+          "path": "frontend/src/pages/LoginScreen.tsx",
+          "operation": "modify",
+          "description": "Add a two-mode UI (tabs or segmented control) for \"Sign in\" and \"Create account\" with username/email + password fields, loading state, and error state driven by the custom auth provider. Use existing shadcn/ui components by composition only (do not edit `frontend/src/components/ui/*`). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useLogout.ts",
+          "operation": "modify",
+          "description": "Refactor logout to call the new custom auth provider’s `logout` and then clear React Query caches (maintaining current cache reset behavior), without calling `useInternetIdentity().clear()`."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Update the initialization/loading UI gating to reflect the new auth provider initialization (token restore/validation), and keep profile-setup gating consistent once authenticated."
         }
       ]
     },
     {
       "id": "REQ-5",
-      "summary": "Add role assignment controls in the server member profile overlay with current assignments shown and unauthorized users hidden/disabled.",
+      "summary": "Update React Query hooks/mutations to attach the session token for authenticated backend calls and handle Unauthorized states gracefully.",
       "acceptanceCriteria": [
-        "When a user with permission views another member’s profile in a server, they can assign and remove roles using a clear control (e.g., dialog/sheet with role checkboxes).",
-        "Current role assignments for that member are shown as selected/checked.",
-        "Users without permission do not see role assignment controls (or controls are disabled with a clear unauthorized state).",
-        "After changing roles, the member list and profile overlay update to reflect the new roles."
+        "When logged out, authenticated queries/mutations are disabled or fail with a user-friendly Unauthorized message.",
+        "When logged in, existing features that require authentication (profile setup/save, server create/join/leave, role actions, messaging where applicable) work using the session-based auth.",
+        "No React Query hook relies on an Internet Identity identity being present to function."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/profile/RoleAssignmentDialog.tsx",
-          "operation": "create",
-          "description": "Create a profile-overlay-scoped dialog/sheet component that lists available server roles with selection state matching the target member’s current role IDs, and supports toggling roles using assign/remove mutation hooks from frontend/src/hooks/useQueries.ts. Include a clear interaction pattern (e.g., checkbox list) and loading/disabled states. Verify the component's usage instructions before implementing."
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Integrate the session token from the new custom auth hook into all queries/mutations that require authentication by passing/attaching the token per the new backend capabilities. Ensure protected queries are disabled when unauthenticated, and map Unauthorized errors into the existing friendly error handling/toast patterns."
         },
         {
-          "path": "frontend/src/components/profile/UserProfileOverlay.tsx",
-          "operation": "modify",
-          "description": "Wire the new RoleAssignmentDialog into the overlay (only when a server is selected). Determine whether to show/enable the control using existing frontend signals (e.g., isCallerAdmin via existing hook and/or server owner match via server data + current identity if already available in the app). Hide the control for clearly unauthorized users (or disable with an unauthorized hint), and rely on mutation error handling for any backend authorization failures. Ensure successful mutations update the overlay state via React Query invalidation. Verify the component's usage instructions before implementing."
+          "path": "frontend/src/auth/authedCall.ts",
+          "operation": "create",
+          "description": "Add a small helper to standardize making authenticated backend calls (e.g., assert token present, call backend function with token, normalize Unauthorized errors) so `useQueries.ts` changes remain consistent and maintainable."
         }
       ]
     },
     {
       "id": "REQ-6",
-      "summary": "Apply effective role color to usernames in server contexts for chat messages and the member list, falling back to default styling.",
+      "summary": "Avoid modifying immutable frontend auth hooks by introducing new auth/session files and updating only editable app code to use them.",
       "acceptanceCriteria": [
-        "In chat messages, the author name text is styled with the effective role color when the message is in a server channel context.",
-        "In the member list, each member’s display name is styled with the effective role color when they have a role with a color.",
-        "If a member has no roles (or role color is unavailable), names render with the existing default text color (no forced coloring).",
-        "Color styling does not reduce readability in light/dark themes (e.g., ensure adequate contrast by using the provided role color primarily for text and falling back safely if invalid)."
+        "No changes are made to any path listed in `frontend.immutablePaths` (including `frontend/src/hooks/useInternetIdentity.ts` and `frontend/src/hooks/useActor.ts`).",
+        "The application builds and runs using the new auth flow without requiring edits to immutable files."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/chat/MessageItem.tsx",
-          "operation": "modify",
-          "description": "In server channel contexts, fetch the author’s effective display role color using a new hook from frontend/src/hooks/useQueries.ts (backed by getMemberDisplayColor) keyed by selected server and author userId. Apply the color to the author name text only when a valid color is available; otherwise keep current default styling. Use frontend/src/utils/roleColor.ts to validate/sanitize colors and avoid unreadable/invalid values. Verify the component's usage instructions before implementing."
+          "path": "frontend/src/auth/AuthProvider.tsx",
+          "operation": "create",
+          "description": "Add the new custom auth provider in a new path (outside immutable directories) so the new auth system is introduced without touching immutable auth/actor hooks."
         },
         {
-          "path": "frontend/src/components/members/MemberListPanel.tsx",
+          "path": "frontend/src/hooks/useLogout.ts",
           "operation": "modify",
-          "description": "For each member row in a selected server, fetch that member’s effective display role color using a new hook from frontend/src/hooks/useQueries.ts (backed by getMemberDisplayColor). Style the displayed member name with the effective color when present and valid; otherwise keep existing default text color. Use frontend/src/utils/roleColor.ts to validate/sanitize colors and ensure safe fallbacks for readability. Verify the component's usage instructions before implementing."
+          "description": "Move logout behavior away from Internet Identity to the custom auth provider while preserving query cache clearing; do not edit any immutable hook files."
         },
         {
-          "path": "frontend/src/utils/roleColor.ts",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Extend utilities (if needed) to support consistent validation/sanitization and safe fallback behavior for text coloring in both message list and member list, preserving readability across light/dark themes."
+          "description": "Update the app’s auth gating to use the new provider/hook while leaving `frontend/src/main.tsx` and `frontend/src/hooks/useInternetIdentity.ts` unchanged (they can remain present but unused in the active flow)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "summary": "Update auth UI copy to reflect custom accounts and apply a consistent visual theme across auth screens and auth error/loading states.",
+      "acceptanceCriteria": [
+        "Login/registration screens use English text that describes the custom sign-in/sign-up flow and does not mention Internet Identity or id.ai.",
+        "Auth screens use a consistent theme (colors/typography/layout) that is applied uniformly across login, registration, and error states.",
+        "Theme choice avoids introducing new product features and only affects look-and-feel and presentation."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/auth/AuthLayout.tsx",
+          "operation": "create",
+          "description": "Create a reusable auth layout wrapper (background, card container, header/branding region, consistent spacing) that can be used for sign-in, registration, and auth error/loading states. Use existing Tailwind tokens from `frontend/src/index.css` and compose existing shadcn/ui components only. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/LoginScreen.tsx",
+          "operation": "modify",
+          "description": "Replace all Internet Identity references with custom account language (English), and refactor the UI to use the new `AuthLayout` for consistent styling across modes and error states. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "If needed to support consistent auth theming, add minimal, global, token-driven styling adjustments (e.g., refined background/foreground tokens or utility classes) without introducing new features; keep changes aligned with existing Tailwind variable theme approach."
         }
       ]
     }

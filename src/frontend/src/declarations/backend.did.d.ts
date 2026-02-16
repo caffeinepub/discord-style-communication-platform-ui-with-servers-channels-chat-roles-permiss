@@ -46,6 +46,10 @@ export interface FriendRequest {
   'from' : Principal,
   'timestamp' : bigint,
 }
+export interface GetMembersWithRolesResponse {
+  'members' : Array<ServerMemberInfo>,
+  'roles' : Array<Role>,
+}
 export interface Permission { 'value' : boolean, 'name' : string }
 export interface Role {
   'id' : bigint,
@@ -70,6 +74,10 @@ export interface ServerMember {
   'userId' : Principal,
   'joinedAt' : bigint,
   'roles' : Array<bigint>,
+}
+export interface ServerMemberInfo {
+  'member' : ServerMember,
+  'username' : string,
 }
 export interface ServerMemberWithUsername {
   'member' : ServerMember,
@@ -141,6 +149,10 @@ export interface _SERVICE {
   'getServer' : ActorMethod<[bigint], Server>,
   'getServerAuditLog' : ActorMethod<[bigint], Array<AuditLogEntry>>,
   'getServerMembers' : ActorMethod<[bigint], Array<ServerMember>>,
+  'getServerMembersWithRoles' : ActorMethod<
+    [bigint],
+    GetMembersWithRolesResponse
+  >,
   'getServerMembersWithUsernames' : ActorMethod<
     [bigint],
     Array<ServerMemberWithUsername>

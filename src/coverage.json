@@ -1,100 +1,119 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-16T07:53:14.385Z",
+  "generatedAt": "2026-02-16T19:02:05.071Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 6,
+    "total": 7,
     "implemented": 4,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Expose server member role data needed by the UI: provide backend APIs to (a) list a server’s roles, (b) fetch a server’s members including each member’s assigned role IDs, and (c) resolve a member’s effective display role color (use the highest-position role when multiple roles are assigned; if none, return null/empty so the UI can use the default text color).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Remove Internet Identity (id.ai) as the authentication mechanism and implement a custom, canister-managed account system that supports account registration and login using app-managed credentials (e.g., username/email + password), without relying on Internet Identity or any external identity provider.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/App.tsx",
+          "frontend/src/pages/LoginScreen.tsx",
+          "frontend/src/auth/sessionStorage.ts",
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/auth/useAuth.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/App.tsx",
+          "frontend/src/pages/LoginScreen.tsx",
+          "frontend/src/auth/sessionStorage.ts",
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/auth/useAuth.ts"
+        ]
       },
       {
         "id": "REQ-2",
-        "summary": "Implement role assignment management in the backend: add/update methods that allow authorized users (server owner/admins or users with a suitable role permission) to assign and remove roles for a specific server member, and record audit log entries for role assignment/removal.",
+        "summary": "Update the backend (single Motoko actor) to support custom accounts and sessions, including secure password storage (hashed + salted) and session issuance/validation for all authenticated actions.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Add React Query hooks in frontend/src/hooks/useQueries.ts for: fetching server roles, fetching server members with role IDs, and assigning/removing a role for a server member; ensure mutations invalidate the relevant cached queries so Member List and Profile overlay reflect changes immediately.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts"
-        ]
+        "summary": "Refactor authorization in `backend/main.mo` so that all user-protected operations currently gated by `AccessControl.hasPermission(accessControlState, caller, #user)` work with the new custom account/session system (i.e., no longer require Internet Identity-derived principals for normal user access).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-4",
-        "summary": "Show a member’s roles on their server profile overlay (frontend/src/components/profile/UserProfileOverlay.tsx) when the overlay is opened from within a server context: display role chips/badges with the role name and role color; if the member has no roles, do not show a roles section.",
+        "summary": "Replace the current frontend authentication wiring (which depends on `useInternetIdentity`) with a new custom Auth provider/hook that manages session tokens and exposes `login`, `logout`, `register`, and `authStatus` for the UI.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/profile/UserProfileOverlay.tsx",
-          "frontend/src/utils/roleColor.ts"
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/pages/LoginScreen.tsx",
+          "frontend/src/hooks/useLogout.ts",
+          "frontend/src/App.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/profile/UserProfileOverlay.tsx",
-          "frontend/src/utils/roleColor.ts"
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/pages/LoginScreen.tsx",
+          "frontend/src/hooks/useLogout.ts",
+          "frontend/src/App.tsx"
         ]
       },
       {
         "id": "REQ-5",
-        "summary": "Allow assigning roles to users in a server from the UI: add role assignment controls accessible from the server member profile overlay and/or member list, including a list of available roles with current assignments indicated, and actions to add/remove roles (restricted/hidden for unauthorized users).",
-        "status": "implemented",
+        "summary": "Update all frontend React Query data hooks/mutations that call authenticated backend methods (see `frontend/src/hooks/useQueries.ts`) to include/attach the new session token so authenticated operations continue to work end-to-end.",
+        "status": "missing",
         "plannedFiles": [
-          "frontend/src/components/profile/RoleAssignmentDialog.tsx",
-          "frontend/src/components/profile/UserProfileOverlay.tsx"
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/auth/authedCall.ts"
         ],
-        "matchedFiles": [
-          "frontend/src/components/profile/RoleAssignmentDialog.tsx",
-          "frontend/src/components/profile/UserProfileOverlay.tsx"
-        ]
+        "matchedFiles": []
       },
       {
         "id": "REQ-6",
-        "summary": "Apply role color to usernames in server contexts: update message author name rendering (frontend/src/components/chat/MessageItem.tsx) and server member list rendering (frontend/src/components/members/MemberListPanel.tsx) so the displayed name uses the member’s effective role color; if the member has no roles, keep the default text color.",
+        "summary": "Keep immutable frontend hook files unmodified by introducing new auth/session hooks in new files and updating only editable app code to use them.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/chat/MessageItem.tsx",
-          "frontend/src/components/members/MemberListPanel.tsx",
-          "frontend/src/utils/roleColor.ts"
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/hooks/useLogout.ts",
+          "frontend/src/App.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/chat/MessageItem.tsx",
-          "frontend/src/components/members/MemberListPanel.tsx",
-          "frontend/src/utils/roleColor.ts"
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/hooks/useLogout.ts",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-7",
+        "summary": "Update user-facing authentication UI copy to reflect the new account system (no references to Internet Identity), and apply a consistent, coherent visual theme to the auth screens and related auth UI states.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/auth/AuthLayout.tsx",
+          "frontend/src/pages/LoginScreen.tsx",
+          "frontend/src/index.css"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/auth/AuthLayout.tsx",
+          "frontend/src/pages/LoginScreen.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/chat/MessageItem.tsx",
-    "frontend/src/components/members/MemberListPanel.tsx",
-    "frontend/src/components/profile/RoleAssignmentDialog.tsx",
-    "frontend/src/components/profile/UserProfileOverlay.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/utils/roleColor.ts",
+    "frontend/src/App.tsx",
+    "frontend/src/auth/AuthProvider.tsx",
+    "frontend/src/auth/sessionStorage.ts",
+    "frontend/src/auth/useAuth.ts",
+    "frontend/src/components/auth/AuthLayout.tsx",
+    "frontend/src/hooks/useLogout.ts",
+    "frontend/src/pages/LoginScreen.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

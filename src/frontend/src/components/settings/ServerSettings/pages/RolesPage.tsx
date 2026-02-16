@@ -4,9 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import { useNavigation } from '../../../../state/navigation';
-import { useGetRoles, useAddRole, useSetRolePermissions } from '../../../../hooks/useQueries';
+import { useGetRoles, useAddRole } from '../../../../hooks/useQueries';
 import { Plus, Loader2 } from 'lucide-react';
+import RoleMemberAssignmentPanel from '../components/RoleMemberAssignmentPanel';
 import type { Permission } from '../../../../backend';
 
 const AVAILABLE_PERMISSIONS = [
@@ -79,6 +81,13 @@ export default function RolesPage() {
             </span>
           </div>
         ))}
+      </div>
+
+      <Separator className="my-6" />
+
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Assign Roles to Members</h3>
+        {selectedServerId && <RoleMemberAssignmentPanel serverId={selectedServerId} />}
       </div>
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

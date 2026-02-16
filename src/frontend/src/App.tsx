@@ -1,4 +1,4 @@
-import { useInternetIdentity } from './hooks/useInternetIdentity';
+import { useAuth } from './auth/useAuth';
 import { useGetCallerUserProfile } from './hooks/useQueries';
 import { useState, useEffect } from 'react';
 import LoginScreen from './pages/LoginScreen';
@@ -9,13 +9,15 @@ import { SettingsProvider } from './state/settings';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from 'next-themes';
 import UserProfileOverlay from './components/profile/UserProfileOverlay';
+import { setupXPathElementRemoval } from './utils/hideElementByXPath';
+import { AuthProvider } from './auth/AuthProvider';
 
-export default function App() {
-  const { identity, isInitializing } = useInternetIdentity();
+function AppContent() {
+  const { authStatus } = useAuth();
   const { data: userProfile, isLoading: profileLoading, isFetched } = useGetCallerUserProfile();
   const [showProfileSetup, setShowProfileSetup] = useState(false);
 
-  const isAuthenticated = !!identity;
+  const isAuthenticated = authStatus === 'authenticated';
 
   useEffect(() => {
     if (isAuthenticated && !profileLoading && isFetched && userProfile === null) {
@@ -23,11 +25,17 @@ export default function App() {
     }
   }, [isAuthenticated, profileLoading, isFetched, userProfile]);
 
+  // Set up XPath-based element removal
+  useEffect(() => {
+    const cleanup = setupXPathElementRemoval('/html[1]/body[1]/div[5]/button[1]');
+    return cleanup;
+  }, []);
+
   const handleProfileSetupComplete = () => {
     setShowProfileSetup(false);
   };
 
-  if (isInitializing) {
+  if (authStatus === 'initializing') {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="text-center">
@@ -59,5 +67,13 @@ export default function App() {
         </SettingsProvider>
       </TooltipProvider>
     </ThemeProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

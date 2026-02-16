@@ -11,7 +11,7 @@ export function useBackendActionGuard(): BackendActionGuard {
   if (state === 'loading') {
     return {
       disabled: true,
-      reason: 'Connecting to backend...',
+      reason: null,
     };
   }
 

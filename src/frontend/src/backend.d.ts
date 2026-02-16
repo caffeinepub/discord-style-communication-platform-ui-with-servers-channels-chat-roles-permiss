@@ -7,6 +7,10 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface GetMembersWithRolesResponse {
+    members: Array<ServerMemberInfo>;
+    roles: Array<Role>;
+}
 export interface ServerMemberWithUsername {
     member: ServerMember;
     username: string;
@@ -61,18 +65,22 @@ export interface ServerMember {
     joinedAt: bigint;
     roles: Array<bigint>;
 }
-export interface ChannelCategory {
-    id: bigint;
-    name: string;
-    voiceChannels: Array<VoiceChannel>;
-    isExpanded: boolean;
-    textChannels: Array<TextChannel>;
+export interface ServerMemberInfo {
+    member: ServerMember;
+    username: string;
 }
 export interface VoiceChannelPresence {
     userId: Principal;
     joinedAt: bigint;
     voiceChannelId: bigint;
     serverId: bigint;
+}
+export interface ChannelCategory {
+    id: bigint;
+    name: string;
+    voiceChannels: Array<VoiceChannel>;
+    isExpanded: boolean;
+    textChannels: Array<TextChannel>;
 }
 export interface Permission {
     value: boolean;
@@ -147,6 +155,7 @@ export interface backendInterface {
     getServer(serverId: bigint): Promise<Server>;
     getServerAuditLog(serverId: bigint): Promise<Array<AuditLogEntry>>;
     getServerMembers(serverId: bigint): Promise<Array<ServerMember>>;
+    getServerMembersWithRoles(serverId: bigint): Promise<GetMembersWithRolesResponse>;
     getServerMembersWithUsernames(serverId: bigint): Promise<Array<ServerMemberWithUsername>>;
     getServerOrdering(): Promise<Array<bigint>>;
     getServerRoles(serverId: bigint): Promise<Array<Role>>;

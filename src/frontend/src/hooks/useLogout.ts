@@ -1,12 +1,12 @@
-import { useInternetIdentity } from './useInternetIdentity';
+import { useAuth } from '../auth/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 
 export function useLogout() {
-  const { clear } = useInternetIdentity();
+  const { logout: authLogout } = useAuth();
   const queryClient = useQueryClient();
 
   const logout = async () => {
-    await clear();
+    await authLogout();
     queryClient.clear();
   };
 

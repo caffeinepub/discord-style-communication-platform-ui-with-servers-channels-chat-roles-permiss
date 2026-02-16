@@ -8,13 +8,11 @@ import Principal "mo:core/Principal";
 import Iter "mo:core/Iter";
 import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
-import Migration "migration";
+
 
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
-// Apply migration module on upgrade
-(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -186,6 +184,17 @@ actor {
   public type ServerMemberWithUsername = {
     member : ServerMember;
     username : Text;
+  };
+
+  // Info about server members including usernames (for roles management)
+  public type ServerMemberInfo = {
+    member : ServerMember;
+    username : Text;
+  };
+
+  public type GetMembersWithRolesResponse = {
+    members : [ServerMemberInfo];
+    roles : [Role];
   };
 
   // State
@@ -879,6 +888,33 @@ actor {
 
     // Log role removal
     logAuditEvent(serverId, caller, #RoleRemovedFromUser, "Role " # _roleId.toText() # " removed from user");
+  };
+
+  public query ({ caller }) func getServerMembersWithRoles(serverId : Nat) : async GetMembersWithRolesResponse {
+    if (not hasServerAdminPermission(serverId, caller)) {
+      Runtime.trap("Unauthorized: Only server admins can view member/role management data");
+    };
+    switch (servers.get(serverId)) {
+      case (null) { Runtime.trap("Server not found") };
+      case (?server) {
+        let memberInfos = server.members.map(
+          func(member) {
+            let username = switch (userUsernames.get(member.userId)) {
+              case (null) { "" };
+              case (?name) { name };
+            };
+            {
+              member;
+              username;
+            };
+          }
+        );
+        {
+          members = memberInfos;
+          roles = server.roles;
+        };
+      };
+    };
   };
 
   public query ({ caller }) func getServerMembersWithUsernames(serverId : Nat) : async [ServerMemberWithUsername] {

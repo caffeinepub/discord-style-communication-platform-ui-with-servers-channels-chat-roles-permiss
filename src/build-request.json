@@ -1,130 +1,148 @@
 {
   "kind": "build_request",
-  "title": "Server member roles on profiles, role assignment, and role-colored usernames",
+  "title": "Replace id.ai/Internet Identity with a custom internal account system",
+  "projectName": "Roles Admin",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Expose server member role data needed by the UI: provide backend APIs to (a) list a server’s roles, (b) fetch a server’s members including each member’s assigned role IDs, and (c) resolve a member’s effective display role color (use the highest-position role when multiple roles are assigned; if none, return null/empty so the UI can use the default text color).",
-      "target": "backend",
+      "text": "Remove Internet Identity (id.ai) as the authentication mechanism and implement a custom, canister-managed account system that supports account registration and login using app-managed credentials (e.g., username/email + password), without relying on Internet Identity or any external identity provider.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-user-1"
         ],
         "quotes": [
-          "make roles show up on users profiles in servers, allow giving roles, make the users name color their role color (if none keep default color)"
+          "Redo the account system completely, I do not want to use id.ai for the accounts."
         ]
       },
       "acceptanceCriteria": [
-        "Given a valid serverId, the backend returns the server’s roles (id, name, color, position).",
-        "Given a valid serverId, the backend returns the server’s members with role IDs attached to each member (matching the existing ServerMember.roles shape).",
-        "For any server member, the backend can provide the member’s effective role color based on the highest-position assigned role; when the member has no roles, the returned value indicates ‘no role color’ so the frontend can keep default styling.",
-        "All role/member APIs enforce appropriate authorization (e.g., only server members can view server member role assignments)."
+        "The app no longer prompts users to sign in with Internet Identity and does not call `AuthClient.login()` anywhere in the active login flow.",
+        "Users can create a new account and sign in using the app’s own credential flow.",
+        "Authentication does not depend on `process.env.II_URL` or any identityProvider URL.",
+        "A logged-in session persists across refresh (until explicit logout or expiration)."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Implement role assignment management in the backend: add/update methods that allow authorized users (server owner/admins or users with a suitable role permission) to assign and remove roles for a specific server member, and record audit log entries for role assignment/removal.",
+      "text": "Update the backend (single Motoko actor) to support custom accounts and sessions, including secure password storage (hashed + salted) and session issuance/validation for all authenticated actions.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-user-1"
         ],
         "quotes": [
-          "allow giving roles"
+          "Redo the account system completely, I do not want to use id.ai for the accounts."
         ]
       },
       "acceptanceCriteria": [
-        "An authorized caller can assign a role (roleId) to a target member (userId) within a server (serverId).",
-        "An authorized caller can remove a role (roleId) from a target member (userId) within a server (serverId).",
-        "Attempting to assign/remove roles without sufficient permissions fails with an Unauthorized-style error.",
-        "Assigning/removing roles creates audit log entries using the existing audit event types (#RoleAssignedToUser / #RoleRemovedFromUser) with meaningful details."
+        "Backend exposes endpoints to register an account, log in, log out, and retrieve the current session/account context.",
+        "Passwords are never stored or returned in plaintext; only salted password hashes are stored.",
+        "Backend validates a session token for protected operations and rejects calls with missing/invalid/expired tokens with a clear Unauthorized error.",
+        "Session tokens can be revoked on logout."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Add React Query hooks in frontend/src/hooks/useQueries.ts for: fetching server roles, fetching server members with role IDs, and assigning/removing a role for a server member; ensure mutations invalidate the relevant cached queries so Member List and Profile overlay reflect changes immediately.",
-      "target": "frontend",
+      "text": "Refactor authorization in `backend/main.mo` so that all user-protected operations currently gated by `AccessControl.hasPermission(accessControlState, caller, #user)` work with the new custom account/session system (i.e., no longer require Internet Identity-derived principals for normal user access).",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-user-1"
         ],
         "quotes": [
-          "make roles show up on users profiles in servers, allow giving roles"
+          "Redo the account system completely, I do not want to use id.ai for the accounts."
         ]
       },
       "acceptanceCriteria": [
-        "There are query hooks to load roles for the selected server and member role IDs for the selected server.",
-        "There are mutation hooks to assign/remove roles for a server member.",
-        "After a successful assign/remove mutation, the server members query and any role-related queries used by the profile overlay/message list are invalidated/refetched so UI updates without a full reload.",
-        "Errors are surfaced using the existing friendly toast/error patterns in useQueries.ts."
+        "After signing in via the new account system, a user can successfully perform actions that previously required `#user` permission (e.g., set username, read/save profile, create/join/leave servers) without using Internet Identity.",
+        "If not signed in (no valid session), the same actions fail with an Unauthorized error.",
+        "The backend remains a single actor and compiles successfully."
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Show a member’s roles on their server profile overlay (frontend/src/components/profile/UserProfileOverlay.tsx) when the overlay is opened from within a server context: display role chips/badges with the role name and role color; if the member has no roles, do not show a roles section.",
+      "text": "Replace the current frontend authentication wiring (which depends on `useInternetIdentity`) with a new custom Auth provider/hook that manages session tokens and exposes `login`, `logout`, `register`, and `authStatus` for the UI.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-user-1"
         ],
         "quotes": [
-          "make roles show up on users profiles in servers"
+          "Redo the account system completely, I do not want to use id.ai for the accounts."
         ]
       },
       "acceptanceCriteria": [
-        "When viewing a member profile while a server is selected, the overlay includes a ‘Roles’ section listing the member’s assigned roles.",
-        "Each displayed role uses its configured color (e.g., colored dot or colored chip accent) and shows the role name in readable contrast.",
-        "If no server is selected, or the member has no roles in that server, the overlay does not show an empty roles section."
+        "`frontend/src/App.tsx` determines authenticated vs unauthenticated state using the new custom auth context (not `useInternetIdentity`).",
+        "The unauthenticated screen supports both “Create account” and “Sign in” flows.",
+        "Logout clears the session token and resets relevant cached queries similarly to the current behavior."
       ]
     },
     {
       "id": "REQ-5",
-      "text": "Allow assigning roles to users in a server from the UI: add role assignment controls accessible from the server member profile overlay and/or member list, including a list of available roles with current assignments indicated, and actions to add/remove roles (restricted/hidden for unauthorized users).",
+      "text": "Update all frontend React Query data hooks/mutations that call authenticated backend methods (see `frontend/src/hooks/useQueries.ts`) to include/attach the new session token so authenticated operations continue to work end-to-end.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-user-1"
         ],
         "quotes": [
-          "allow giving roles"
+          "Redo the account system completely, I do not want to use id.ai for the accounts."
         ]
       },
       "acceptanceCriteria": [
-        "When a user with permission views another member’s profile in a server, they can assign and remove roles using a clear control (e.g., dialog/sheet with role checkboxes).",
-        "Current role assignments for that member are shown as selected/checked.",
-        "Users without permission do not see role assignment controls (or controls are disabled with a clear unauthorized state).",
-        "After changing roles, the member list and profile overlay update to reflect the new roles."
+        "When logged out, authenticated queries/mutations are disabled or fail with a user-friendly Unauthorized message.",
+        "When logged in, existing features that require authentication (profile setup/save, server create/join/leave, role actions, messaging where applicable) work using the session-based auth.",
+        "No React Query hook relies on an Internet Identity identity being present to function."
       ]
     },
     {
       "id": "REQ-6",
-      "text": "Apply role color to usernames in server contexts: update message author name rendering (frontend/src/components/chat/MessageItem.tsx) and server member list rendering (frontend/src/components/members/MemberListPanel.tsx) so the displayed name uses the member’s effective role color; if the member has no roles, keep the default text color.",
+      "text": "Keep immutable frontend hook files unmodified by introducing new auth/session hooks in new files and updating only editable app code to use them.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-user-1"
         ],
         "quotes": [
-          "make the users name color their role color (if none keep default color)"
+          "Redo the account system completely, I do not want to use id.ai for the accounts."
         ]
       },
       "acceptanceCriteria": [
-        "In chat messages, the author name text is styled with the effective role color when the message is in a server channel context.",
-        "In the member list, each member’s display name is styled with the effective role color when they have a role with a color.",
-        "If a member has no roles (or role color is unavailable), names render with the existing default text color (no forced coloring).",
-        "Color styling does not reduce readability in light/dark themes (e.g., ensure adequate contrast by using the provided role color primarily for text and falling back safely if invalid)."
+        "No changes are made to any path listed in `frontend.immutablePaths` (including `frontend/src/hooks/useInternetIdentity.ts` and `frontend/src/hooks/useActor.ts`).",
+        "The application builds and runs using the new auth flow without requiring edits to immutable files."
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "text": "Update user-facing authentication UI copy to reflect the new account system (no references to Internet Identity), and apply a consistent, coherent visual theme to the auth screens and related auth UI states.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-user-1"
+        ],
+        "quotes": [
+          "Redo the account system completely, I do not want to use id.ai for the accounts."
+        ]
+      },
+      "acceptanceCriteria": [
+        "Login/registration screens use English text that describes the custom sign-in/sign-up flow and does not mention Internet Identity or id.ai.",
+        "Auth screens use a consistent theme (colors/typography/layout) that is applied uniformly across login, registration, and error states.",
+        "Theme choice avoids introducing new product features and only affects look-and-feel and presentation."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in backend/main.mo; only add migration (backend/migration.mo) if persistent state schema changes are required.",
-    "Do not modify files under frontend/src/components/ui or any paths listed as immutable in SYSTEM_CONTEXT."
+    "Backend must remain a single Motoko actor with all logic in `backend/main.mo`; only add `backend/migration.mo` if a state upgrade is required.",
+    "Do not edit files under `frontend/src/components/ui` (compose them only).",
+    "Do not modify any immutable frontend paths: `frontend/src/hooks/useInternetIdentity.ts`, `frontend/src/hooks/useInternetIdentity.tsx`, `frontend/src/hooks/useActor.ts`, `frontend/src/main.tsx`, `frontend/src/components/ui`.",
+    "Use English for all user-facing text."
   ],
   "nonGoals": [
-    "Creating a new permissions system beyond using the existing role permissions model and current admin/owner checks.",
-    "Role ordering UX changes (drag/drop reordering) unless required to determine ‘highest role’ beyond the existing Role.position field.",
-    "Displaying roles or role-color names in non-server contexts such as DMs/friends list, unless those views are explicitly within a server context."
+    "Do not integrate third-party authentication providers (including Internet Identity, OAuth, Auth0, etc.).",
+    "Do not add external databases or off-chain storage for accounts.",
+    "Do not add real-time features (WebSockets) as part of the account rewrite.",
+    "Do not implement payments or email/SMS verification as part of this request."
   ],
   "imageRequirements": {
     "required": [],

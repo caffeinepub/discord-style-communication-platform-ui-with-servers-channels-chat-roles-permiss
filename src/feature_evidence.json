@@ -2,10 +2,14 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-react-query-hooks-in-frontend-src-hooks-usequeries-ts-for-fetching-server-roles-fetching-server-members-with-role-ids-and-assigning-removing-a-role-for-a-server-member-ensure-mutations-invalidate-the-relevant-cached-queries-so-member-list-and-profile-overlay-reflect-changes-immediately",
-      "featureTitle": "Add React Query hooks in frontend/src/hooks/useQueries.ts for: fetching server roles, fetching server members with role IDs, and assigning/removing a role for a server member; ensure mutations invalidate the relevant cached queries so Member List and Profile overlay reflect changes immediately.",
+      "featureId": "feature-remove-internet-identity-id-ai-as-the-authentication-mechanism-and-implement-a-custom-canister-managed-account-system-that-supports-account-registration-and-login-using-app-managed-credentials-e-g-username-email-password-without-relying-on-internet-identity-or-any-external-identity-provider",
+      "featureTitle": "Remove Internet Identity (id.ai) as the authentication mechanism and implement a custom, canister-managed account system that supports account registration and login using app-managed credentials (e.g., username/email + password), without relying on Internet Identity or any external identity provider.",
       "files": [
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/App.tsx",
+        "frontend/src/auth/AuthProvider.tsx",
+        "frontend/src/auth/sessionStorage.ts",
+        "frontend/src/auth/useAuth.ts",
+        "frontend/src/pages/LoginScreen.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -16,16 +20,18 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-3"
+        "REQ-1"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-show-a-member-s-roles-on-their-server-profile-overlay-frontend-src-components-profile-userprofileoverlay-tsx-when-the-overlay-is-opened-from-within-a-server-context-display-role-chips-badges-with-the-role-name-and-role-color-if-the-member-has-no-roles-do-not-show-a-roles-section",
-      "featureTitle": "Show a member’s roles on their server profile overlay (frontend/src/components/profile/UserProfileOverlay.tsx) when the overlay is opened from within a server context: display role chips/badges with the role name and role color; if the member has no roles, do not show a roles section.",
+      "featureId": "feature-replace-the-current-frontend-authentication-wiring-which-depends-on-useinternetidentity-with-a-new-custom-auth-provider-hook-that-manages-session-tokens-and-exposes-login-logout-register-and-authstatus-for-the-ui",
+      "featureTitle": "Replace the current frontend authentication wiring (which depends on `useInternetIdentity`) with a new custom Auth provider/hook that manages session tokens and exposes `login`, `logout`, `register`, and `authStatus` for the UI.",
       "files": [
-        "frontend/src/components/profile/UserProfileOverlay.tsx",
-        "frontend/src/utils/roleColor.ts"
+        "frontend/src/App.tsx",
+        "frontend/src/auth/AuthProvider.tsx",
+        "frontend/src/hooks/useLogout.ts",
+        "frontend/src/pages/LoginScreen.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -41,32 +47,12 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-allow-assigning-roles-to-users-in-a-server-from-the-ui-add-role-assignment-controls-accessible-from-the-server-member-profile-overlay-and-or-member-list-including-a-list-of-available-roles-with-current-assignments-indicated-and-actions-to-add-remove-roles-restricted-hidden-for-unauthorized-users",
-      "featureTitle": "Allow assigning roles to users in a server from the UI: add role assignment controls accessible from the server member profile overlay and/or member list, including a list of available roles with current assignments indicated, and actions to add/remove roles (restricted/hidden for unauthorized users).",
+      "featureId": "feature-keep-immutable-frontend-hook-files-unmodified-by-introducing-new-auth-session-hooks-in-new-files-and-updating-only-editable-app-code-to-use-them",
+      "featureTitle": "Keep immutable frontend hook files unmodified by introducing new auth/session hooks in new files and updating only editable app code to use them.",
       "files": [
-        "frontend/src/components/profile/RoleAssignmentDialog.tsx",
-        "frontend/src/components/profile/UserProfileOverlay.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-5"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-apply-role-color-to-usernames-in-server-contexts-update-message-author-name-rendering-frontend-src-components-chat-messageitem-tsx-and-server-member-list-rendering-frontend-src-components-members-memberlistpanel-tsx-so-the-displayed-name-uses-the-member-s-effective-role-color-if-the-member-has-no-roles-keep-the-default-text-color",
-      "featureTitle": "Apply role color to usernames in server contexts: update message author name rendering (frontend/src/components/chat/MessageItem.tsx) and server member list rendering (frontend/src/components/members/MemberListPanel.tsx) so the displayed name uses the member’s effective role color; if the member has no roles, keep the default text color.",
-      "files": [
-        "frontend/src/components/chat/MessageItem.tsx",
-        "frontend/src/components/members/MemberListPanel.tsx",
-        "frontend/src/utils/roleColor.ts"
+        "frontend/src/App.tsx",
+        "frontend/src/auth/AuthProvider.tsx",
+        "frontend/src/hooks/useLogout.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -78,6 +64,26 @@
       ],
       "testIds": [
         "REQ-6"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-user-facing-authentication-ui-copy-to-reflect-the-new-account-system-no-references-to-internet-identity-and-apply-a-consistent-coherent-visual-theme-to-the-auth-screens-and-related-auth-ui-states",
+      "featureTitle": "Update user-facing authentication UI copy to reflect the new account system (no references to Internet Identity), and apply a consistent, coherent visual theme to the auth screens and related auth UI states.",
+      "files": [
+        "frontend/src/components/auth/AuthLayout.tsx",
+        "frontend/src/pages/LoginScreen.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-7"
       ],
       "confidence": "high"
     }
