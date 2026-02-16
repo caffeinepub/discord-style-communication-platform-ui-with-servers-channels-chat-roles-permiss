@@ -1,4 +1,4 @@
-import type { Server } from '../../backend';
+import type { Server } from '../../types/backend-extended';
 
 interface ServerIconProps {
   server: Server;

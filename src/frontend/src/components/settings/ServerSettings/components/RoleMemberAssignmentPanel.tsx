@@ -1,21 +1,20 @@
 import { useState } from 'react';
-import { Principal } from '@dfinity/principal';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Users } from 'lucide-react';
-import { useGetServerMembersWithRoles } from '@/hooks/useQueries';
+import { useGetMembersWithRoles } from '@/hooks/useQueries';
 import { sanitizeRoleColor } from '@/utils/roleColor';
 import RoleAssignmentDialog from '@/components/profile/RoleAssignmentDialog';
-import type { ServerMemberInfo } from '@/backend';
+import type { ServerMemberInfo } from '@/types/backend-extended';
 
 interface RoleMemberAssignmentPanelProps {
   serverId: bigint;
 }
 
 export default function RoleMemberAssignmentPanel({ serverId }: RoleMemberAssignmentPanelProps) {
-  const { data, isLoading } = useGetServerMembersWithRoles(serverId);
+  const { data, isLoading } = useGetMembersWithRoles(serverId);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [showRoleDialog, setShowRoleDialog] = useState(false);
 

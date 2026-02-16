@@ -3,8 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useGetFriends, useGetFriendRequests, useSendFriendRequest, useAcceptFriendRequest, useDeclineFriendRequest } from '../../hooks/useQueries';
-import { Principal } from '@dfinity/principal';
+import { useGetFriends, useGetFriendRequests, useSendFriendRequest, useAcceptFriendRequest, useRejectFriendRequest } from '../../hooks/useQueries';
 import { toast } from 'sonner';
 import FriendRow from './FriendRow';
 
@@ -14,18 +13,18 @@ export default function FriendsHomeView() {
   const { data: requests = [] } = useGetFriendRequests();
   const sendRequest = useSendFriendRequest();
   const acceptRequest = useAcceptFriendRequest();
-  const declineRequest = useDeclineFriendRequest();
+  const rejectRequest = useRejectFriendRequest();
 
   const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!friendInput.trim()) return;
 
     try {
-      const principal = Principal.fromText(friendInput.trim());
-      await sendRequest.mutateAsync(principal);
+      // Send the username string directly
+      await sendRequest.mutateAsync(friendInput.trim());
       setFriendInput('');
     } catch (error) {
-      toast.error('Invalid principal ID');
+      toast.error('Failed to send friend request');
     }
   };
 
@@ -85,7 +84,7 @@ export default function FriendsHomeView() {
                       <Button size="sm" onClick={() => acceptRequest.mutate(request.from)}>
                         Accept
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => declineRequest.mutate(request.from)}>
+                      <Button size="sm" variant="outline" onClick={() => rejectRequest.mutate(request.from)}>
                         Decline
                       </Button>
                     </div>
@@ -101,12 +100,12 @@ export default function FriendsHomeView() {
             <TabsContent value="add" className="mt-4">
               <form onSubmit={handleAddFriend} className="space-y-4 max-w-md">
                 <div className="space-y-2">
-                  <Label htmlFor="friend-id">Friend's Principal ID</Label>
+                  <Label htmlFor="friend-id">Friend's Username</Label>
                   <Input
                     id="friend-id"
                     value={friendInput}
                     onChange={(e) => setFriendInput(e.target.value)}
-                    placeholder="Enter principal ID"
+                    placeholder="Enter username"
                   />
                 </div>
                 <Button type="submit" disabled={!friendInput.trim() || sendRequest.isPending}>

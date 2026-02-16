@@ -18,9 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Hash, Volume2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Hash, Volume2, AlertCircle } from 'lucide-react';
 import { useAddTextChannel, useAddVoiceChannel } from '../../../../hooks/useQueries';
-import type { ChannelCategory } from '../../../../backend';
+import type { ChannelCategory } from '../../../../types/backend-extended';
 
 interface CreateChannelInSettingsDialogProps {
   open: boolean;
@@ -46,6 +47,7 @@ export default function CreateChannelInSettingsDialog({
   const addVoiceChannel = useAddVoiceChannel();
 
   const isPending = addTextChannel.isPending || addVoiceChannel.isPending;
+  const currentMutation = channelType === 'text' ? addTextChannel : addVoiceChannel;
 
   // Set default category when dialog opens or defaultCategoryId changes
   useEffect(() => {
@@ -75,20 +77,25 @@ export default function CreateChannelInSettingsDialog({
           channelName: channelName.trim(),
         });
       }
+      // Only close and reset on success
       setChannelName('');
       setChannelType('text');
       setSelectedCategoryId('');
       onOpenChange(false);
     } catch (error) {
-      // Error is handled by the mutation's onError
+      // Error is handled by the mutation's onError (toast)
+      // Dialog stays open so user can see the error and retry
+      console.error('Failed to create channel:', error);
     }
   };
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
+    if (!newOpen && !isPending) {
       setChannelName('');
       setChannelType('text');
       setSelectedCategoryId('');
+      addTextChannel.reset();
+      addVoiceChannel.reset();
     }
     onOpenChange(newOpen);
   };
@@ -104,18 +111,28 @@ export default function CreateChannelInSettingsDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {currentMutation.isError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {currentMutation.error?.message || 'Failed to create channel'}
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="grid gap-2">
               <Label>Channel Type</Label>
               <RadioGroup
                 value={channelType}
                 onValueChange={(value) => setChannelType(value as ChannelType)}
                 className="grid grid-cols-2 gap-4"
+                disabled={isPending}
               >
                 <div>
                   <RadioGroupItem
                     value="text"
                     id="text"
                     className="peer sr-only"
+                    disabled={isPending}
                   />
                   <Label
                     htmlFor="text"
@@ -130,6 +147,7 @@ export default function CreateChannelInSettingsDialog({
                     value="voice"
                     id="voice"
                     className="peer sr-only"
+                    disabled={isPending}
                   />
                   <Label
                     htmlFor="voice"
@@ -147,7 +165,7 @@ export default function CreateChannelInSettingsDialog({
               <Select
                 value={selectedCategoryId}
                 onValueChange={setSelectedCategoryId}
-                disabled={categories.length === 0}
+                disabled={categories.length === 0 || isPending}
               >
                 <SelectTrigger id="category">
                   <SelectValue placeholder="Select a category" />
@@ -176,6 +194,7 @@ export default function CreateChannelInSettingsDialog({
                 placeholder={channelType === 'text' ? 'e.g., general-chat' : 'e.g., voice-lounge'}
                 maxLength={50}
                 autoFocus
+                disabled={isPending}
               />
             </div>
           </div>

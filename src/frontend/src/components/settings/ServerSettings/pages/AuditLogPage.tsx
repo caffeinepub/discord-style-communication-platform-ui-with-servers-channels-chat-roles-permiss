@@ -1,29 +1,32 @@
 import { useNavigation } from '../../../../state/navigation';
-import { useGetServerAuditLog } from '../../../../hooks/useQueries';
+import { useGetAuditLog } from '../../../../hooks/useQueries';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import type { AuditLogEntry, AuditEventType } from '../../../../backend';
+import type { AuditLogEntry, AuditEventType } from '../../../../types/backend-extended';
 
 function formatEventType(eventType: AuditEventType): string {
-  const typeMap: Record<string, string> = {
-    ServerCreated: 'Server Created',
-    ServerRenamed: 'Server Renamed',
-    SettingsUpdated: 'Settings Updated',
-    CategoryAdded: 'Category Added',
-    TextChannelAdded: 'Text Channel Added',
-    VoiceChannelAdded: 'Voice Channel Added',
-    ChannelMoved: 'Channel Moved',
-    RoleAdded: 'Role Added',
-    RolePermissionsSet: 'Role Permissions Updated',
-    RoleAssignedToUser: 'Role Assigned',
-    RoleRemovedFromUser: 'Role Removed',
-    MessageSent: 'Message Sent',
-    UserJoinedVoiceChannel: 'Joined Voice Channel',
-    UserLeftVoiceChannel: 'Left Voice Channel',
-    ServerJoined: 'User Joined Server',
-    ServerLeft: 'User Left Server',
-  };
-  return typeMap[eventType] || eventType;
+  if ('__kind__' in eventType) {
+    const typeMap: Record<string, string> = {
+      ServerCreated: 'Server Created',
+      ServerRenamed: 'Server Renamed',
+      SettingsUpdated: 'Settings Updated',
+      CategoryAdded: 'Category Added',
+      TextChannelAdded: 'Text Channel Added',
+      VoiceChannelAdded: 'Voice Channel Added',
+      ChannelMoved: 'Channel Moved',
+      RoleAdded: 'Role Added',
+      RolePermissionsSet: 'Role Permissions Updated',
+      RoleAssignedToUser: 'Role Assigned',
+      RoleRemovedFromUser: 'Role Removed',
+      MessageSent: 'Message Sent',
+      UserJoinedVoiceChannel: 'Joined Voice Channel',
+      UserLeftVoiceChannel: 'Left Voice Channel',
+      ServerJoined: 'User Joined Server',
+      ServerLeft: 'User Left Server',
+    };
+    return typeMap[eventType.__kind__] || eventType.__kind__;
+  }
+  return 'Unknown Event';
 }
 
 function formatTimestamp(timestamp: bigint): string {
@@ -49,7 +52,7 @@ function formatPrincipal(principal: string): string {
 
 export default function AuditLogPage() {
   const { selectedServerId } = useNavigation();
-  const { data: auditLog = [], isLoading, error } = useGetServerAuditLog(selectedServerId);
+  const { data: auditLog = [], isLoading, error } = useGetAuditLog(selectedServerId);
 
   if (!selectedServerId) {
     return (

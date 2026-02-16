@@ -1,42 +1,105 @@
 {
   "kind": "build_request",
-  "title": "Add bottom-left profile settings button",
+  "title": "Fix registration: backend must return session data and validate stored sessions",
   "projectName": "Caffeine Chat",
-  "priority": "normal",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Add a user-accessible \"Profile Settings\" button positioned in the bottom-left corner of the desktop UI that opens the existing User Settings overlay when clicked.",
-      "target": "frontend",
+      "text": "Implement backend `register(payload : RegisterPayload) : async ?Session` to create a new user account for the caller (guest) and return non-null session data (token, accountId, expiresAt, optional email) on success instead of always returning null.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "recent-messages-4"
         ],
         "quotes": [
-          "add profile settings button at the bottom left corner"
+          "Registration is not yet fully implemented. The backend returned no session data.\nFIX BRO"
         ]
       },
       "acceptanceCriteria": [
-        "On desktop layout, a settings button is visible in the bottom-left corner of the app UI (within the leftmost rail area).",
-        "Clicking the button sets the existing navigation state to open the User Settings overlay (the view rendered by UserSettingsShell via showUserSettings).",
-        "The button has an English tooltip/label (e.g., \"User Settings\" or \"Profile Settings\").",
-        "The button is keyboard accessible (reachable via Tab and activatable via Enter/Space).",
-        "Mobile behavior is not regressed (existing settings entry points in MobileTopBar/MobileShell continue to work)."
+        "Calling `actor.register({ username, email, password })` returns `?Session` (non-null) for a valid new registration.",
+        "Returned `Session` contains non-empty `token` and `accountId`, and `expiresAt` is a future timestamp (milliseconds or a clearly documented unit consistent with frontend usage).",
+        "Backend does not trap for a valid guest caller registering a new account.",
+        "If the caller is not allowed to register (e.g., already a user), backend returns null or traps with a clear error message (choose one consistent behavior and document via error message)."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Implement backend `validateSession(token : Text) : async ?Session` to return non-null session data when the provided token is known and not expired, and return null when the token is unknown/expired.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "recent-messages-4"
+        ],
+        "quotes": [
+          "The backend returned no session data."
+        ]
+      },
+      "acceptanceCriteria": [
+        "Given a session token previously returned by `register`, `validateSession(token)` returns `?Session` (non-null) with the same token/accountId and a non-expired `expiresAt`.",
+        "Given an unknown token, `validateSession(token)` returns null (does not trap).",
+        "Given an expired token, `validateSession(token)` returns null and the session is treated as invalid."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Ensure the deployed backend candid/actor interface exposes `register` and `validateSession` exactly as the frontend calls them, so the frontend can successfully invoke `actor.register(payload)` and `actor.validateSession(token)` without runtime errors or type mismatches.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "recent-messages-4"
+        ],
+        "quotes": [
+          "Registration is not yet fully implemented. The backend returned no session data."
+        ]
+      },
+      "acceptanceCriteria": [
+        "Frontend can call `actor.register(payload)` and receives a response (non-null on success) without 'is not a function' runtime errors.",
+        "Frontend can refresh the page after registering and `AuthProvider` successfully validates the stored session via `actor.validateSession(session.token)` and transitions to authenticated state.",
+        "No changes are made to immutable frontend paths listed in SYSTEM_CONTEXT."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Update frontend auth handling so that a successful backend registration response always results in a persisted session (localStorage) and an authenticated UI state, and a null/invalid response results in a clear English error message without leaving the app stuck in a loading state.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "recent-messages-4"
+        ],
+        "quotes": [
+          "Registration is not yet fully implemented. The backend returned no session data."
+        ]
+      },
+      "acceptanceCriteria": [
+        "After successful registration (non-null session), `frontend/src/auth/sessionStorage.ts` contains the saved token/accountId/expiresAt and `authStatus` becomes `authenticated`.",
+        "If backend returns null from `register`, the signup UI displays an English error message and remains usable (no infinite spinner / no broken state).",
+        "On app reload with a stored (non-expired) session, `AuthProvider` validates it and sets authenticated state; if validation returns null, the stored session is cleared and the user is prompted to sign in again."
       ]
     }
   ],
   "constraints": [
-    "Do not edit files under frontend/src/components/ui (read-only shadcn components).",
-    "Do not edit immutable hook/entry files listed in SYSTEM_CONTEXT (compose them instead).",
-    "Backend must remain single-actor; no backend changes are required for this UI-only feature."
+    "Backend must remain a single Motoko actor in `backend/main.mo` (no additional backend services).",
+    "Do not edit any files under `frontend/src/components/ui` or any other immutable paths listed in SYSTEM_CONTEXT.",
+    "Use English for any user-facing text."
   ],
   "nonGoals": [
-    "Creating new user settings pages or changing existing settings functionality.",
-    "Adding or changing authentication behavior.",
-    "Changing server settings access points or channel navigation behavior."
+    "Implementing a full login endpoint (separate from registration) unless required to fix registration/session restoration.",
+    "Adding third-party authentication providers (only Internet Identity is supported).",
+    "Adding external databases or non-IC storage layers."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

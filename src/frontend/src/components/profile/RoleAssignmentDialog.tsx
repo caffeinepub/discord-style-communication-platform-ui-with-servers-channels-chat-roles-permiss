@@ -11,9 +11,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useGetServerRoles, useAssignRoleToUser, useRemoveRoleFromUser } from '@/hooks/useQueries';
+import { useGetRoles, useAssignRoleToUser, useRemoveRoleFromUser } from '@/hooks/useQueries';
 import { sanitizeRoleColor } from '@/utils/roleColor';
-import type { Role } from '@/backend';
+import type { Role } from '@/types/backend-extended';
 
 interface RoleAssignmentDialogProps {
   open: boolean;
@@ -30,7 +30,7 @@ export default function RoleAssignmentDialog({
   userId,
   currentRoleIds,
 }: RoleAssignmentDialogProps) {
-  const { data: roles = [], isLoading: rolesLoading } = useGetServerRoles(serverId);
+  const { data: roles = [], isLoading: rolesLoading } = useGetRoles(serverId);
   const assignRole = useAssignRoleToUser();
   const removeRole = useRemoveRoleFromUser();
   

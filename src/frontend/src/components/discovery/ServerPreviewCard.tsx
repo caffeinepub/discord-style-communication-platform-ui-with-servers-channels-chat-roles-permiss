@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users } from 'lucide-react';
-import type { Server } from '../../backend';
+import type { Server } from '../../types/backend-extended';
 
 interface ServerPreviewCardProps {
   server: Server;

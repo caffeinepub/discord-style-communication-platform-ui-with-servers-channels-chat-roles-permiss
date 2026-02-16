@@ -2,161 +2,152 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Plus } from 'lucide-react';
 import { useNavigation } from '../../../../state/navigation';
-import { useGetServerRoles, useAddRole } from '../../../../hooks/useQueries';
-import { Plus, Loader2 } from 'lucide-react';
+import { useGetRoles, useAddRoleToServer } from '../../../../hooks/useQueries';
+import { sanitizeRoleColor } from '@/utils/roleColor';
 import RoleMemberAssignmentPanel from '../components/RoleMemberAssignmentPanel';
-import type { Permission } from '../../../../backend';
-
-const AVAILABLE_PERMISSIONS = [
-  { name: 'administrator', label: 'Administrator' },
-  { name: 'manage_channels', label: 'Manage Channels' },
-  { name: 'manage_roles', label: 'Manage Roles' },
-  { name: 'kick_members', label: 'Kick Members' },
-  { name: 'ban_members', label: 'Ban Members' },
-  { name: 'moderate_messages', label: 'Moderate Messages' },
-  { name: 'manage_webhooks', label: 'Manage Webhooks' },
-  { name: 'create_invites', label: 'Create Invites' },
-  { name: 'manage_events', label: 'Manage Events' },
-];
+import type { Permission } from '../../../../types/backend-extended';
 
 export default function RolesPage() {
   const { selectedServerId } = useNavigation();
-  const { data: roles = [] } = useGetServerRoles(selectedServerId);
-  const addRole = useAddRole();
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const { data: roles = [], isLoading } = useGetRoles(selectedServerId);
+  const addRole = useAddRoleToServer();
+
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleColor, setNewRoleColor] = useState('#5865F2');
-  const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(new Set());
 
   const handleCreateRole = async () => {
     if (!selectedServerId || !newRoleName.trim()) return;
 
-    const permissions: Permission[] = AVAILABLE_PERMISSIONS.map((p) => ({
-      name: p.name,
-      value: selectedPermissions.has(p.name),
-    }));
+    const permissions: Permission[] = [];
 
-    await addRole.mutateAsync({
-      serverId: selectedServerId,
-      name: newRoleName.trim(),
-      color: newRoleColor,
-      permissions,
-    });
-
-    setNewRoleName('');
-    setNewRoleColor('#5865F2');
-    setSelectedPermissions(new Set());
-    setShowCreateDialog(false);
+    try {
+      await addRole.mutateAsync({
+        serverId: selectedServerId,
+        roleName: newRoleName.trim(),
+        color: newRoleColor,
+        permissions,
+      });
+      setNewRoleName('');
+      setNewRoleColor('#5865F2');
+    } catch (error) {
+      console.error('Failed to create role:', error);
+    }
   };
 
+  if (!selectedServerId) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <p>No server selected</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-2xl space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Roles</h3>
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Role
-        </Button>
-      </div>
-
-      <div className="space-y-2">
-        {roles.map((role) => (
-          <div
-            key={role.id.toString()}
-            className="flex items-center justify-between p-4 rounded-lg bg-accent/30"
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="h-4 w-4 rounded-full"
-                style={{ backgroundColor: role.color }}
-              />
-              <span className="font-medium">{role.name}</span>
-            </div>
-            <span className="text-sm text-muted-foreground">
-              {role.permissions.filter((p) => p.value).length} permissions
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <Separator className="my-6" />
-
+    <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Assign Roles to Members</h3>
-        {selectedServerId && <RoleMemberAssignmentPanel serverId={selectedServerId} />}
+        <h2 className="text-2xl font-bold">Roles</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage roles and permissions for your server
+        </p>
       </div>
 
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Role</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="role-name">Role Name</Label>
-              <Input
-                id="role-name"
-                value={newRoleName}
-                onChange={(e) => setNewRoleName(e.target.value)}
-                placeholder="New Role"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role-color">Role Color</Label>
+      <Separator />
+
+      {/* Create New Role */}
+      <div className="space-y-4 p-4 border border-border rounded-lg">
+        <h3 className="text-lg font-semibold">Create New Role</h3>
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="role-name">Role Name</Label>
+            <Input
+              id="role-name"
+              value={newRoleName}
+              onChange={(e) => setNewRoleName(e.target.value)}
+              placeholder="e.g., Moderator"
+              maxLength={50}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="role-color">Role Color</Label>
+            <div className="flex gap-2">
               <Input
                 id="role-color"
                 type="color"
                 value={newRoleColor}
                 onChange={(e) => setNewRoleColor(e.target.value)}
+                className="w-20 h-10"
+              />
+              <Input
+                value={newRoleColor}
+                onChange={(e) => setNewRoleColor(e.target.value)}
+                placeholder="#5865F2"
+                className="flex-1"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Permissions</Label>
-              <div className="space-y-2">
-                {AVAILABLE_PERMISSIONS.map((perm) => (
-                  <div key={perm.name} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={perm.name}
-                      checked={selectedPermissions.has(perm.name)}
-                      onCheckedChange={(checked) => {
-                        const newSet = new Set(selectedPermissions);
-                        if (checked) {
-                          newSet.add(perm.name);
-                        } else {
-                          newSet.delete(perm.name);
-                        }
-                        setSelectedPermissions(newSet);
-                      }}
-                    />
-                    <Label htmlFor={perm.name} className="font-normal cursor-pointer">
-                      {perm.label}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateRole} disabled={!newRoleName.trim() || addRole.isPending}>
-              {addRole.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Create'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <Button
+            onClick={handleCreateRole}
+            disabled={!newRoleName.trim() || addRole.isPending}
+            className="w-full"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {addRole.isPending ? 'Creating...' : 'Create Role'}
+          </Button>
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Existing Roles */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Existing Roles</h3>
+        {isLoading ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>Loading roles...</p>
+          </div>
+        ) : roles.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No roles created yet</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {roles.map((role) => {
+              const roleColor = sanitizeRoleColor(role.color);
+              return (
+                <div
+                  key={role.id.toString()}
+                  className="flex items-center justify-between p-4 border border-border rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    {roleColor && (
+                      <div
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: roleColor }}
+                      />
+                    )}
+                    <span className="font-medium">{role.name}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      Position: {role.position.toString()}
+                    </Badge>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* Member Role Assignment */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Assign Roles to Members</h3>
+        <RoleMemberAssignmentPanel serverId={selectedServerId} />
+      </div>
     </div>
   );
 }

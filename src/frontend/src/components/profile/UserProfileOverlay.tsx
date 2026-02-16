@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigation } from '@/state/navigation';
-import { useGetUserProfile, useGetUsernameForUser, useGetServerMembers, useGetServerRoles, useIsCallerAdmin, useGetServer } from '@/hooks/useQueries';
+import { useGetUserProfile, useGetUsernameForUser, useGetServerMembers, useGetRoles, useIsCallerAdmin, useGetServer } from '@/hooks/useQueries';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 import { Principal } from '@dfinity/principal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
 import { sanitizeRoleColor } from '@/utils/roleColor';
 import RoleAssignmentDialog from './RoleAssignmentDialog';
-import type { Role } from '@/backend';
+import type { Role } from '@/types/backend-extended';
 
 export default function UserProfileOverlay() {
   const { selectedMemberId, selectedServerId, setSelectedMemberId } = useNavigation();
@@ -24,7 +24,7 @@ export default function UserProfileOverlay() {
   // Server context data
   const { data: server } = useGetServer(selectedServerId);
   const { data: members = [] } = useGetServerMembers(selectedServerId);
-  const { data: roles = [] } = useGetServerRoles(selectedServerId);
+  const { data: roles = [] } = useGetRoles(selectedServerId);
   const { data: isCallerAdmin = false } = useIsCallerAdmin();
 
   const isOpen = !!selectedMemberId;
@@ -211,13 +211,11 @@ export default function UserProfileOverlay() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+      <DialogContent className="max-w-md p-0 gap-0">
         <DialogHeader className="sr-only">
           <DialogTitle>User Profile</DialogTitle>
         </DialogHeader>
-        <div className="max-h-[80vh] overflow-y-auto">
-          {content}
-        </div>
+        {content}
       </DialogContent>
     </Dialog>
   );

@@ -23,7 +23,7 @@ export default function ChatComposer({ channelName }: ChatComposerProps) {
     try {
       await sendMessage.mutateAsync({
         serverId: selectedServerId,
-        textChannelId: selectedChannelId,
+        channelId: selectedChannelId,
         content: message.trim(),
       });
       setMessage('');

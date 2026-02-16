@@ -10,108 +10,16 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export type AuditEventType = { 'UserJoinedVoiceChannel' : null } |
-  { 'ServerCreated' : null } |
-  { 'RoleAssignedToUser' : null } |
-  { 'VoiceChannelAdded' : null } |
-  { 'RoleRemovedFromUser' : null } |
-  { 'RolePermissionsSet' : null } |
-  { 'MessageSent' : null } |
-  { 'ServerLeft' : null } |
-  { 'UserLeftVoiceChannel' : null } |
-  { 'ServerRenamed' : null } |
-  { 'CategoryAdded' : null } |
-  { 'ChannelMoved' : null } |
-  { 'ServerJoined' : null } |
-  { 'TextChannelAdded' : null } |
-  { 'SettingsUpdated' : null } |
-  { 'RoleAdded' : null };
-export interface AuditLogEntry {
-  'id' : bigint,
-  'userId' : Principal,
-  'timestamp' : bigint,
-  'details' : string,
-  'serverId' : bigint,
-  'eventType' : AuditEventType,
-}
-export interface CategoryLevelOrdering {
-  'id' : bigint,
-  'voiceChannels' : Array<bigint>,
-  'textChannels' : Array<bigint>,
-}
-export interface ChannelCategory {
-  'id' : bigint,
-  'name' : string,
-  'voiceChannels' : Array<VoiceChannel>,
-  'isExpanded' : boolean,
-  'textChannels' : Array<TextChannel>,
-}
-export interface FriendRequest {
-  'to' : Principal,
-  'from' : Principal,
-  'timestamp' : bigint,
-}
-export interface GetMembersWithRolesResponse {
-  'members' : Array<ServerMemberInfo>,
-  'roles' : Array<Role>,
-}
-export interface Permission { 'value' : boolean, 'name' : string }
 export interface RegisterPayload {
   'username' : string,
   'password' : string,
   'email' : string,
-}
-export interface Role {
-  'id' : bigint,
-  'permissions' : Array<Permission>,
-  'name' : string,
-  'color' : string,
-  'position' : bigint,
-}
-export interface Server {
-  'id' : bigint,
-  'members' : Array<ServerMember>,
-  'owner' : Principal,
-  'name' : string,
-  'description' : string,
-  'channels' : Array<ChannelCategory>,
-  'communityMode' : boolean,
-  'bannerUrl' : string,
-  'iconUrl' : string,
-  'roles' : Array<Role>,
-}
-export interface ServerMember {
-  'userId' : Principal,
-  'joinedAt' : bigint,
-  'roles' : Array<bigint>,
-}
-export interface ServerMemberInfo {
-  'member' : ServerMember,
-  'username' : string,
-}
-export interface ServerMemberWithUsername {
-  'member' : ServerMember,
-  'username' : string,
-}
-export interface ServerOrdering {
-  'categories' : Array<CategoryLevelOrdering>,
-  'categoryOrder' : Array<bigint>,
 }
 export interface Session {
   'token' : string,
   'expiresAt' : bigint,
   'accountId' : string,
   'email' : [] | [string],
-}
-export interface TextChannel { 'id' : bigint, 'name' : string }
-export interface TextChannelMessage {
-  'id' : bigint,
-  'content' : string,
-  'createdAt' : bigint,
-  'createdBy' : Principal,
-  'isPersistent' : boolean,
-  'textChannelId' : bigint,
-  'serverId' : bigint,
 }
 export interface UserProfile {
   'customStatus' : string,
@@ -124,102 +32,15 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
-export type UserStatus = { 'Idle' : null } |
-  { 'Online' : null } |
-  { 'Invisible' : null } |
-  { 'DoNotDisturb' : null };
-export interface VoiceChannel { 'id' : bigint, 'name' : string }
-export interface VoiceChannelPresence {
-  'userId' : Principal,
-  'joinedAt' : bigint,
-  'voiceChannelId' : bigint,
-  'serverId' : bigint,
-}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'acceptFriendRequest' : ActorMethod<[Principal], undefined>,
-  'addCategoryToServer' : ActorMethod<[bigint, string], bigint>,
-  'addRole' : ActorMethod<[bigint, string, string, Array<Permission>], bigint>,
-  'addTextChannel' : ActorMethod<[bigint, bigint, string], bigint>,
-  'addVoiceChannel' : ActorMethod<[bigint, bigint, string], bigint>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'assignRoleToUser' : ActorMethod<[bigint, bigint, Principal], undefined>,
-  'blockUser' : ActorMethod<[Principal], undefined>,
-  'createServer' : ActorMethod<[string, string], bigint>,
-  'declineFriendRequest' : ActorMethod<[Principal], undefined>,
-  'getAllServers' : ActorMethod<[], Array<Server>>,
-  'getCallerAccountEmail' : ActorMethod<[], [] | [string]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getCallerUsername' : ActorMethod<[], [] | [string]>,
-  'getCategories' : ActorMethod<[bigint], Array<ChannelCategory>>,
-  /**
-   * / Get the persisted ordering for categories and channels within each one
-   */
-  'getCategoryChannelOrdering' : ActorMethod<[bigint], [] | [ServerOrdering]>,
-  'getFriendRequests' : ActorMethod<[], Array<FriendRequest>>,
-  'getFriends' : ActorMethod<[], Array<Principal>>,
-  'getMemberDisplayColor' : ActorMethod<[bigint, Principal], [] | [string]>,
-  'getRoles' : ActorMethod<[bigint], Array<Role>>,
-  'getServer' : ActorMethod<[bigint], Server>,
-  'getServerAuditLog' : ActorMethod<[bigint], Array<AuditLogEntry>>,
-  'getServerMembers' : ActorMethod<[bigint], Array<ServerMember>>,
-  'getServerMembersWithRoles' : ActorMethod<
-    [bigint],
-    GetMembersWithRolesResponse
-  >,
-  'getServerMembersWithUsernames' : ActorMethod<
-    [bigint],
-    Array<ServerMemberWithUsername>
-  >,
-  'getServerOrdering' : ActorMethod<[], Array<bigint>>,
-  'getServerRoles' : ActorMethod<[bigint], Array<Role>>,
-  'getTextChannelMessages' : ActorMethod<
-    [bigint, bigint, [] | [bigint]],
-    Array<TextChannelMessage>
-  >,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'getUserStatus' : ActorMethod<[Principal], [] | [UserStatus]>,
-  'getUsernameForUser' : ActorMethod<[Principal], [] | [string]>,
-  'getVoiceChannelParticipants' : ActorMethod<
-    [bigint, bigint],
-    Array<VoiceChannelPresence>
-  >,
-  'healthCheck' : ActorMethod<[], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'joinServer' : ActorMethod<[bigint], undefined>,
-  'joinVoiceChannel' : ActorMethod<[bigint, bigint], undefined>,
-  'leaveServer' : ActorMethod<[bigint], undefined>,
-  'leaveVoiceChannel' : ActorMethod<[bigint, bigint], undefined>,
-  /**
-   * / Create new session for a new user registration
-   * / Allows anonymous/guest users to register (no authorization check needed)
-   */
-  'register' : ActorMethod<[RegisterPayload], Session>,
-  'removeFriend' : ActorMethod<[Principal], undefined>,
-  'removeRoleFromUser' : ActorMethod<[bigint, bigint, Principal], undefined>,
-  'renameServer' : ActorMethod<[bigint, string], undefined>,
+  'register' : ActorMethod<[RegisterPayload], [] | [Session]>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'sendFriendRequest' : ActorMethod<[Principal], undefined>,
-  'sendTextChannelMessage' : ActorMethod<[bigint, bigint, string], bigint>,
-  /**
-   * / Persist the channel ordering per-category/section (passed as a [categoryId, [textChannelIds], [voiceChannelIds]] mapping)
-   */
-  'setCategoryChannelOrdering' : ActorMethod<
-    [bigint, ServerOrdering],
-    undefined
-  >,
-  'setRolePermissions' : ActorMethod<
-    [bigint, bigint, Array<Permission>],
-    undefined
-  >,
-  'setServerOrdering' : ActorMethod<[Array<bigint>], undefined>,
-  'setUserStatus' : ActorMethod<[UserStatus], undefined>,
-  'setUsername' : ActorMethod<[string], undefined>,
-  /**
-   * / Validate session with the persistent store (future: make more secure)
-   * / No authorization needed - this is used to validate sessions
-   */
   'validateSession' : ActorMethod<[string], [] | [Session]>,
 }
 export declare const idlService: IDL.ServiceClass;

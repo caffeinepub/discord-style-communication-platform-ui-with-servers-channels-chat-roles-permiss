@@ -1,12 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Add a bottom-left “Profile Settings” button on desktop that opens the existing User Settings overlay.
+**Goal:** Fix registration and session restoration by returning real session data from the backend, validating stored sessions, and ensuring the frontend persists and reacts to auth state correctly.
 
 **Planned changes:**
-- Add a settings button within the leftmost rail area of the desktop UI, positioned at the bottom-left.
-- Wire the button click to the existing navigation state/action to open the User Settings overlay (UserSettingsShell via `showUserSettings`).
-- Ensure the button includes an English label/tooltip and is keyboard accessible (Tab focus, Enter/Space activation).
-- Verify mobile settings entry points remain unchanged and continue to work.
+- Implement backend `register(payload) : async ?Session` to create a new user and return a non-null `Session` on success (token, accountId, expiresAt, optional email), with consistent error/null behavior when registration is not allowed.
+- Implement backend `validateSession(token) : async ?Session` to return session data for known, non-expired tokens and null for unknown/expired tokens.
+- Ensure the deployed backend candid/actor interface exposes `register` and `validateSession` exactly as the frontend calls them to avoid runtime/type mismatches.
+- Update frontend auth flow so successful registration persists session data to localStorage and transitions to authenticated state; null/invalid responses show a clear English error and never leave the UI stuck loading; on reload, validate stored sessions and clear invalid ones.
 
-**User-visible outcome:** Desktop users see a bottom-left “Profile Settings” button that opens the existing User Settings overlay when clicked (and can be accessed via keyboard), without impacting mobile behavior.
+**User-visible outcome:** Users can sign up successfully and be logged in immediately, and returning users with a valid stored session remain logged in after refresh; invalid/expired sessions prompt re-authentication with clear English errors.

@@ -1,23 +1,52 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Add bottom-left Profile Settings button (desktop)",
+  "title": "Caffeine Chat — Frontend session persistence and validation hardening",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Add a bottom-left desktop rail button that opens the existing User Settings overlay via showUserSettings.",
+      "id": "REQ-3",
+      "summary": "Harden frontend actor invocation to ensure `register` and `validateSession` mismatches fail gracefully (no runtime 'is not a function' errors) and allow session restoration to proceed safely.",
       "acceptanceCriteria": [
-        "On desktop layout, a settings button is visible in the bottom-left corner of the app UI (within the leftmost rail area).",
-        "Clicking the button sets the existing navigation state to open the User Settings overlay (the view rendered by UserSettingsShell via showUserSettings).",
-        "The button has an English tooltip/label (e.g., \"User Settings\" or \"Profile Settings\").",
-        "The button is keyboard accessible (reachable via Tab and activatable via Enter/Space).",
-        "Mobile behavior is not regressed (existing settings entry points in MobileTopBar/MobileShell continue to work)."
+        "Frontend can call `actor.register(payload)` and receives a response (non-null on success) without 'is not a function' runtime errors.",
+        "Frontend can refresh the page after registering and `AuthProvider` successfully validates the stored session via `actor.validateSession(session.token)` and transitions to authenticated state.",
+        "No changes are made to immutable frontend paths listed in SYSTEM_CONTEXT."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/nav/ServerRail.tsx",
+          "path": "frontend/src/auth/AuthProvider.tsx",
           "operation": "modify",
-          "description": "Add a new bottom-positioned \"Profile Settings\" (or \"User Settings\") control within the desktop left rail: import an appropriate icon (e.g., Settings) and wire its onClick to the existing navigation state setter (setShowUserSettings(true)) so MainContent renders UserSettingsShell. Ensure the control uses existing accessible button patterns (Button or button with aria-label) and an English Tooltip label, and keep the rail layout such that the control appears at the bottom-left area without affecting mobile entry points."
+          "description": "Before invoking backend functions, add defensive runtime checks that `register` and `validateSession` exist and are callable on the actor; if missing/mismatched, clear any stored session (for validation flow), set `authStatus` to `unauthenticated`, and surface a clear English error message instead of throwing a TypeError."
+        },
+        {
+          "path": "frontend/src/hooks/useSafeActor.ts",
+          "operation": "modify",
+          "description": "Ensure the actor initialization path returns an object compatible with the expected `backendInterface` shape used by the app; if initialization yields an actor lacking required auth functions, keep connection state consistent (error or unauthenticated) so `AuthProvider` can render a usable sign-in/sign-up UI instead of crashing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Update frontend registration + session restoration flows so successful registration persists a session and authenticates the UI, while null/invalid responses show clear English errors without leaving the app stuck loading.",
+      "acceptanceCriteria": [
+        "After successful registration (non-null session), `frontend/src/auth/sessionStorage.ts` contains the saved token/accountId/expiresAt and `authStatus` becomes `authenticated`.",
+        "If backend returns null from `register`, the signup UI displays an English error message and remains usable (no infinite spinner / no broken state).",
+        "On app reload with a stored (non-expired) session, `AuthProvider` validates it and sets authenticated state; if validation returns null, the stored session is cleared and the user is prompted to sign in again."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/auth/AuthProvider.tsx",
+          "operation": "modify",
+          "description": "Adjust registration and error handling so: (1) a non-null registration response always saves session data to `sessionStorage` and sets `authStatus` to `authenticated`; (2) a null response produces a clear English error and returns the app to `unauthenticated` (not a sticky `error` state); (3) failures during session validation/registration reliably clear loading states and do not leave the UI stuck in `initializing`."
+        },
+        {
+          "path": "frontend/src/auth/sessionStorage.ts",
+          "operation": "modify",
+          "description": "Strengthen session persistence/validation to reliably store and load token/accountId/expiresAt (and tolerate backend-provided numeric representations), ensure expiration checks remain consistent with `AuthProvider` usage, and keep behavior deterministic when stored data is malformed (clear and return null)."
+        },
+        {
+          "path": "frontend/src/pages/LoginScreen.tsx",
+          "operation": "modify",
+          "description": "Ensure sign-up error presentation remains clear and usable when registration returns null/invalid: keep the form interactive after failures, surface the thrown English message from `AuthProvider.register`, and avoid any UI state that could appear as an infinite spinner or dead form."
         }
       ]
     }

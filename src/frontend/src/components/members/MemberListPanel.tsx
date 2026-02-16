@@ -1,9 +1,8 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNavigation } from '../../state/navigation';
-import { useGetServerMembersWithUsernames, useGetUserProfile, useGetMemberDisplayColor } from '../../hooks/useQueries';
+import { useGetServerMembersWithUsernames, useGetUserProfile } from '../../hooks/useQueries';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { sanitizeRoleColor } from '@/utils/roleColor';
-import type { ServerMemberWithUsername } from '@/backend';
+import type { ServerMemberWithUsername } from '@/types/backend-extended';
 
 export default function MemberListPanel() {
   const { selectedServerId, setSelectedMemberId } = useNavigation();
@@ -20,8 +19,7 @@ export default function MemberListPanel() {
             <MemberRow
               key={memberData.member.userId.toString()}
               memberData={memberData}
-              serverId={selectedServerId}
-              onClick={() => setSelectedMemberId(memberData.member.userId.toString())}
+              onSelect={setSelectedMemberId}
             />
           ))}
         </div>
@@ -30,39 +28,31 @@ export default function MemberListPanel() {
   );
 }
 
-function MemberRow({ 
-  memberData, 
-  serverId,
-  onClick 
-}: { 
+interface MemberRowProps {
   memberData: ServerMemberWithUsername;
-  serverId: bigint | null;
-  onClick: () => void;
-}) {
+  onSelect: (memberId: string) => void;
+}
+
+function MemberRow({ memberData, onSelect }: MemberRowProps) {
   const { data: profile } = useGetUserProfile(memberData.member.userId);
-  const { data: roleColor } = useGetMemberDisplayColor(serverId, memberData.member.userId);
-  
-  const avatarIndex = (parseInt(memberData.member.userId.toString().slice(-2), 16) % 6) + 1;
+
+  const principalStr = memberData.member.userId.toString();
+  const avatarIndex = (principalStr.charCodeAt(0) % 6) + 1;
   const defaultAvatar = `/assets/generated/avatar-default-0${avatarIndex}.dim_256x256.png`;
 
-  const displayName = profile?.name || memberData.username || 'User';
-  
-  // Sanitize and apply role color
-  const sanitizedColor = sanitizeRoleColor(roleColor);
-  const nameStyle = sanitizedColor ? { color: sanitizedColor } : undefined;
+  const displayName = profile?.name || memberData.username || principalStr.slice(0, 8);
+  const avatarUrl = profile?.avatarUrl || defaultAvatar;
 
   return (
     <button
-      className="flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent/50 transition-colors cursor-pointer"
-      onClick={onClick}
+      onClick={() => onSelect(principalStr)}
+      className="flex w-full items-center gap-2 px-2 py-1.5 rounded hover:bg-accent/50 transition-colors text-left"
     >
       <Avatar className="h-8 w-8">
-        <AvatarImage src={profile?.avatarUrl || defaultAvatar} />
-        <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
+        <AvatarImage src={avatarUrl} />
+        <AvatarFallback className="text-xs">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
       </Avatar>
-      <span className="text-sm truncate" style={nameStyle}>
-        {displayName}
-      </span>
+      <span className="text-sm truncate">{displayName}</span>
     </button>
   );
 }

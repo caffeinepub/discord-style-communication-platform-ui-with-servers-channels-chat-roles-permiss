@@ -3,7 +3,7 @@
 interface SessionData {
   token: string;
   accountId: string;
-  expiresAt: number;
+  expiresAt: number; // milliseconds since epoch
 }
 
 const SESSION_KEY = 'app_session';
@@ -17,11 +17,29 @@ export const sessionStorage = {
         return;
       }
       
-      // Convert expiresAt to number if it's a bigint
+      // Convert expiresAt to number (milliseconds) if it's a bigint (nanoseconds from backend)
+      let expiresAtMs: number;
+      if (typeof data.expiresAt === 'bigint') {
+        // Backend returns nanoseconds, convert to milliseconds
+        expiresAtMs = Number(data.expiresAt / 1_000_000n);
+      } else if (typeof data.expiresAt === 'number') {
+        // If already a number, check if it's in nanoseconds (very large number)
+        if (data.expiresAt > 1_000_000_000_000_000) {
+          // Likely nanoseconds, convert to milliseconds
+          expiresAtMs = Math.floor(data.expiresAt / 1_000_000);
+        } else {
+          // Already in milliseconds
+          expiresAtMs = data.expiresAt;
+        }
+      } else {
+        console.error('Invalid expiresAt type:', typeof data.expiresAt);
+        return;
+      }
+      
       const normalizedData = {
         token: data.token,
         accountId: data.accountId,
-        expiresAt: typeof data.expiresAt === 'bigint' ? Number(data.expiresAt) : data.expiresAt,
+        expiresAt: expiresAtMs,
       };
       
       localStorage.setItem(SESSION_KEY, JSON.stringify(normalizedData));
@@ -44,8 +62,9 @@ export const sessionStorage = {
         return null;
       }
       
-      // Check if session has expired (if expiresAt is set and not 0)
+      // Check if session has expired (expiresAt is in milliseconds)
       if (data.expiresAt && data.expiresAt > 0 && Date.now() > data.expiresAt) {
+        console.log('Session expired:', new Date(data.expiresAt).toISOString());
         this.clear();
         return null;
       }

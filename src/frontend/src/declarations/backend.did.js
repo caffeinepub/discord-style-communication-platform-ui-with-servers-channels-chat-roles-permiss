@@ -8,44 +8,10 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const Permission = IDL.Record({ 'value' : IDL.Bool, 'name' : IDL.Text });
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
-});
-export const ServerMember = IDL.Record({
-  'userId' : IDL.Principal,
-  'joinedAt' : IDL.Nat,
-  'roles' : IDL.Vec(IDL.Nat),
-});
-export const VoiceChannel = IDL.Record({ 'id' : IDL.Nat, 'name' : IDL.Text });
-export const TextChannel = IDL.Record({ 'id' : IDL.Nat, 'name' : IDL.Text });
-export const ChannelCategory = IDL.Record({
-  'id' : IDL.Nat,
-  'name' : IDL.Text,
-  'voiceChannels' : IDL.Vec(VoiceChannel),
-  'isExpanded' : IDL.Bool,
-  'textChannels' : IDL.Vec(TextChannel),
-});
-export const Role = IDL.Record({
-  'id' : IDL.Nat,
-  'permissions' : IDL.Vec(Permission),
-  'name' : IDL.Text,
-  'color' : IDL.Text,
-  'position' : IDL.Nat,
-});
-export const Server = IDL.Record({
-  'id' : IDL.Nat,
-  'members' : IDL.Vec(ServerMember),
-  'owner' : IDL.Principal,
-  'name' : IDL.Text,
-  'description' : IDL.Text,
-  'channels' : IDL.Vec(ChannelCategory),
-  'communityMode' : IDL.Bool,
-  'bannerUrl' : IDL.Text,
-  'iconUrl' : IDL.Text,
-  'roles' : IDL.Vec(Role),
 });
 export const UserProfile = IDL.Record({
   'customStatus' : IDL.Text,
@@ -54,79 +20,6 @@ export const UserProfile = IDL.Record({
   'badges' : IDL.Vec(IDL.Text),
   'avatarUrl' : IDL.Text,
   'bannerUrl' : IDL.Text,
-});
-export const CategoryLevelOrdering = IDL.Record({
-  'id' : IDL.Nat,
-  'voiceChannels' : IDL.Vec(IDL.Nat),
-  'textChannels' : IDL.Vec(IDL.Nat),
-});
-export const ServerOrdering = IDL.Record({
-  'categories' : IDL.Vec(CategoryLevelOrdering),
-  'categoryOrder' : IDL.Vec(IDL.Nat),
-});
-export const FriendRequest = IDL.Record({
-  'to' : IDL.Principal,
-  'from' : IDL.Principal,
-  'timestamp' : IDL.Nat,
-});
-export const AuditEventType = IDL.Variant({
-  'UserJoinedVoiceChannel' : IDL.Null,
-  'ServerCreated' : IDL.Null,
-  'RoleAssignedToUser' : IDL.Null,
-  'VoiceChannelAdded' : IDL.Null,
-  'RoleRemovedFromUser' : IDL.Null,
-  'RolePermissionsSet' : IDL.Null,
-  'MessageSent' : IDL.Null,
-  'ServerLeft' : IDL.Null,
-  'UserLeftVoiceChannel' : IDL.Null,
-  'ServerRenamed' : IDL.Null,
-  'CategoryAdded' : IDL.Null,
-  'ChannelMoved' : IDL.Null,
-  'ServerJoined' : IDL.Null,
-  'TextChannelAdded' : IDL.Null,
-  'SettingsUpdated' : IDL.Null,
-  'RoleAdded' : IDL.Null,
-});
-export const AuditLogEntry = IDL.Record({
-  'id' : IDL.Nat,
-  'userId' : IDL.Principal,
-  'timestamp' : IDL.Int,
-  'details' : IDL.Text,
-  'serverId' : IDL.Nat,
-  'eventType' : AuditEventType,
-});
-export const ServerMemberInfo = IDL.Record({
-  'member' : ServerMember,
-  'username' : IDL.Text,
-});
-export const GetMembersWithRolesResponse = IDL.Record({
-  'members' : IDL.Vec(ServerMemberInfo),
-  'roles' : IDL.Vec(Role),
-});
-export const ServerMemberWithUsername = IDL.Record({
-  'member' : ServerMember,
-  'username' : IDL.Text,
-});
-export const TextChannelMessage = IDL.Record({
-  'id' : IDL.Nat,
-  'content' : IDL.Text,
-  'createdAt' : IDL.Nat,
-  'createdBy' : IDL.Principal,
-  'isPersistent' : IDL.Bool,
-  'textChannelId' : IDL.Nat,
-  'serverId' : IDL.Nat,
-});
-export const UserStatus = IDL.Variant({
-  'Idle' : IDL.Null,
-  'Online' : IDL.Null,
-  'Invisible' : IDL.Null,
-  'DoNotDisturb' : IDL.Null,
-});
-export const VoiceChannelPresence = IDL.Record({
-  'userId' : IDL.Principal,
-  'joinedAt' : IDL.Nat,
-  'voiceChannelId' : IDL.Nat,
-  'serverId' : IDL.Nat,
 });
 export const RegisterPayload = IDL.Record({
   'username' : IDL.Text,
@@ -142,149 +35,27 @@ export const Session = IDL.Record({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-  'acceptFriendRequest' : IDL.Func([IDL.Principal], [], []),
-  'addCategoryToServer' : IDL.Func([IDL.Nat, IDL.Text], [IDL.Nat], []),
-  'addRole' : IDL.Func(
-      [IDL.Nat, IDL.Text, IDL.Text, IDL.Vec(Permission)],
-      [IDL.Nat],
-      [],
-    ),
-  'addTextChannel' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [IDL.Nat], []),
-  'addVoiceChannel' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [IDL.Nat], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'assignRoleToUser' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Principal], [], []),
-  'blockUser' : IDL.Func([IDL.Principal], [], []),
-  'createServer' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
-  'declineFriendRequest' : IDL.Func([IDL.Principal], [], []),
-  'getAllServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
-  'getCallerAccountEmail' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getCallerUsername' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
-  'getCategories' : IDL.Func([IDL.Nat], [IDL.Vec(ChannelCategory)], ['query']),
-  'getCategoryChannelOrdering' : IDL.Func(
-      [IDL.Nat],
-      [IDL.Opt(ServerOrdering)],
-      ['query'],
-    ),
-  'getFriendRequests' : IDL.Func([], [IDL.Vec(FriendRequest)], ['query']),
-  'getFriends' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
-  'getMemberDisplayColor' : IDL.Func(
-      [IDL.Nat, IDL.Principal],
-      [IDL.Opt(IDL.Text)],
-      ['query'],
-    ),
-  'getRoles' : IDL.Func([IDL.Nat], [IDL.Vec(Role)], ['query']),
-  'getServer' : IDL.Func([IDL.Nat], [Server], ['query']),
-  'getServerAuditLog' : IDL.Func(
-      [IDL.Nat],
-      [IDL.Vec(AuditLogEntry)],
-      ['query'],
-    ),
-  'getServerMembers' : IDL.Func([IDL.Nat], [IDL.Vec(ServerMember)], ['query']),
-  'getServerMembersWithRoles' : IDL.Func(
-      [IDL.Nat],
-      [GetMembersWithRolesResponse],
-      ['query'],
-    ),
-  'getServerMembersWithUsernames' : IDL.Func(
-      [IDL.Nat],
-      [IDL.Vec(ServerMemberWithUsername)],
-      ['query'],
-    ),
-  'getServerOrdering' : IDL.Func([], [IDL.Vec(IDL.Nat)], ['query']),
-  'getServerRoles' : IDL.Func([IDL.Nat], [IDL.Vec(Role)], ['query']),
-  'getTextChannelMessages' : IDL.Func(
-      [IDL.Nat, IDL.Nat, IDL.Opt(IDL.Nat)],
-      [IDL.Vec(TextChannelMessage)],
-      [],
-    ),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
     ),
-  'getUserStatus' : IDL.Func([IDL.Principal], [IDL.Opt(UserStatus)], ['query']),
-  'getUsernameForUser' : IDL.Func(
-      [IDL.Principal],
-      [IDL.Opt(IDL.Text)],
-      ['query'],
-    ),
-  'getVoiceChannelParticipants' : IDL.Func(
-      [IDL.Nat, IDL.Nat],
-      [IDL.Vec(VoiceChannelPresence)],
-      ['query'],
-    ),
-  'healthCheck' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'joinServer' : IDL.Func([IDL.Nat], [], []),
-  'joinVoiceChannel' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
-  'leaveServer' : IDL.Func([IDL.Nat], [], []),
-  'leaveVoiceChannel' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
-  'register' : IDL.Func([RegisterPayload], [Session], []),
-  'removeFriend' : IDL.Func([IDL.Principal], [], []),
-  'removeRoleFromUser' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Principal], [], []),
-  'renameServer' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+  'register' : IDL.Func([RegisterPayload], [IDL.Opt(Session)], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
-  'sendTextChannelMessage' : IDL.Func(
-      [IDL.Nat, IDL.Nat, IDL.Text],
-      [IDL.Nat],
-      [],
-    ),
-  'setCategoryChannelOrdering' : IDL.Func([IDL.Nat, ServerOrdering], [], []),
-  'setRolePermissions' : IDL.Func(
-      [IDL.Nat, IDL.Nat, IDL.Vec(Permission)],
-      [],
-      [],
-    ),
-  'setServerOrdering' : IDL.Func([IDL.Vec(IDL.Nat)], [], []),
-  'setUserStatus' : IDL.Func([UserStatus], [], []),
-  'setUsername' : IDL.Func([IDL.Text], [], []),
   'validateSession' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
-  const Permission = IDL.Record({ 'value' : IDL.Bool, 'name' : IDL.Text });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
-  });
-  const ServerMember = IDL.Record({
-    'userId' : IDL.Principal,
-    'joinedAt' : IDL.Nat,
-    'roles' : IDL.Vec(IDL.Nat),
-  });
-  const VoiceChannel = IDL.Record({ 'id' : IDL.Nat, 'name' : IDL.Text });
-  const TextChannel = IDL.Record({ 'id' : IDL.Nat, 'name' : IDL.Text });
-  const ChannelCategory = IDL.Record({
-    'id' : IDL.Nat,
-    'name' : IDL.Text,
-    'voiceChannels' : IDL.Vec(VoiceChannel),
-    'isExpanded' : IDL.Bool,
-    'textChannels' : IDL.Vec(TextChannel),
-  });
-  const Role = IDL.Record({
-    'id' : IDL.Nat,
-    'permissions' : IDL.Vec(Permission),
-    'name' : IDL.Text,
-    'color' : IDL.Text,
-    'position' : IDL.Nat,
-  });
-  const Server = IDL.Record({
-    'id' : IDL.Nat,
-    'members' : IDL.Vec(ServerMember),
-    'owner' : IDL.Principal,
-    'name' : IDL.Text,
-    'description' : IDL.Text,
-    'channels' : IDL.Vec(ChannelCategory),
-    'communityMode' : IDL.Bool,
-    'bannerUrl' : IDL.Text,
-    'iconUrl' : IDL.Text,
-    'roles' : IDL.Vec(Role),
   });
   const UserProfile = IDL.Record({
     'customStatus' : IDL.Text,
@@ -293,79 +64,6 @@ export const idlFactory = ({ IDL }) => {
     'badges' : IDL.Vec(IDL.Text),
     'avatarUrl' : IDL.Text,
     'bannerUrl' : IDL.Text,
-  });
-  const CategoryLevelOrdering = IDL.Record({
-    'id' : IDL.Nat,
-    'voiceChannels' : IDL.Vec(IDL.Nat),
-    'textChannels' : IDL.Vec(IDL.Nat),
-  });
-  const ServerOrdering = IDL.Record({
-    'categories' : IDL.Vec(CategoryLevelOrdering),
-    'categoryOrder' : IDL.Vec(IDL.Nat),
-  });
-  const FriendRequest = IDL.Record({
-    'to' : IDL.Principal,
-    'from' : IDL.Principal,
-    'timestamp' : IDL.Nat,
-  });
-  const AuditEventType = IDL.Variant({
-    'UserJoinedVoiceChannel' : IDL.Null,
-    'ServerCreated' : IDL.Null,
-    'RoleAssignedToUser' : IDL.Null,
-    'VoiceChannelAdded' : IDL.Null,
-    'RoleRemovedFromUser' : IDL.Null,
-    'RolePermissionsSet' : IDL.Null,
-    'MessageSent' : IDL.Null,
-    'ServerLeft' : IDL.Null,
-    'UserLeftVoiceChannel' : IDL.Null,
-    'ServerRenamed' : IDL.Null,
-    'CategoryAdded' : IDL.Null,
-    'ChannelMoved' : IDL.Null,
-    'ServerJoined' : IDL.Null,
-    'TextChannelAdded' : IDL.Null,
-    'SettingsUpdated' : IDL.Null,
-    'RoleAdded' : IDL.Null,
-  });
-  const AuditLogEntry = IDL.Record({
-    'id' : IDL.Nat,
-    'userId' : IDL.Principal,
-    'timestamp' : IDL.Int,
-    'details' : IDL.Text,
-    'serverId' : IDL.Nat,
-    'eventType' : AuditEventType,
-  });
-  const ServerMemberInfo = IDL.Record({
-    'member' : ServerMember,
-    'username' : IDL.Text,
-  });
-  const GetMembersWithRolesResponse = IDL.Record({
-    'members' : IDL.Vec(ServerMemberInfo),
-    'roles' : IDL.Vec(Role),
-  });
-  const ServerMemberWithUsername = IDL.Record({
-    'member' : ServerMember,
-    'username' : IDL.Text,
-  });
-  const TextChannelMessage = IDL.Record({
-    'id' : IDL.Nat,
-    'content' : IDL.Text,
-    'createdAt' : IDL.Nat,
-    'createdBy' : IDL.Principal,
-    'isPersistent' : IDL.Bool,
-    'textChannelId' : IDL.Nat,
-    'serverId' : IDL.Nat,
-  });
-  const UserStatus = IDL.Variant({
-    'Idle' : IDL.Null,
-    'Online' : IDL.Null,
-    'Invisible' : IDL.Null,
-    'DoNotDisturb' : IDL.Null,
-  });
-  const VoiceChannelPresence = IDL.Record({
-    'userId' : IDL.Principal,
-    'joinedAt' : IDL.Nat,
-    'voiceChannelId' : IDL.Nat,
-    'serverId' : IDL.Nat,
   });
   const RegisterPayload = IDL.Record({
     'username' : IDL.Text,
@@ -381,117 +79,17 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
-    'acceptFriendRequest' : IDL.Func([IDL.Principal], [], []),
-    'addCategoryToServer' : IDL.Func([IDL.Nat, IDL.Text], [IDL.Nat], []),
-    'addRole' : IDL.Func(
-        [IDL.Nat, IDL.Text, IDL.Text, IDL.Vec(Permission)],
-        [IDL.Nat],
-        [],
-      ),
-    'addTextChannel' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [IDL.Nat], []),
-    'addVoiceChannel' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [IDL.Nat], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'assignRoleToUser' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Principal], [], []),
-    'blockUser' : IDL.Func([IDL.Principal], [], []),
-    'createServer' : IDL.Func([IDL.Text, IDL.Text], [IDL.Nat], []),
-    'declineFriendRequest' : IDL.Func([IDL.Principal], [], []),
-    'getAllServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
-    'getCallerAccountEmail' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getCallerUsername' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
-    'getCategories' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Vec(ChannelCategory)],
-        ['query'],
-      ),
-    'getCategoryChannelOrdering' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Opt(ServerOrdering)],
-        ['query'],
-      ),
-    'getFriendRequests' : IDL.Func([], [IDL.Vec(FriendRequest)], ['query']),
-    'getFriends' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
-    'getMemberDisplayColor' : IDL.Func(
-        [IDL.Nat, IDL.Principal],
-        [IDL.Opt(IDL.Text)],
-        ['query'],
-      ),
-    'getRoles' : IDL.Func([IDL.Nat], [IDL.Vec(Role)], ['query']),
-    'getServer' : IDL.Func([IDL.Nat], [Server], ['query']),
-    'getServerAuditLog' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Vec(AuditLogEntry)],
-        ['query'],
-      ),
-    'getServerMembers' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Vec(ServerMember)],
-        ['query'],
-      ),
-    'getServerMembersWithRoles' : IDL.Func(
-        [IDL.Nat],
-        [GetMembersWithRolesResponse],
-        ['query'],
-      ),
-    'getServerMembersWithUsernames' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Vec(ServerMemberWithUsername)],
-        ['query'],
-      ),
-    'getServerOrdering' : IDL.Func([], [IDL.Vec(IDL.Nat)], ['query']),
-    'getServerRoles' : IDL.Func([IDL.Nat], [IDL.Vec(Role)], ['query']),
-    'getTextChannelMessages' : IDL.Func(
-        [IDL.Nat, IDL.Nat, IDL.Opt(IDL.Nat)],
-        [IDL.Vec(TextChannelMessage)],
-        [],
-      ),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
       ),
-    'getUserStatus' : IDL.Func(
-        [IDL.Principal],
-        [IDL.Opt(UserStatus)],
-        ['query'],
-      ),
-    'getUsernameForUser' : IDL.Func(
-        [IDL.Principal],
-        [IDL.Opt(IDL.Text)],
-        ['query'],
-      ),
-    'getVoiceChannelParticipants' : IDL.Func(
-        [IDL.Nat, IDL.Nat],
-        [IDL.Vec(VoiceChannelPresence)],
-        ['query'],
-      ),
-    'healthCheck' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'joinServer' : IDL.Func([IDL.Nat], [], []),
-    'joinVoiceChannel' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
-    'leaveServer' : IDL.Func([IDL.Nat], [], []),
-    'leaveVoiceChannel' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
-    'register' : IDL.Func([RegisterPayload], [Session], []),
-    'removeFriend' : IDL.Func([IDL.Principal], [], []),
-    'removeRoleFromUser' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Principal], [], []),
-    'renameServer' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+    'register' : IDL.Func([RegisterPayload], [IDL.Opt(Session)], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'sendFriendRequest' : IDL.Func([IDL.Principal], [], []),
-    'sendTextChannelMessage' : IDL.Func(
-        [IDL.Nat, IDL.Nat, IDL.Text],
-        [IDL.Nat],
-        [],
-      ),
-    'setCategoryChannelOrdering' : IDL.Func([IDL.Nat, ServerOrdering], [], []),
-    'setRolePermissions' : IDL.Func(
-        [IDL.Nat, IDL.Nat, IDL.Vec(Permission)],
-        [],
-        [],
-      ),
-    'setServerOrdering' : IDL.Func([IDL.Vec(IDL.Nat)], [], []),
-    'setUserStatus' : IDL.Func([UserStatus], [], []),
-    'setUsername' : IDL.Func([IDL.Text], [], []),
     'validateSession' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
   });
 };

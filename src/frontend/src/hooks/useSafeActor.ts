@@ -44,12 +44,19 @@ export function useSafeActor(): SafeActorResult {
         // Attempt access control initialization (non-fatal)
         try {
           const adminToken = getSecretParameter('caffeineAdminToken') || '';
-          await newActor._initializeAccessControlWithSecret(adminToken);
+          if (typeof (newActor as any)._initializeAccessControlWithSecret === 'function') {
+            await (newActor as any)._initializeAccessControlWithSecret(adminToken);
+          }
         } catch (initError: any) {
           // Log diagnostic detail but don't fail actor creation
           console.warn('Access control initialization failed (non-fatal):', initError.message || initError);
           // This is expected if no admin token is provided or if already initialized
         }
+      }
+
+      // Verify that the actor has the required methods for authentication
+      if (typeof newActor.register !== 'function' || typeof newActor.validateSession !== 'function') {
+        throw new Error('Backend actor is missing required authentication methods. Please ensure the backend is deployed correctly.');
       }
 
       setActor(newActor);

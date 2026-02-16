@@ -7,11 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { BackendConnectionBanner } from '../components/system/BackendConnectionBanner';
 
 export default function LoginScreen() {
   const { login, register, error: authError } = useAuth();
-  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signup');
 
   // Sign In form state
   const [signInIdentifier, setSignInIdentifier] = useState('');
@@ -71,8 +70,10 @@ export default function LoginScreen() {
 
     try {
       await register(signUpUsername, signUpEmail, signUpPassword);
+      // Success - AuthProvider will handle state transition to authenticated
     } catch (err: any) {
-      setSignUpError(err.message || 'Registration failed');
+      // Error is already set in AuthProvider, but also set local error for immediate feedback
+      setSignUpError(err.message || 'Registration failed. Please try again.');
     } finally {
       setSignUpLoading(false);
     }
@@ -229,9 +230,20 @@ export default function LoginScreen() {
           </Card>
 
           {/* Footer */}
-          <p className="text-center text-sm text-muted-foreground">
-            By continuing, you agree to our Terms of Service and Privacy Policy
-          </p>
+          <div className="text-center text-sm text-muted-foreground">
+            <p>
+              Built with ❤️ using{' '}
+              <a
+                href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                caffeine.ai
+              </a>
+            </p>
+            <p className="mt-1">© {new Date().getFullYear()} All rights reserved</p>
+          </div>
         </div>
       </div>
     </div>

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, Settings } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useNavigation } from '../../state/navigation';
 import { useGetCategories, useIsCallerAdmin, useGetCategoryChannelOrdering, useUpdateCategoryChannelOrdering, useGetServer } from '../../hooks/useQueries';
 import { CategorySection } from '../channels/CategorySection';
 import CreateCategoryDialog from '../channels/CreateCategoryDialog';
-import type { ChannelCategory, ServerOrdering } from '../../backend';
+import type { ChannelCategory, ServerOrdering } from '../../types/backend-extended';
 import { applyOrderingToCategories, buildCategoryLevelOrdering } from '../../utils/channelOrdering';
 
 export function ChannelSidebar() {

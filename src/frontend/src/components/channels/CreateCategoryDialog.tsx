@@ -10,6 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 import { useAddCategoryToServer } from '../../hooks/useQueries';
 import { useBackendActionGuard } from '@/hooks/useBackendActionGuard';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -38,16 +40,20 @@ export default function CreateCategoryDialog({
         serverId,
         categoryName: categoryName.trim(),
       });
+      // Only close and reset on success
       setCategoryName('');
       onOpenChange(false);
     } catch (error) {
-      // Error is handled by the mutation's onError
+      // Error is handled by the mutation's onError (toast)
+      // Dialog stays open so user can see the error and retry
+      console.error('Failed to create category:', error);
     }
   };
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
+    if (!newOpen && !addCategory.isPending) {
       setCategoryName('');
+      addCategory.reset();
     }
     onOpenChange(newOpen);
   };
@@ -65,6 +71,14 @@ export default function CreateCategoryDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {addCategory.isError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {addCategory.error?.message || 'Failed to create category'}
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="category-name">Category Name</Label>
               <Input
@@ -74,7 +88,7 @@ export default function CreateCategoryDialog({
                 placeholder="e.g., General, Gaming, Music"
                 maxLength={50}
                 autoFocus
-                disabled={backendDisabled}
+                disabled={backendDisabled || addCategory.isPending}
               />
             </div>
             {backendDisabled && backendReason && (

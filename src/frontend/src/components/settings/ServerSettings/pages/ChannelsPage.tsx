@@ -1,15 +1,9 @@
 import React, { useState } from 'react';
-import { Hash, Volume2, ChevronUp, ChevronDown, MoreVertical, Trash2 } from 'lucide-react';
+import { Hash, Volume2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useGetCategories, useGetCategoryChannelOrdering, useUpdateCategoryChannelOrdering, useIsCallerAdmin } from '../../../../hooks/useQueries';
-import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering } from '../../../../backend';
+import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering } from '../../../../types/backend-extended';
 import CreateChannelInSettingsDialog from '../components/CreateChannelInSettingsDialog';
 import { Button } from '../../../ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../../../ui/dropdown-menu';
 import { applyOrderingToCategories, applyOrderingToTextChannels, applyOrderingToVoiceChannels, buildCategoryLevelOrdering } from '../../../../utils/channelOrdering';
 
 interface ChannelsPageProps {
@@ -132,100 +126,95 @@ export function ChannelsPage({ serverId }: ChannelsPageProps) {
                 {category.name}
               </h3>
 
-              <div className="space-y-2">
-                {orderedTextChannels.map((channel: TextChannel, index: number) => (
-                  <div
-                    key={channel.id.toString()}
-                    className="flex items-center justify-between p-2 rounded hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Hash className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{channel.name}</span>
-                    </div>
-                    {isAdmin && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleMoveUp(category.id, channel.id, true)}
-                          disabled={index === 0}
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleMoveDown(category.id, channel.id, true)}
-                          disabled={index === orderedTextChannels.length - 1}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete Channel
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+              {orderedTextChannels.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  <h4 className="text-sm font-medium text-muted-foreground">Text Channels</h4>
+                  {orderedTextChannels.map((channel: TextChannel, index: number) => (
+                    <div
+                      key={channel.id.toString()}
+                      className="flex items-center justify-between p-2 rounded bg-accent/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Hash className="h-4 w-4" />
+                        <span className="text-sm">{channel.name}</span>
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {isAdmin && (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMoveUp(category.id, channel.id, true)}
+                            disabled={index === 0}
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMoveDown(category.id, channel.id, true)}
+                            disabled={index === orderedTextChannels.length - 1}
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
-                {orderedVoiceChannels.map((channel: VoiceChannel, index: number) => (
-                  <div
-                    key={channel.id.toString()}
-                    className="flex items-center justify-between p-2 rounded hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Volume2 className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{channel.name}</span>
-                    </div>
-                    {isAdmin && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleMoveUp(category.id, channel.id, false)}
-                          disabled={index === 0}
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleMoveDown(category.id, channel.id, false)}
-                          disabled={index === orderedVoiceChannels.length - 1}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete Channel
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+              {orderedVoiceChannels.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Voice Channels</h4>
+                  {orderedVoiceChannels.map((channel: VoiceChannel, index: number) => (
+                    <div
+                      key={channel.id.toString()}
+                      className="flex items-center justify-between p-2 rounded bg-accent/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Volume2 className="h-4 w-4" />
+                        <span className="text-sm">{channel.name}</span>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {isAdmin && (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMoveUp(category.id, channel.id, false)}
+                            disabled={index === 0}
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMoveDown(category.id, channel.id, false)}
+                            disabled={index === orderedVoiceChannels.length - 1}
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {orderedTextChannels.length === 0 && orderedVoiceChannels.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No channels in this category
+                </p>
+              )}
             </div>
           );
         })}
+
+        {orderedCategories.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>No categories yet</p>
+            <p className="text-sm mt-2">Create a category to organize your channels</p>
+          </div>
+        )}
       </div>
 
       <CreateChannelInSettingsDialog

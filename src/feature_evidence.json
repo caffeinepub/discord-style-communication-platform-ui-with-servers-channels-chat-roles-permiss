@@ -2,10 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-a-user-accessible-profile-settings-button-positioned-in-the-bottom-left-corner-of-the-desktop-ui-that-opens-the-existing-user-settings-overlay-when-clicked",
-      "featureTitle": "Add a user-accessible \"Profile Settings\" button positioned in the bottom-left corner of the desktop UI that opens the existing User Settings overlay when clicked.",
+      "featureId": "feature-ensure-the-deployed-backend-candid-actor-interface-exposes-register-and-validatesession-exactly-as-the-frontend-calls-them-so-the-frontend-can-successfully-invoke-actor-register-payload-and-actor-validatesession-token-without-runtime-errors-or-type-mismatches",
+      "featureTitle": "Ensure the deployed backend candid/actor interface exposes `register` and `validateSession` exactly as the frontend calls them, so the frontend can successfully invoke `actor.register(payload)` and `actor.validateSession(token)` without runtime errors or type mismatches.",
       "files": [
-        "frontend/src/components/nav/ServerRail.tsx"
+        "frontend/src/auth/AuthProvider.tsx",
+        "frontend/src/hooks/useSafeActor.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -16,7 +17,28 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-1"
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-update-frontend-auth-handling-so-that-a-successful-backend-registration-response-always-results-in-a-persisted-session-localstorage-and-an-authenticated-ui-state-and-a-null-invalid-response-results-in-a-clear-english-error-message-without-leaving-the-app-stuck-in-a-loading-state",
+      "featureTitle": "Update frontend auth handling so that a successful backend registration response always results in a persisted session (localStorage) and an authenticated UI state, and a null/invalid response results in a clear English error message without leaving the app stuck in a loading state.",
+      "files": [
+        "frontend/src/auth/AuthProvider.tsx",
+        "frontend/src/auth/sessionStorage.ts",
+        "frontend/src/pages/LoginScreen.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
       ],
       "confidence": "high"
     }

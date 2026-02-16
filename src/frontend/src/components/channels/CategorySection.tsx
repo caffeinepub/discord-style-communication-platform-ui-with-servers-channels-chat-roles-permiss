@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Hash, Volume2, Plus } from 'lucide-react';
 import { useNavigation } from '../../state/navigation';
-import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering } from '../../backend';
+import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering } from '../../types/backend-extended';
 import CreateChannelDialog from './CreateChannelDialog';
 import { useIsCallerAdmin } from '../../hooks/useQueries';
 import { useUpdateCategoryChannelOrdering, useGetCategoryChannelOrdering } from '../../hooks/useQueries';

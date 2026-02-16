@@ -1,4 +1,4 @@
-import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering, CategoryLevelOrdering } from '../backend';
+import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering, CategoryLevelOrdering } from '../types/backend-extended';
 
 /**
  * Merge persisted ordering with current server data

@@ -3,14 +3,24 @@
   "projectStateVersion": 3,
   "summary": "New project",
   "architectural_notes": [],
-  "known_issues": [],
-  "isFixRequest": false,
+  "known_issues": [
+    "Registration not fully implemented; backend returns no session data after registration"
+  ],
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-add-a-user-accessible-profile-settings-button-positioned-in-the-bottom-left-corner-of-the-desktop-ui-that-opens-the-existing-user-settings-overlay-when-clicked",
-      "title": "Add a user-accessible \"Profile Settings\" button positioned in the bottom-left corner of the desktop UI that opens the existing User Settings overlay when clicked.",
+      "id": "feature-ensure-the-deployed-backend-candid-actor-interface-exposes-register-and-validatesession-exactly-as-the-frontend-calls-them-so-the-frontend-can-successfully-invoke-actor-register-payload-and-actor-validatesession-token-without-runtime-errors-or-type-mismatches",
+      "title": "Ensure the deployed backend candid/actor interface exposes `register` and `validateSession` exactly as the frontend calls them, so the frontend can successfully invoke `actor.register(payload)` and `actor.validateSession(token)` without runtime errors or type mismatches.",
       "reqIds": [
-        "REQ-1"
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-frontend-auth-handling-so-that-a-successful-backend-registration-response-always-results-in-a-persisted-session-localstorage-and-an-authenticated-ui-state-and-a-null-invalid-response-results-in-a-clear-english-error-message-without-leaving-the-app-stuck-in-a-loading-state",
+      "title": "Update frontend auth handling so that a successful backend registration response always results in a persisted session (localStorage) and an authenticated UI state, and a null/invalid response results in a clear English error message without leaving the app stuck in a loading state.",
+      "reqIds": [
+        "REQ-4"
       ],
       "version": 1
     }
@@ -18,8 +28,24 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add a profile settings button in the bottom-left corner of the UI",
+      "summary": "Implement/finish user registration flow including returning session data from backend",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Implement backend `register(payload : RegisterPayload) : async ?Session` to create a new user account for the caller (guest) and return non-null session data (token, accountId, expiresAt, optional email) on success instead of always returning null.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Implement backend `validateSession(token : Text) : async ?Session` to return non-null session data when the provided token is known and not expired, and return null when the token is unknown/expired.",
+      "reqIds": [
+        "REQ-2"
+      ],
       "status": "pending"
     }
   ],

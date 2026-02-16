@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import { sessionStorage } from './sessionStorage';
 import { useBackendConnection } from '../hooks/useBackendConnection';
-import type { RegisterPayload } from '../backend';
+import type { RegisterPayload, Session } from '../backend';
 
 export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated' | 'error';
 
@@ -55,6 +55,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         try {
+          // Defensive check: ensure validateSession exists
+          if (typeof actor.validateSession !== 'function') {
+            console.error('Backend actor missing validateSession method');
+            sessionStorage.clearWithReason('Backend actor incompatible - missing validateSession');
+            setAuthStatus('unauthenticated');
+            setError('Backend connection error. Please refresh the page.');
+            return;
+          }
+
           const validatedSession = await actor.validateSession(session.token);
           
           if (!validatedSession) {
@@ -160,7 +169,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       const errorMessage = err.message || 'Login failed';
       setError(errorMessage);
-      setAuthStatus('error');
+      // Don't set to 'error' state - keep as 'unauthenticated' so form remains usable
+      setAuthStatus('unauthenticated');
       throw new Error(errorMessage);
     }
   }, [actor]);
@@ -171,23 +181,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!actor) {
       const errorMsg = 'Backend connection not ready';
       setError(errorMsg);
+      setAuthStatus('unauthenticated');
       throw new Error(errorMsg);
     }
 
     try {
+      // Defensive check: ensure register exists
+      if (typeof actor.register !== 'function') {
+        const errorMsg = 'Backend actor missing register method. Please refresh the page.';
+        setError(errorMsg);
+        setAuthStatus('unauthenticated');
+        throw new Error(errorMsg);
+      }
+
       const payload: RegisterPayload = {
         username,
         email,
         password,
       };
       
-      const response = await actor.register(payload);
+      const response: Session | null = await actor.register(payload);
+      
+      if (!response) {
+        // Backend returned null - user already registered or other issue
+        const errorMsg = 'Registration failed. You may already have an account or the username is taken.';
+        setError(errorMsg);
+        setAuthStatus('unauthenticated');
+        throw new Error(errorMsg);
+      }
+      
+      // Validate response structure
+      if (!response.token || !response.accountId) {
+        const errorMsg = 'Invalid registration response from backend. Please try again.';
+        setError(errorMsg);
+        setAuthStatus('unauthenticated');
+        throw new Error(errorMsg);
+      }
       
       // Convert bigint expiresAt to number for storage
+      // Backend returns nanoseconds, sessionStorage.save will handle conversion
       const sessionData = {
         token: response.token,
         accountId: response.accountId,
-        expiresAt: Number(response.expiresAt),
+        expiresAt: response.expiresAt as any, // Let sessionStorage handle bigint conversion
       };
       
       sessionStorage.save(sessionData);
@@ -196,9 +232,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthStatus('authenticated');
       setError(null);
     } catch (err: any) {
-      const errorMessage = err.message || 'Registration failed';
+      const errorMessage = err.message || 'Registration failed. Please try again.';
       setError(errorMessage);
-      setAuthStatus('error');
+      // Keep as 'unauthenticated' instead of 'error' so form remains usable
+      setAuthStatus('unauthenticated');
       throw new Error(errorMessage);
     }
   }, [actor]);

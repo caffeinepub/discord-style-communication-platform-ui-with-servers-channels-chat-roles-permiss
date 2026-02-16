@@ -1,10 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Volume2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
-import { Slider } from '@/components/ui/slider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useNavigation } from '@/state/navigation';
-import { useGetVoiceChannelParticipants, useJoinVoiceChannel, useLeaveVoiceChannel } from '@/hooks/useQueries';
+import { useGetVoiceChannelPresences, useJoinVoiceChannel, useLeaveVoiceChannel } from '@/hooks/useQueries';
 import { useGetCategories, useGetUserProfile } from '@/hooks/useQueries';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 
@@ -15,7 +14,7 @@ export default function VoiceView() {
   const { identity } = useInternetIdentity();
 
   // Fetch participants for the selected voice channel
-  const { data: participants = [] } = useGetVoiceChannelParticipants(selectedServerId, selectedChannelId);
+  const { data: participants = [] } = useGetVoiceChannelPresences(selectedServerId, selectedChannelId);
 
   // Fetch categories to get channel name
   const { data: categories = [] } = useGetCategories(selectedServerId);
@@ -39,7 +38,7 @@ export default function VoiceView() {
   const handleConnect = async () => {
     if (!selectedServerId || !selectedChannelId) return;
     try {
-      await joinVoice.mutateAsync({ serverId: selectedServerId, voiceChannelId: selectedChannelId });
+      await joinVoice.mutateAsync({ serverId: selectedServerId, channelId: selectedChannelId });
     } catch (error) {
       console.error('Failed to join voice channel:', error);
     }
@@ -48,7 +47,7 @@ export default function VoiceView() {
   const handleDisconnect = async () => {
     if (!selectedServerId || !selectedChannelId) return;
     try {
-      await leaveVoice.mutateAsync({ serverId: selectedServerId, voiceChannelId: selectedChannelId });
+      await leaveVoice.mutateAsync({ serverId: selectedServerId, channelId: selectedChannelId });
       setIsMuted(false);
       setIsDeafened(false);
     } catch (error) {
@@ -138,25 +137,21 @@ interface ParticipantRowProps {
 function ParticipantRow({ participant }: ParticipantRowProps) {
   const { data: profile } = useGetUserProfile(participant.userId);
 
-  const principalStr = participant.userId.toString();
-  const avatarIndex = (principalStr.charCodeAt(0) % 6) + 1;
+  const avatarIndex = (parseInt(participant.userId.toString().slice(-2), 16) % 6) + 1;
   const defaultAvatar = `/assets/generated/avatar-default-0${avatarIndex}.dim_256x256.png`;
 
-  const userName = profile?.name || principalStr.slice(0, 8);
-  const avatarUrl = profile?.avatarUrl || defaultAvatar;
-
   return (
-    <div className="flex items-center justify-between p-4 rounded-lg bg-accent/30">
-      <div className="flex items-center gap-3">
-        <Avatar>
-          <AvatarImage src={avatarUrl} />
-          <AvatarFallback>{userName.charAt(0).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <span className="font-medium">{userName}</span>
+    <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/30">
+      <Avatar className="h-10 w-10">
+        <AvatarImage src={profile?.avatarUrl || defaultAvatar} />
+        <AvatarFallback>{profile?.name?.charAt(0) || 'U'}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1">
+        <p className="font-medium">{profile?.name || 'User'}</p>
+        <p className="text-xs text-muted-foreground">{participant.userId.toString().slice(0, 8)}...</p>
       </div>
-      <div className="flex items-center gap-2 w-32">
-        <Volume2 className="h-4 w-4 text-muted-foreground" />
-        <Slider defaultValue={[100]} max={100} step={1} className="flex-1" />
+      <div className="flex items-center gap-2">
+        <Mic className="h-4 w-4 text-muted-foreground" />
       </div>
     </div>
   );
