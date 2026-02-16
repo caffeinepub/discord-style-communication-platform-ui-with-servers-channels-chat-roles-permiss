@@ -1,0 +1,73 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-16T05:58:45.904Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 3,
+    "implemented": 3,
+    "items": [
+      {
+        "id": "REQ-38",
+        "summary": "Add a user profile overlay (modal on desktop, sheet or modal on mobile) that opens when a user is selected, and renders the selected user's profile details using existing profile data (display name, username/handle if available, avatar, banner, About Me, custom status, badges). The overlay must have an explicit close control that clears the current selection and returns the user to what they were doing (no navigation away from the current view).",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/profile/UserProfileOverlay.tsx",
+          "frontend/src/hooks/useIsMobile.ts",
+          "frontend/src/App.tsx",
+          "frontend/src/state/navigation.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/profile/UserProfileOverlay.tsx",
+          "frontend/src/hooks/useIsMobile.ts",
+          "frontend/src/App.tsx"
+        ]
+      },
+      {
+        "id": "REQ-39",
+        "summary": "Make clicking a member in the right-side Members list open that member's profile overlay.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/members/MemberListPanel.tsx",
+          "frontend/src/components/profile/UserProfileOverlay.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/members/MemberListPanel.tsx",
+          "frontend/src/components/profile/UserProfileOverlay.tsx"
+        ]
+      },
+      {
+        "id": "REQ-40",
+        "summary": "Make clicking a message author's avatar or display name in the chat message list open that author's profile overlay.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/chat/MessageItem.tsx",
+          "frontend/src/components/chat/ChatView.tsx",
+          "frontend/src/components/profile/UserProfileOverlay.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/chat/MessageItem.tsx",
+          "frontend/src/components/profile/UserProfileOverlay.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "build-request.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/App.tsx",
+    "frontend/src/components/chat/MessageItem.tsx",
+    "frontend/src/components/members/MemberListPanel.tsx",
+    "frontend/src/components/profile/UserProfileOverlay.tsx",
+    "frontend/src/hooks/useIsMobile.ts",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}

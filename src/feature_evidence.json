@@ -1,0 +1,66 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-add-a-user-profile-overlay-modal-on-desktop-sheet-or-modal-on-mobile-that-opens-when-a-user-is-selected-and-renders-the-selected-user-s-profile-details-using-existing-profile-data-display-name-username-handle-if-available-avatar-banner-about-me-custom-status-badges-the-overlay-must-have-an-explicit-close-control-that-clears-the-current-selection-and-returns-the-user-to-what-they-were-doing-no-navigation-away-from-the-current-view",
+      "featureTitle": "Add a user profile overlay (modal on desktop, sheet or modal on mobile) that opens when a user is selected, and renders the selected user's profile details using existing profile data (display name, username/handle if available, avatar, banner, About Me, custom status, badges). The overlay must have an explicit close control that clears the current selection and returns the user to what they were doing (no navigation away from the current view).",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/components/profile/UserProfileOverlay.tsx",
+        "frontend/src/hooks/useIsMobile.ts"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-38"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-make-clicking-a-member-in-the-right-side-members-list-open-that-member-s-profile-overlay",
+      "featureTitle": "Make clicking a member in the right-side Members list open that member's profile overlay.",
+      "files": [
+        "frontend/src/components/members/MemberListPanel.tsx",
+        "frontend/src/components/profile/UserProfileOverlay.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-39"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-make-clicking-a-message-author-s-avatar-or-display-name-in-the-chat-message-list-open-that-author-s-profile-overlay",
+      "featureTitle": "Make clicking a message author's avatar or display name in the chat message list open that author's profile overlay.",
+      "files": [
+        "frontend/src/components/chat/MessageItem.tsx",
+        "frontend/src/components/profile/UserProfileOverlay.tsx"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-40"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

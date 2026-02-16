@@ -1,0 +1,87 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "User profile overlay opened from member list and chat author clicks",
+  "requirements": [
+    {
+      "id": "REQ-38",
+      "summary": "Add a responsive user profile overlay that renders existing profile data and can be dismissed without navigation.",
+      "acceptanceCriteria": [
+        "When a user is selected for profile viewing, an overlay appears above the current UI without changing the selected server/channel.",
+        "The overlay shows the selected user's profile data using the existing profile query hook (no placeholder-only content).",
+        "The overlay includes a Close button (and supports standard dismiss behavior like Escape/outside click where appropriate) that clears the selection and hides the overlay.",
+        "All user-facing text in the overlay is in English."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/profile/UserProfileOverlay.tsx",
+          "operation": "create",
+          "description": "Create a composed overlay component that reads the currently selected user from navigation state and displays their profile details via the existing useGetUserProfile hook (avatar, banner, display name, about me, custom status, badges; show a handle-like label when available). Use shadcn-ui composed primitives (e.g., Dialog for desktop and Sheet or mobile-friendly modal behavior for small screens) and include an explicit Close control that clears selection; support standard dismiss interactions (Escape/outside click) as appropriate. For fallbacks, wire generated assets as needed (e.g., frontend/public/assets/generated/profile-banner-default.dim_1200x400.png and frontend/public/assets/generated/avatar-default-01.dim_256x256.png). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useIsMobile.ts",
+          "operation": "create",
+          "description": "Add a small hook to detect mobile/desktop viewport (used by the profile overlay to choose modal vs sheet-style presentation) without changing routing or navigation. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Mount the new UserProfileOverlay at the app shell level (inside NavigationProvider) so it can appear above any current view without navigation changes, and ensure closing the overlay clears the current selection. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/state/navigation.ts",
+          "operation": "modify",
+          "description": "Ensure navigation state cleanly supports 'selected user for profile viewing' (reuse selectedMemberId) and expose a clear action via setSelectedMemberId(null) that the overlay can call on dismiss, without altering server/channel selection behavior."
+        }
+      ]
+    },
+    {
+      "id": "REQ-39",
+      "summary": "Open the profile overlay when clicking a member in the Members list.",
+      "acceptanceCriteria": [
+        "Clicking a row in the Members list opens the profile overlay for that member.",
+        "The opened profile corresponds to the clicked member (correct user identity displayed).",
+        "Closing the overlay returns to the same server/channel view with the member list still accessible."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/members/MemberListPanel.tsx",
+          "operation": "modify",
+          "description": "Confirm member rows set the selected user id for profile viewing (setSelectedMemberId) and ensure the row remains a clear, clickable target to open the overlay while keeping the user in the same server/channel view. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/profile/UserProfileOverlay.tsx",
+          "operation": "modify",
+          "description": "Ensure the overlay correctly resolves and renders the clicked member's identity and profile data when selection comes from the Members list, and that dismissal returns to the same underlying view with the member list still accessible. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-40",
+      "summary": "Open the profile overlay when clicking a chat message author's avatar or name, with proper affordance and minimal disruption.",
+      "acceptanceCriteria": [
+        "In the chat message list, clicking the author avatar opens the profile overlay for the message author.",
+        "In the chat message list, clicking the author name opens the profile overlay for the message author.",
+        "The click targets have appropriate affordance (pointer cursor / hover style) and do not interfere with message scrolling.",
+        "Closing the overlay returns to the same channel and scroll position remains reasonable (no full rerender/navigation)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/chat/MessageItem.tsx",
+          "operation": "modify",
+          "description": "Wrap the author avatar and author display name with click handlers that set the selected user id for profile viewing (via navigation state), add appropriate affordance (e.g., hover/pointer styling) and ensure clicks don’t break scrolling behavior. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/chat/ChatView.tsx",
+          "operation": "modify",
+          "description": "Ensure the chat view does not reroute or fully remount when the profile overlay is opened/closed (overlay should be layered above), preserving a reasonable scroll position by avoiding navigation changes. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/profile/UserProfileOverlay.tsx",
+          "operation": "modify",
+          "description": "Confirm overlay open/close behavior is purely state-driven (no route changes) so dismissing returns to the same channel context after clicking chat author elements. Verify the component's usage instructions before implementing."
+        }
+      ]
+    }
+  ]
+}

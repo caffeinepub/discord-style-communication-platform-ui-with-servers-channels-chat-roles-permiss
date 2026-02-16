@@ -1,0 +1,449 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 19,
+  "summary": "Design and implement a production-ready, Discord-style communication platform (desktop + responsive mobile) with complete servers, text messaging, and voice channels that actually function, plus profiles, friends, discovery, and settings—using reusable components/design tokens and including required backend/APIs and authorization.",
+  "architectural_notes": [
+    "Deliverables are a complete UI/UX concept with reusable Figma components, named layers, auto-layout, consistent typography/spacing, icon system, and clearly separated design tokens.",
+    "Target is a Discord-like experience (as of ~Jan 2026 feature set) while remaining customizable as its own branded platform.",
+    "Authentication scope expanded: implement custom login system and session management (including logout) that integrates with the app UI and any backend authorization checks.",
+    "Username must be treated as a mutable, unique handle: design backend/API validation and UI flows for changing @username safely (uniqueness, formatting, potential cooldown).",
+    "Channel creation should be accessible from Server Settings → Channels (in addition to any sidebar/context-menu entry points), reusing the same category/channel data model and admin authorization checks.",
+    "Define a permissions resolution model: base role permissions + per-channel overrides with explicit precedence/deny-vs-allow behavior and admin authorization checks.",
+    "Project scope expanded beyond UI-only: implement functional text chat and voice channels requiring backend APIs and (if applicable) realtime transport/signaling."
+  ],
+  "known_issues": [
+    "User requested reverting the most recent deployed change (post-v6), indicating the latest update/regression should be rolled back.",
+    "Deployment/runtime error reported: \"failed to create server actor (not available)\" indicating the IC replica / backend canister actor was not reachable during build/deploy."
+  ],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-implement-a-discord-like-application-shell-with-a-four-panel-desktop-layout-1-far-left-vertical-server-icon-rail-2-left-channel-list-sidebar-3-central-chat-content-panel-and-4-right-member-list-panel-include-smooth-micro-interactions-hover-press-subtle-motion-and-layered-dark-panels-with-rounded-corners-and-soft-shadows",
+      "title": "Implement a Discord-like application shell with a four-panel desktop layout: (1) far-left vertical server icon rail, (2) left channel list sidebar, (3) central chat/content panel, and (4) right member list panel; include smooth micro-interactions (hover/press, subtle motion) and layered dark panels with rounded corners and soft shadows.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-fully-responsive-mobile-layout-that-mirrors-discord-s-information-architecture-using-stacked-overlay-navigation-e-g-slide-over-drawers-for-server-list-channel-list-and-member-list-while-keeping-chat-content-as-the-primary-view-ensure-all-primary-navigation-is-reachable-with-one-hand-friendly-controls",
+      "title": "Create a fully responsive mobile layout that mirrors Discord’s information architecture using stacked/overlay navigation (e.g., slide-over drawers) for server list, channel list, and member list while keeping chat/content as the primary view; ensure all primary navigation is reachable with one-hand friendly controls.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-server-creation-and-navigation-ui-users-can-create-a-server-upload-a-custom-server-icon-client-side-image-selection-rename-servers-reorder-servers-drag-and-drop-and-navigate-between-servers-from-the-left-server-rail",
+      "title": "Add server creation and navigation UI: users can create a server, upload a custom server icon (client-side image selection), rename servers, reorder servers (drag-and-drop), and navigate between servers from the left server rail.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-channel-organization-ui-inside-each-server-clearly-separate-text-channels-and-voice-channels-and-support-organizing-channels-into-collapsible-categories-expand-collapse-per-category",
+      "title": "Implement channel organization UI inside each server: clearly separate Text Channels and Voice Channels and support organizing channels into collapsible categories (expand/collapse per category).",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-server-customization-and-onboarding-settings-ui-including-editable-server-name-description-banner-community-mode-toggle-welcome-screen-setup-and-onboarding-configuration-provide-a-coherent-settings-navigation-layout-consistent-with-discord-style-settings-pages",
+      "title": "Create server customization and onboarding settings UI, including editable server name, description, banner, community mode toggle, welcome screen setup, and onboarding configuration; provide a coherent settings navigation layout consistent with Discord-style settings pages.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-a-roles-and-permissions-ui-within-server-settings-administrators-can-create-roles-with-name-color-and-hierarchy-ordering-configure-permissions-including-managing-channels-managing-roles-kicking-members-banning-members-moderating-messages-managing-webhooks-creating-invites-managing-events-and-administrator-include-channel-specific-permission-overrides-ui",
+      "title": "Implement a Roles and Permissions UI within server settings: administrators can create roles with name, color, and hierarchy ordering; configure permissions including managing channels, managing roles, kicking members, banning members, moderating messages, managing webhooks, creating invites, managing events, and administrator; include channel-specific permission overrides UI.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-member-management-ui-with-role-assignment-controls-including-displaying-members-in-the-right-panel-and-providing-a-member-management-view-where-administrators-can-assign-remove-roles-ensure-bot-accounts-render-with-a-visible-bot-tag",
+      "title": "Add member management UI with role assignment controls, including displaying members in the right panel and providing a member management view where administrators can assign/remove roles; ensure bot accounts render with a visible 'BOT' tag.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-the-central-chat-ui-for-text-channels-including-rich-message-formatting-controls-basic-markdown-style-replies-threads-ui-pinned-messages-ui-emoji-reactions-ui-file-upload-ui-client-side-selection-gif-picker-ui-stickers-ui-embeds-and-link-preview-rendering-visual-preview-components",
+      "title": "Implement the central chat UI for text channels including: rich message formatting controls (basic Markdown-style), replies, threads UI, pinned messages UI, emoji reactions UI, file upload UI (client-side selection), GIF picker UI, stickers UI, embeds and link preview rendering (visual preview components).",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-voice-channel-ui-screens-show-connected-state-speaking-indicators-mute-deafen-controls-per-user-volume-sliders-and-connection-status-indicators-include-stage-style-voice-channels-with-speaker-section-audience-list-and-raise-hand-control",
+      "title": "Add voice channel UI screens: show connected state, speaking indicators, mute/deafen controls, per-user volume sliders, and connection status indicators; include Stage-style voice channels with speaker section, audience list, and raise-hand control.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-video-calling-and-screen-sharing-interfaces-as-ui-no-real-time-media-required-participant-video-tile-grid-local-preview-camera-toggle-stream-selection-ui-and-full-screen-mode-controls",
+      "title": "Implement video calling and screen sharing interfaces as UI (no real-time media required): participant video tile grid, local preview, camera toggle, stream selection UI, and full-screen mode controls.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-direct-messages-and-group-dms-accessible-from-a-home-section-above-the-server-list-include-unread-indicators-typing-indicators-ui-state-and-quick-call-buttons-on-dm-items",
+      "title": "Implement Direct Messages and Group DMs accessible from a Home section above the server list; include unread indicators, typing indicators (UI state), and quick call buttons on DM items.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-build-the-friends-system-ui-friends-home-page-with-tabs-online-all-pending-blocked-add-friend-flow-by-username-request-accept-decline-ui-and-visible-user-statuses-online-idle-do-not-disturb-invisible-plus-avatars-custom-status-messages-activity-text-and-contextual-action-menus-for-messaging-calling",
+      "title": "Build the Friends system UI: Friends Home page with tabs (Online, All, Pending, Blocked), Add Friend flow by username, request accept/decline UI, and visible user statuses (Online, Idle, Do Not Disturb, Invisible) plus avatars, custom status messages, activity text, and contextual action menus for messaging/calling.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-detailed-user-profile-ui-avatar-with-animated-avatar-support-ui-rendering-profile-banner-about-me-mutual-servers-and-mutual-friends-sections-and-profile-badges-subscription-style-early-supporter-style-achievement-style-server-role-badges",
+      "title": "Implement detailed user profile UI: avatar with animated avatar support (UI rendering), profile banner, About Me, mutual servers and mutual friends sections, and profile badges (subscription-style, early supporter-style, achievement-style, server role badges).",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-account-settings-and-application-wide-settings-ui-profile-customization-username-display-name-pronouns-avatar-banner-password-email-management-ui-connected-accounts-ui-subscription-management-ui-privacy-safety-devices-sessions-appearance-plus-language-region-accessibility-theme-switching-dark-light-custom-notifications-keybinds-voice-video-devices-ui-and-text-scaling-options",
+      "title": "Create Account Settings and application-wide settings UI: profile customization (username, display name, pronouns, avatar, banner), password/email management (UI), connected accounts (UI), subscription management (UI), privacy & safety, devices & sessions, appearance; plus language/region, accessibility, theme switching (dark/light/custom), notifications, keybinds, voice/video devices (UI), and text scaling options.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-server-discovery-pages-with-search-category-filters-preview-cards-and-a-join-flow-include-integrations-management-settings-page-stub-under-server-settings",
+      "title": "Implement server discovery pages with search, category filters, preview cards, and a join flow; include integrations management settings page stub under server settings.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-notification-settings-ui-with-per-server-and-per-channel-overrides-mute-durations-mobile-push-toggles-ui-and-notification-preview-customization-ensure-overrides-are-accessible-from-server-settings-and-or-channel-context-menus",
+      "title": "Add notification settings UI with per-server and per-channel overrides, mute durations, mobile push toggles (UI), and notification preview customization; ensure overrides are accessible from server settings and/or channel context menus.",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-apply-a-coherent-original-visual-theme-not-discord-branded-while-matching-discord-like-layout-conventions-define-and-use-consistent-design-tokens-for-color-typography-spacing-scale-radii-shadows-and-icon-sizing-ensure-all-user-facing-text-is-in-english",
+      "title": "Apply a coherent, original visual theme (not Discord-branded) while matching Discord-like layout conventions: define and use consistent design tokens for color, typography, spacing scale, radii, shadows, and icon sizing; ensure all user-facing text is in English.",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-provide-reusable-ui-component-structure-using-existing-shadcn-ui-components-composed-without-editing-read-only-component-sources-for-common-patterns-sidebars-lists-context-menus-modals-sheets-settings-forms-tabs-and-command-search-implement-common-micro-interactions-hover-focus-pressed-consistently",
+      "title": "Provide reusable UI component structure using existing shadcn/ui components (composed without editing read-only component sources) for common patterns: sidebars, lists, context menus, modals/sheets, settings forms, tabs, and command/search; implement common micro-interactions (hover, focus, pressed) consistently.",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-channel-creation-flow-in-the-server-channel-sidebar-that-allows-server-admins-to-create-a-a-new-category-and-b-a-new-text-or-voice-channel-inside-an-existing-category-and-ensure-newly-created-items-appear-immediately-in-the-channel-list",
+      "title": "Add a channel creation flow in the server channel sidebar that allows server admins to create (a) a new category and (b) a new text or voice channel inside an existing category, and ensure newly created items appear immediately in the channel list.",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-user-facing-logout-control-that-logs-the-user-out-of-the-app-and-returns-them-to-the-login-screen",
+      "title": "Add a user-facing logout control that logs the user out of the app and returns them to the login screen.",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-support-for-users-changing-their-username-unique-handle-via-user-settings-including-backend-persistence-and-validation",
+      "title": "Implement support for users changing their @username (unique handle) via user settings, including backend persistence and validation.",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-keep-internet-identity-as-the-authentication-mechanism-platform-constraint-while-updating-the-login-ui-copy-to-be-product-branded-and-not-require-users-to-understand-internet-identity-terminology",
+      "title": "Keep Internet Identity as the authentication mechanism (platform constraint) while updating the login UI copy to be product-branded and not require users to understand Internet Identity terminology.",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-a-server-settings-channels-page-that-allows-server-admins-to-add-new-channels-text-or-voice-from-within-server-settings-not-only-from-the-left-channel-sidebar-the-page-must-list-existing-categories-and-their-channels-and-provide-an-obvious-control-to-create-a-channel-under-a-chosen-category",
+      "title": "Implement a Server Settings → Channels page that allows server admins to add new channels (text or voice) from within server settings (not only from the left channel sidebar). The page must list existing categories and their channels, and provide an obvious control to create a channel under a chosen category.",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-wire-the-new-server-settings-channels-page-into-the-server-settings-shell-navigation-so-that-selecting-channels-renders-the-new-page-component",
+      "title": "Wire the new Server Settings → Channels page into the server settings shell navigation so that selecting “Channels” renders the new page component.",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-wire-the-frontend-text-chat-ui-to-real-backend-messages-for-the-currently-selected-text-channel-replace-the-static-sample-messages-in-chatview-with-a-react-query-driven-message-list-and-make-chatcomposer-send-messages-to-the-backend-and-update-the-list",
+      "title": "Wire the frontend text chat UI to real backend messages for the currently selected text channel: replace the static sample messages in ChatView with a React Query-driven message list, and make ChatComposer send messages to the backend and update the list.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-wire-the-frontend-voice-channel-ui-to-real-backend-voice-presence-make-the-connect-disconnect-controls-call-the-backend-join-leave-methods-for-the-currently-selected-voice-channel-and-render-the-participant-list-from-the-backend-instead-of-static-sample-participants",
+      "title": "Wire the frontend voice channel UI to real backend voice presence: make the Connect/Disconnect controls call the backend join/leave methods for the currently selected voice channel and render the participant list from the backend instead of static sample participants.",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-react-query-hooks-queries-mutations-for-text-messages-and-voice-presence-in-frontend-src-hooks-usequeries-ts-following-the-existing-patterns-used-for-servers-categories-and-roles",
+      "title": "Add React Query hooks (queries + mutations) for text messages and voice presence in frontend/src/hooks/useQueries.ts, following the existing patterns used for servers, categories, and roles.",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-the-recently-added-custom-account-homepage-experience-and-restore-the-original-account-homepage-screen-flow-when-a-user-opens-user-settings",
+      "title": "Remove the recently-added custom account/homepage experience and restore the original account homepage screen/flow when a user opens User Settings.",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-user-settings-navigation-and-default-landing-state-match-the-original-account-homepage-behavior-including-the-default-page-selection-and-visible-sidebar-items-without-changing-authentication-logout-or-backend-profile-username-functionality",
+      "title": "Ensure User Settings navigation and default landing state match the original account homepage behavior (including the default page selection and visible sidebar items), without changing authentication, logout, or backend profile/username functionality.",
+      "reqIds": [
+        "REQ-33"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-frontend-actor-initialization-flow-to-surface-connection-initialization-failures-instead-of-collapsing-to-a-null-actor-and-provide-a-clear-user-friendly-error-state-when-the-backend-canister-replica-is-unavailable",
+      "title": "Update the frontend actor initialization flow to surface connection/initialization failures (instead of collapsing to a null actor) and provide a clear, user-friendly error state when the backend canister/replica is unavailable.",
+      "reqIds": [
+        "REQ-36"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-prevent-server-creation-and-other-mutations-that-require-an-initialized-actor-from-running-while-the-actor-is-still-loading-or-in-an-error-state-and-ensure-action-buttons-flows-are-disabled-with-an-explanatory-tooltip-message-in-english-until-the-backend-connection-is-ready",
+      "title": "Prevent server creation and other mutations that require an initialized actor from running while the actor is still loading or in an error state, and ensure action buttons/flows are disabled with an explanatory tooltip/message in English until the backend connection is ready.",
+      "reqIds": [
+        "REQ-37"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-user-profile-overlay-modal-on-desktop-sheet-or-modal-on-mobile-that-opens-when-a-user-is-selected-and-renders-the-selected-user-s-profile-details-using-existing-profile-data-display-name-username-handle-if-available-avatar-banner-about-me-custom-status-badges-the-overlay-must-have-an-explicit-close-control-that-clears-the-current-selection-and-returns-the-user-to-what-they-were-doing-no-navigation-away-from-the-current-view",
+      "title": "Add a user profile overlay (modal on desktop, sheet or modal on mobile) that opens when a user is selected, and renders the selected user's profile details using existing profile data (display name, username/handle if available, avatar, banner, About Me, custom status, badges). The overlay must have an explicit close control that clears the current selection and returns the user to what they were doing (no navigation away from the current view).",
+      "reqIds": [
+        "REQ-38"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-make-clicking-a-member-in-the-right-side-members-list-open-that-member-s-profile-overlay",
+      "title": "Make clicking a member in the right-side Members list open that member's profile overlay.",
+      "reqIds": [
+        "REQ-39"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-make-clicking-a-message-author-s-avatar-or-display-name-in-the-chat-message-list-open-that-author-s-profile-overlay",
+      "title": "Make clicking a message author's avatar or display name in the chat message list open that author's profile overlay.",
+      "reqIds": [
+        "REQ-40"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Core Discord-like layout UI (server bar, channel list, chat, member list) with modern dark theme and micro-interactions; desktop + responsive mobile designs",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Server creation & navigation UI: create servers, upload icons, rename, reorder servers; channels organized into collapsible categories",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Server customization & onboarding UI: editable server name/description/banner, community mode, welcome screen, onboarding configuration",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Roles & permissions UI in server settings: role creation (name/color/hierarchy), permission toggles, channel-specific overrides, member role assignment controls",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Server settings pages UI: Overview, Roles, Channels, Moderation, Audit Log, Integrations, Emoji & Stickers, Boost/Subscriptions, Safety Setup, Community tools",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Messaging UI for text channels: rich formatting, replies, threads, pins, reactions, uploads, GIF/stickers, embeds & link previews",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Voice/video communication UI: voice channels (speaking indicators, mute/deafen, per-user volume, connection status), video calling + screen sharing, Stage channels (speakers/audience/raise hand)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "DMs & social UI: Home with DMs/Group DMs (unread/typing/call buttons), Friends system (tabs, add friend, requests, statuses), user profiles (animated avatars, banners, about, mutuals, badges)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Account & app-wide settings UI: profile, password/email, connected accounts, subscriptions, privacy/safety, devices/sessions, appearance; language/region/accessibility/theme/notifications/keybinds/voice-video devices/text scaling",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Discovery & notifications UI: server discovery search/filters/cards/join flow; bot tags & integration management; per-server/per-channel notification overrides and mute/push/preview controls",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-27",
+      "summary": "Backend: implement Motoko data models and APIs to support persistence for servers, server ordering, channels/categories, roles/permissions (including channel overrides), members and role assignments, basic friend requests, and user profile fields required by the UI; include authorization checks for admin-only actions (e.g., managing roles/permissions).",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-28",
+      "summary": "Add channel management UI: create/edit/delete channels (text/voice), set channel details, and ensure new channels appear in the server channel list (including categories if applicable)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-30",
+      "summary": "Expose and/or complete backend APIs needed by the channel creation UI so the frontend can fetch categories for a server and create categories/text channels/voice channels with proper authorization checks for server admins.",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-31",
+      "summary": "Add user authentication UX including ability to log out (logout controls in UI and session handling)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-32",
+      "summary": "Support changing a user's @username (handle, unique identifier) via account settings UI and required backend/API validation",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-34",
+      "summary": "Enable adding channels via the Server Settings → Channels page (UI flow to create text/voice channels from settings, not only from sidebar), building on existing category support",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-35",
+      "summary": "Permissions: implement channel-level permission overrides with clear precedence rules so channel overrides can override base role permissions (allow/deny resolution model)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-36",
+      "summary": "Make text chat and voice chat channels actually work (functional messaging + voice channel connectivity), not UI-only—add necessary backend/realtime infrastructure and integrate with existing channel models",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-37",
+      "summary": "Implement functional text channel messaging backed by the Motoko canister: persist messages per (serverId, textChannelId), allow authenticated server members to send messages, and allow authenticated server members to fetch message history for a text channel.",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-39",
+      "summary": "Implement functional voice channel presence backed by the Motoko canister: allow authenticated server members to join/leave a specific voice channel and query the current participant list for that voice channel.",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-40",
+      "summary": "Revert the most recently deployed UI behavior change that the assistant just made (the change that resulted in the \"restored homepage\" experience when opening User Settings), restoring the prior behavior exactly as it was before that last change.",
+      "reqIds": [
+        "REQ-34"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-41",
+      "summary": "Add a lightweight backend health-check method that allows the frontend to verify the canister is reachable (e.g., a query method that returns a constant or current time) and does not require any special permissions beyond standard authenticated user access.",
+      "reqIds": [
+        "REQ-35"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-42",
+      "summary": "Open user profile on click: clicking a member in the right user/member list or clicking a username/avatar in chat should open that user's profile view/modal",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Discord-style communication platform UI with servers, channels, chat, roles/permissions, settings, friends, profiles, discovery, and notifications",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

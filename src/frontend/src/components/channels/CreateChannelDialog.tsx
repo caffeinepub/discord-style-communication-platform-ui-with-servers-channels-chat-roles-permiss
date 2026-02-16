@@ -1,0 +1,171 @@
+import { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Hash, Volume2 } from 'lucide-react';
+import { useAddTextChannel, useAddVoiceChannel } from '../../hooks/useQueries';
+import { useBackendActionGuard } from '@/hooks/useBackendActionGuard';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
+interface CreateChannelDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  serverId: bigint;
+  categoryId: bigint;
+}
+
+type ChannelType = 'text' | 'voice';
+
+export default function CreateChannelDialog({
+  open,
+  onOpenChange,
+  serverId,
+  categoryId,
+}: CreateChannelDialogProps) {
+  const [channelName, setChannelName] = useState('');
+  const [channelType, setChannelType] = useState<ChannelType>('text');
+  const addTextChannel = useAddTextChannel();
+  const addVoiceChannel = useAddVoiceChannel();
+  const { disabled: backendDisabled, reason: backendReason } = useBackendActionGuard();
+
+  const isPending = addTextChannel.isPending || addVoiceChannel.isPending;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!channelName.trim() || backendDisabled) return;
+
+    try {
+      if (channelType === 'text') {
+        await addTextChannel.mutateAsync({
+          serverId,
+          categoryId,
+          channelName: channelName.trim(),
+        });
+      } else {
+        await addVoiceChannel.mutateAsync({
+          serverId,
+          categoryId,
+          channelName: channelName.trim(),
+        });
+      }
+      setChannelName('');
+      setChannelType('text');
+      onOpenChange(false);
+    } catch (error) {
+      // Error is handled by the mutation's onError
+    }
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      setChannelName('');
+      setChannelType('text');
+    }
+    onOpenChange(newOpen);
+  };
+
+  const isSubmitDisabled = !channelName.trim() || isPending || backendDisabled;
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create Channel</DialogTitle>
+            <DialogDescription>
+              Add a new text or voice channel to this category.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Channel Type</Label>
+              <RadioGroup
+                value={channelType}
+                onValueChange={(value) => setChannelType(value as ChannelType)}
+                className="grid grid-cols-2 gap-4"
+                disabled={backendDisabled}
+              >
+                <div>
+                  <RadioGroupItem
+                    value="text"
+                    id="text"
+                    className="peer sr-only"
+                    disabled={backendDisabled}
+                  />
+                  <Label
+                    htmlFor="text"
+                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                  >
+                    <Hash className="mb-2 h-6 w-6" />
+                    <span className="text-sm font-medium">Text</span>
+                  </Label>
+                </div>
+                <div>
+                  <RadioGroupItem
+                    value="voice"
+                    id="voice"
+                    className="peer sr-only"
+                    disabled={backendDisabled}
+                  />
+                  <Label
+                    htmlFor="voice"
+                    className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                  >
+                    <Volume2 className="mb-2 h-6 w-6" />
+                    <span className="text-sm font-medium">Voice</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="channel-name">Channel Name</Label>
+              <Input
+                id="channel-name"
+                value={channelName}
+                onChange={(e) => setChannelName(e.target.value)}
+                placeholder={channelType === 'text' ? 'e.g., general-chat' : 'e.g., voice-lounge'}
+                maxLength={50}
+                autoFocus
+                disabled={backendDisabled}
+              />
+            </div>
+            {backendDisabled && backendReason && (
+              <p className="text-sm text-muted-foreground">{backendReason}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button type="submit" disabled={isSubmitDisabled}>
+                    {isPending ? 'Creating...' : 'Create Channel'}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {backendDisabled && backendReason && (
+                <TooltipContent>{backendReason}</TooltipContent>
+              )}
+            </Tooltip>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

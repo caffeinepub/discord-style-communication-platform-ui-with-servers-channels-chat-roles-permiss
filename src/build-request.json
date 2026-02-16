@@ -1,0 +1,76 @@
+{
+  "kind": "build_request",
+  "title": "Open user profile from member list and chat message author clicks",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-38",
+      "text": "Add a user profile overlay (modal on desktop, sheet or modal on mobile) that opens when a user is selected, and renders the selected user's profile details using existing profile data (display name, username/handle if available, avatar, banner, About Me, custom status, badges). The overlay must have an explicit close control that clears the current selection and returns the user to what they were doing (no navigation away from the current view).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "make it so clicking someone in the users list or clicking their username / profile picture in chat will bring up their profile"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When a user is selected for profile viewing, an overlay appears above the current UI without changing the selected server/channel.",
+        "The overlay shows the selected user's profile data using the existing profile query hook (no placeholder-only content).",
+        "The overlay includes a Close button (and supports standard dismiss behavior like Escape/outside click where appropriate) that clears the selection and hides the overlay.",
+        "All user-facing text in the overlay is in English."
+      ]
+    },
+    {
+      "id": "REQ-39",
+      "text": "Make clicking a member in the right-side Members list open that member's profile overlay.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "clicking someone in the users list ... will bring up their profile"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Clicking a row in the Members list opens the profile overlay for that member.",
+        "The opened profile corresponds to the clicked member (correct user identity displayed).",
+        "Closing the overlay returns to the same server/channel view with the member list still accessible."
+      ]
+    },
+    {
+      "id": "REQ-40",
+      "text": "Make clicking a message author's avatar or display name in the chat message list open that author's profile overlay.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "clicking their username / profile picture in chat will bring up their profile"
+        ]
+      },
+      "acceptanceCriteria": [
+        "In the chat message list, clicking the author avatar opens the profile overlay for the message author.",
+        "In the chat message list, clicking the author name opens the profile overlay for the message author.",
+        "The click targets have appropriate affordance (pointer cursor / hover style) and do not interfere with message scrolling.",
+        "Closing the overlay returns to the same channel and scroll position remains reasonable (no full rerender/navigation)."
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not edit frontend immutable paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui (compose only).",
+    "Keep the backend as a single Motoko actor; no backend changes are required for this request."
+  ],
+  "nonGoals": [
+    "Implementing new backend APIs for profile data beyond what already exists.",
+    "Adding real-time presence, typing, or live profile updates.",
+    "Changing the overall navigation model (e.g., routing to a new page) instead of using an overlay."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}
