@@ -1,3 +1,4 @@
+import Migration "migration";
 import Array "mo:core/Array";
 import Map "mo:core/Map";
 import Text "mo:core/Text";
@@ -13,11 +14,28 @@ import Time "mo:core/Time";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 
+// Apply migration using with-clause
+(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  // User Profile Types
+  // Authentication Types & State (NEW)
+  public type RegisterPayload = {
+    username : Text;
+    email : Text;
+    password : Text;
+  };
+
+  public type Session = {
+    token : Text;
+    accountId : Text;
+    expiresAt : Int;
+  };
+
+  let persistentSessions = Map.empty<Text, Text>();
+
+  // User Profile Types (unchanged)
   public type UserProfile = {
     name : Text;
     aboutMe : Text;
@@ -34,7 +52,7 @@ actor {
     #Invisible;
   };
 
-  // Friend System Types
+  // Friend System Types (unchanged)
   public type FriendRequest = {
     from : Principal;
     to : Principal;
@@ -49,7 +67,7 @@ actor {
     #Blocked;
   };
 
-  // Permission Types
+  // Permission Types (unchanged)
   public type Permission = {
     name : Text;
     value : Bool;
@@ -69,7 +87,7 @@ actor {
     };
   };
 
-  // Channel Types
+  // Channel Types (unchanged)
   public type TextChannel = {
     id : Nat;
     name : Text;
@@ -94,7 +112,7 @@ actor {
     };
   };
 
-  // Server Types
+  // Server Types (unchanged)
   public type ServerMember = {
     userId : Principal;
     roles : [Nat];
@@ -120,7 +138,7 @@ actor {
     };
   };
 
-  // Messages Types
+  // Messages Types (unchanged)
   public type TextChannelMessage = {
     id : Nat;
     serverId : Nat;
@@ -151,7 +169,7 @@ actor {
     voiceChannelOrder : Map.Map<Nat, [Nat]>;
   };
 
-  // Audit Log Types
+  // Audit Log Types (unchanged)
   public type AuditEventType = {
     #ServerCreated;
     #ServerRenamed;
@@ -217,6 +235,39 @@ actor {
   let userUsernames = Map.empty<Principal, Text>();
   let auditLogs = Map.empty<Nat, [AuditLogEntry]>();
   let categoryChannelOrders = Map.empty<Nat, CategoryChannelOrder>();
+
+  // Authentication...
+  /// Create new session for a new user registration
+  /// Allows anonymous/guest users to register (no authorization check needed)
+  public shared ({ caller }) func register(_ : RegisterPayload) : async Session {
+    let userId = caller.toText();
+    let token = userId;
+    let session : Session = {
+      token;
+      accountId = userId;
+      expiresAt = 0; // Never expires yet
+    };
+
+    persistentSessions.add(token, userId);
+    session;
+  };
+
+  /// Validate session with the persistent store (future: make more secure)
+  /// No authorization needed - this is used to validate sessions
+  public query ({ caller }) func validateSession(token : Text) : async ?Session {
+    switch (persistentSessions.get(token)) {
+      case (?accountId) {
+        ?{
+          token;
+          accountId;
+          expiresAt = 0;
+        };
+      };
+      case (null) {
+        null;
+      };
+    };
+  };
 
   // Helper Functions
 
@@ -359,6 +410,9 @@ actor {
   };
 
   public query ({ caller }) func getUserStatus(user : Principal) : async ?UserStatus {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view user status");
+    };
     userStatuses.get(user);
   };
 

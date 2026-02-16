@@ -1,119 +1,63 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-16T19:02:05.071Z",
+  "generatedAt": "2026-02-16T20:51:44.014Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 7,
-    "implemented": 4,
+    "total": 3,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Remove Internet Identity (id.ai) as the authentication mechanism and implement a custom, canister-managed account system that supports account registration and login using app-managed credentials (e.g., username/email + password), without relying on Internet Identity or any external identity provider.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/pages/LoginScreen.tsx",
-          "frontend/src/auth/sessionStorage.ts",
-          "frontend/src/auth/AuthProvider.tsx",
-          "frontend/src/auth/useAuth.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/pages/LoginScreen.tsx",
-          "frontend/src/auth/sessionStorage.ts",
-          "frontend/src/auth/AuthProvider.tsx",
-          "frontend/src/auth/useAuth.ts"
-        ]
+        "summary": "Implement a backend authentication registration endpoint that the frontend can call instead of throwing the current placeholder error. The endpoint must create a new account using the provided username, email, and password, and return a session object containing token, accountId, and expiresAt (matching the signature expected in frontend/src/auth/AuthProvider.tsx comments).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Update the backend (single Motoko actor) to support custom accounts and sessions, including secure password storage (hashed + salted) and session issuance/validation for all authenticated actions.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Update the frontend auth flow to call the backend registration endpoint and remove the hardcoded thrown error string \"Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\". On success, store the returned session via sessionStorage.save and transition authStatus to \"authenticated\".",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/auth/sessionStorage.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/auth/sessionStorage.ts"
+        ]
       },
       {
         "id": "REQ-3",
-        "summary": "Refactor authorization in `backend/main.mo` so that all user-protected operations currently gated by `AccessControl.hasPermission(accessControlState, caller, #user)` work with the new custom account/session system (i.e., no longer require Internet Identity-derived principals for normal user access).",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Replace the current frontend authentication wiring (which depends on `useInternetIdentity`) with a new custom Auth provider/hook that manages session tokens and exposes `login`, `logout`, `register`, and `authStatus` for the UI.",
+        "summary": "Add a backend session validation endpoint and wire it into session restore in the frontend so that when a saved session exists, the app validates it with the backend before setting authStatus to \"authenticated\" (replacing the current 'Temporary: assume stored session is valid' behavior).",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/auth/AuthProvider.tsx",
-          "frontend/src/pages/LoginScreen.tsx",
-          "frontend/src/hooks/useLogout.ts",
-          "frontend/src/App.tsx"
+          "frontend/src/auth/sessionStorage.ts"
         ],
         "matchedFiles": [
           "frontend/src/auth/AuthProvider.tsx",
-          "frontend/src/pages/LoginScreen.tsx",
-          "frontend/src/hooks/useLogout.ts",
-          "frontend/src/App.tsx"
-        ]
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Update all frontend React Query data hooks/mutations that call authenticated backend methods (see `frontend/src/hooks/useQueries.ts`) to include/attach the new session token so authenticated operations continue to work end-to-end.",
-        "status": "missing",
-        "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/auth/authedCall.ts"
-        ],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Keep immutable frontend hook files unmodified by introducing new auth/session hooks in new files and updating only editable app code to use them.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/auth/AuthProvider.tsx",
-          "frontend/src/hooks/useLogout.ts",
-          "frontend/src/App.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/auth/AuthProvider.tsx",
-          "frontend/src/hooks/useLogout.ts",
-          "frontend/src/App.tsx"
-        ]
-      },
-      {
-        "id": "REQ-7",
-        "summary": "Update user-facing authentication UI copy to reflect the new account system (no references to Internet Identity), and apply a consistent, coherent visual theme to the auth screens and related auth UI states.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/auth/AuthLayout.tsx",
-          "frontend/src/pages/LoginScreen.tsx",
-          "frontend/src/index.css"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/auth/AuthLayout.tsx",
-          "frontend/src/pages/LoginScreen.tsx"
+          "frontend/src/auth/sessionStorage.ts"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
     "frontend/src/auth/AuthProvider.tsx",
     "frontend/src/auth/sessionStorage.ts",
-    "frontend/src/auth/useAuth.ts",
-    "frontend/src/components/auth/AuthLayout.tsx",
-    "frontend/src/hooks/useLogout.ts",
-    "frontend/src/pages/LoginScreen.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

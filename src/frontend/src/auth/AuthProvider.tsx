@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { sessionStorage } from './sessionStorage';
 import { useBackendConnection } from '../hooks/useBackendConnection';
+import type { RegisterPayload } from '../backend';
 
 export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated' | 'error';
 
@@ -36,19 +37,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Validate session with backend when actor is ready
       if (isReady && actor) {
         try {
-          // TODO: Call backend validateSession endpoint when available
-          // For now, we'll trust the stored session
-          // const isValid = await actor.validateSession(session.token);
+          const validatedSession = await actor.validateSession(session.token);
           
-          // Temporary: assume stored session is valid
-          setSessionToken(session.token);
-          setAccountId(session.accountId);
+          if (!validatedSession) {
+            // Session is invalid or expired
+            sessionStorage.clear();
+            setAuthStatus('unauthenticated');
+            return;
+          }
+          
+          // Session is valid, restore auth state
+          setSessionToken(validatedSession.token);
+          setAccountId(validatedSession.accountId);
           setAuthStatus('authenticated');
         } catch (err) {
           console.error('Session validation failed:', err);
           sessionStorage.clear();
           setAuthStatus('unauthenticated');
         }
+      } else if (!isReady) {
+        // Wait for backend to be ready before validating
+        return;
       }
     };
 
@@ -61,28 +70,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     
     if (!actor) {
-      throw new Error('Backend connection not ready');
+      const errorMsg = 'Backend connection not ready';
+      setError(errorMsg);
+      throw new Error(errorMsg);
     }
 
     try {
       // TODO: Call backend login endpoint when available
-      // const response = await actor.login(identifier, passwordHash);
+      // Expected backend signature: login(identifier: Text, password: Text) -> { token: Text; accountId: Text; expiresAt: Nat }
+      // const response = await actor.login(identifier, password);
       
-      // Temporary mock implementation
-      throw new Error('Login endpoint not yet implemented in backend. Please use the backend authentication system once it is updated with custom auth support.');
+      // Temporary: throw error until backend implements login
+      throw new Error('Login endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.');
       
-      // When backend is ready, uncomment:
+      // When backend is ready, use this code:
       /*
       const sessionData = {
         token: response.token,
         accountId: response.accountId,
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+        expiresAt: Number(response.expiresAt),
       };
       
       sessionStorage.save(sessionData);
       setSessionToken(sessionData.token);
       setAccountId(sessionData.accountId);
       setAuthStatus('authenticated');
+      setError(null);
       */
     } catch (err: any) {
       const errorMessage = err.message || 'Login failed';
@@ -96,29 +109,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     
     if (!actor) {
-      throw new Error('Backend connection not ready');
+      const errorMsg = 'Backend connection not ready';
+      setError(errorMsg);
+      throw new Error(errorMsg);
     }
 
     try {
-      // TODO: Call backend register endpoint when available
-      // const response = await actor.register(username, email, passwordHash);
+      const payload: RegisterPayload = {
+        username,
+        email,
+        password,
+      };
       
-      // Temporary mock implementation
-      throw new Error('Registration endpoint not yet implemented in backend. Please use the backend authentication system once it is updated with custom auth support.');
+      const response = await actor.register(payload);
       
-      // When backend is ready, uncomment:
-      /*
+      // Convert bigint expiresAt to number for storage
       const sessionData = {
         token: response.token,
         accountId: response.accountId,
-        expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
+        expiresAt: Number(response.expiresAt),
       };
       
       sessionStorage.save(sessionData);
       setSessionToken(sessionData.token);
       setAccountId(sessionData.accountId);
       setAuthStatus('authenticated');
-      */
+      setError(null);
     } catch (err: any) {
       const errorMessage = err.message || 'Registration failed';
       setError(errorMessage);
@@ -131,9 +147,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (actor && sessionToken) {
       try {
         // TODO: Call backend logout endpoint when available
+        // Expected backend signature: logout(token: Text) -> ()
         // await actor.logout(sessionToken);
       } catch (err) {
         console.error('Logout error:', err);
+        // Continue with local logout even if backend call fails
       }
     }
 

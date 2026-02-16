@@ -33,6 +33,7 @@ export default function LoginScreen() {
 
     try {
       await login(signInIdentifier, signInPassword);
+      // On success, authStatus will change to 'authenticated' and App.tsx will handle the transition
     } catch (err: any) {
       setSignInError(err.message || 'Failed to sign in. Please try again.');
     } finally {
@@ -56,10 +57,24 @@ export default function LoginScreen() {
       return;
     }
 
+    // Validate username
+    if (signUpUsername.length < 3) {
+      setSignUpError('Username must be at least 3 characters long');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(signUpEmail)) {
+      setSignUpError('Please enter a valid email address');
+      return;
+    }
+
     setIsSigningUp(true);
 
     try {
       await register(signUpUsername, signUpEmail, signUpPassword);
+      // On success, authStatus will change to 'authenticated' and App.tsx will handle the transition
     } catch (err: any) {
       setSignUpError(err.message || 'Failed to create account. Please try again.');
     } finally {
@@ -99,6 +114,7 @@ export default function LoginScreen() {
                 placeholder="Enter your username or email"
                 required
                 autoComplete="username"
+                disabled={isSigningIn}
               />
             </div>
 
@@ -112,6 +128,7 @@ export default function LoginScreen() {
                 placeholder="Enter your password"
                 required
                 autoComplete="current-password"
+                disabled={isSigningIn}
               />
             </div>
 
@@ -152,6 +169,8 @@ export default function LoginScreen() {
                 placeholder="Choose a username"
                 required
                 autoComplete="username"
+                disabled={isSigningUp}
+                minLength={3}
               />
             </div>
 
@@ -165,7 +184,11 @@ export default function LoginScreen() {
                 placeholder="Enter your email"
                 required
                 autoComplete="email"
+                disabled={isSigningUp}
               />
+              <p className="text-xs text-muted-foreground">
+                Your email will only be visible in account settings
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -178,6 +201,8 @@ export default function LoginScreen() {
                 placeholder="Create a password (min 8 characters)"
                 required
                 autoComplete="new-password"
+                disabled={isSigningUp}
+                minLength={8}
               />
             </div>
 
@@ -191,6 +216,8 @@ export default function LoginScreen() {
                 placeholder="Confirm your password"
                 required
                 autoComplete="new-password"
+                disabled={isSigningUp}
+                minLength={8}
               />
             </div>
 

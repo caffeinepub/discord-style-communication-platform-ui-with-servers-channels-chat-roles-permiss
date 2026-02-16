@@ -8,6 +8,7 @@ import AppearancePage from './pages/AppearancePage';
 import { cn } from '@/lib/utils';
 import { useLogout } from '../../../hooks/useLogout';
 import { Separator } from '@/components/ui/separator';
+import { useAuth } from '../../../auth/useAuth';
 
 type SettingsPage = 'profile' | 'appearance';
 
@@ -15,6 +16,7 @@ export default function UserSettingsShell() {
   const [currentPage, setCurrentPage] = useState<SettingsPage>('profile');
   const { setShowUserSettings } = useNavigation();
   const { logout } = useLogout();
+  const { authStatus } = useAuth();
 
   const pages = [
     { id: 'profile', label: 'My Profile' },
@@ -25,6 +27,11 @@ export default function UserSettingsShell() {
     await logout();
     setShowUserSettings(false);
   };
+
+  // Handle case where user is not authenticated (shouldn't normally happen, but defensive)
+  if (authStatus !== 'authenticated') {
+    return null;
+  }
 
   return (
     <div className="flex h-full bg-background">

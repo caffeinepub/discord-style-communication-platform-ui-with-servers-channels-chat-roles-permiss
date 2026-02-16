@@ -1,5 +1,8 @@
 module {
-  public func run(state : {}) : {} {
-    state;
+  type OldActor = { };
+  type NewActor = { };
+
+  public func run(old : OldActor) : NewActor {
+    { };
   };
 };

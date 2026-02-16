@@ -1,151 +1,89 @@
 {
   "kind": "build_request",
-  "title": "Replace id.ai/Internet Identity with a custom internal account system",
-  "projectName": "Roles Admin",
-  "priority": "normal",
+  "title": "Implement backend registration endpoint and connect frontend auth to it",
+  "projectName": "Community Chat",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Remove Internet Identity (id.ai) as the authentication mechanism and implement a custom, canister-managed account system that supports account registration and login using app-managed credentials (e.g., username/email + password), without relying on Internet Identity or any external identity provider.",
-      "target": "both",
+      "text": "Implement a backend authentication registration endpoint that the frontend can call instead of throwing the current placeholder error. The endpoint must create a new account using the provided username, email, and password, and return a session object containing token, accountId, and expiresAt (matching the signature expected in frontend/src/auth/AuthProvider.tsx comments).",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-user-1"
+          "msg-1"
         ],
         "quotes": [
-          "Redo the account system completely, I do not want to use id.ai for the accounts."
+          "IT STILL SAYS Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\nERROR"
         ]
       },
       "acceptanceCriteria": [
-        "The app no longer prompts users to sign in with Internet Identity and does not call `AuthClient.login()` anywhere in the active login flow.",
-        "Users can create a new account and sign in using the app’s own credential flow.",
-        "Authentication does not depend on `process.env.II_URL` or any identityProvider URL.",
-        "A logged-in session persists across refresh (until explicit logout or expiration)."
+        "The backend canister exports a callable method for registration with inputs (username, email, password).",
+        "On successful registration, the method returns a response object containing token, accountId, and expiresAt (Nat) compatible with the frontend expectations.",
+        "Attempting to register with a username that is already taken returns a clear error (trap or variant) rather than silently overwriting.",
+        "The backend persists the created account so that subsequent calls behave consistently after canister upgrade/restart."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Update the backend (single Motoko actor) to support custom accounts and sessions, including secure password storage (hashed + salted) and session issuance/validation for all authenticated actions.",
-      "target": "backend",
+      "text": "Update the frontend auth flow to call the backend registration endpoint and remove the hardcoded thrown error string \"Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\". On success, store the returned session via sessionStorage.save and transition authStatus to \"authenticated\".",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-user-1"
+          "msg-1"
         ],
         "quotes": [
-          "Redo the account system completely, I do not want to use id.ai for the accounts."
+          "IT STILL SAYS Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\nERROR"
         ]
       },
       "acceptanceCriteria": [
-        "Backend exposes endpoints to register an account, log in, log out, and retrieve the current session/account context.",
-        "Passwords are never stored or returned in plaintext; only salted password hashes are stored.",
-        "Backend validates a session token for protected operations and rejects calls with missing/invalid/expired tokens with a clear Unauthorized error.",
-        "Session tokens can be revoked on logout."
+        "Creating an account from the \"Create Account\" tab no longer shows the placeholder backend-not-implemented error.",
+        "After successful registration, the app persists session data in localStorage using frontend/src/auth/sessionStorage.ts and the UI transitions into the authenticated app state without requiring a refresh.",
+        "If backend registration fails, the UI shows a user-facing error message in English (using the existing alert in frontend/src/pages/LoginScreen.tsx)."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Refactor authorization in `backend/main.mo` so that all user-protected operations currently gated by `AccessControl.hasPermission(accessControlState, caller, #user)` work with the new custom account/session system (i.e., no longer require Internet Identity-derived principals for normal user access).",
-      "target": "backend",
+      "text": "Add a backend session validation endpoint and wire it into session restore in the frontend so that when a saved session exists, the app validates it with the backend before setting authStatus to \"authenticated\" (replacing the current 'Temporary: assume stored session is valid' behavior).",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-user-1"
+          "msg-1"
         ],
         "quotes": [
-          "Redo the account system completely, I do not want to use id.ai for the accounts."
+          "IT STILL SAYS Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\nERROR"
         ]
       },
       "acceptanceCriteria": [
-        "After signing in via the new account system, a user can successfully perform actions that previously required `#user` permission (e.g., set username, read/save profile, create/join/leave servers) without using Internet Identity.",
-        "If not signed in (no valid session), the same actions fail with an Unauthorized error.",
-        "The backend remains a single actor and compiles successfully."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Replace the current frontend authentication wiring (which depends on `useInternetIdentity`) with a new custom Auth provider/hook that manages session tokens and exposes `login`, `logout`, `register`, and `authStatus` for the UI.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-user-1"
-        ],
-        "quotes": [
-          "Redo the account system completely, I do not want to use id.ai for the accounts."
-        ]
-      },
-      "acceptanceCriteria": [
-        "`frontend/src/App.tsx` determines authenticated vs unauthenticated state using the new custom auth context (not `useInternetIdentity`).",
-        "The unauthenticated screen supports both “Create account” and “Sign in” flows.",
-        "Logout clears the session token and resets relevant cached queries similarly to the current behavior."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Update all frontend React Query data hooks/mutations that call authenticated backend methods (see `frontend/src/hooks/useQueries.ts`) to include/attach the new session token so authenticated operations continue to work end-to-end.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-user-1"
-        ],
-        "quotes": [
-          "Redo the account system completely, I do not want to use id.ai for the accounts."
-        ]
-      },
-      "acceptanceCriteria": [
-        "When logged out, authenticated queries/mutations are disabled or fail with a user-friendly Unauthorized message.",
-        "When logged in, existing features that require authentication (profile setup/save, server create/join/leave, role actions, messaging where applicable) work using the session-based auth.",
-        "No React Query hook relies on an Internet Identity identity being present to function."
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Keep immutable frontend hook files unmodified by introducing new auth/session hooks in new files and updating only editable app code to use them.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-user-1"
-        ],
-        "quotes": [
-          "Redo the account system completely, I do not want to use id.ai for the accounts."
-        ]
-      },
-      "acceptanceCriteria": [
-        "No changes are made to any path listed in `frontend.immutablePaths` (including `frontend/src/hooks/useInternetIdentity.ts` and `frontend/src/hooks/useActor.ts`).",
-        "The application builds and runs using the new auth flow without requiring edits to immutable files."
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Update user-facing authentication UI copy to reflect the new account system (no references to Internet Identity), and apply a consistent, coherent visual theme to the auth screens and related auth UI states.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-user-1"
-        ],
-        "quotes": [
-          "Redo the account system completely, I do not want to use id.ai for the accounts."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Login/registration screens use English text that describes the custom sign-in/sign-up flow and does not mention Internet Identity or id.ai.",
-        "Auth screens use a consistent theme (colors/typography/layout) that is applied uniformly across login, registration, and error states.",
-        "Theme choice avoids introducing new product features and only affects look-and-feel and presentation."
+        "Backend exposes a validateSession(token) method that returns a boolean (or equivalent) indicating whether the session is valid and unexpired.",
+        "On page reload with a stored session, AuthProvider calls validateSession and clears local session + sets authStatus to unauthenticated when invalid.",
+        "On page reload with a valid stored session, the user remains authenticated without seeing an auth error state."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor with all logic in `backend/main.mo`; only add `backend/migration.mo` if a state upgrade is required.",
-    "Do not edit files under `frontend/src/components/ui` (compose them only).",
-    "Do not modify any immutable frontend paths: `frontend/src/hooks/useInternetIdentity.ts`, `frontend/src/hooks/useInternetIdentity.tsx`, `frontend/src/hooks/useActor.ts`, `frontend/src/main.tsx`, `frontend/src/components/ui`.",
-    "Use English for all user-facing text."
+    "Backend must remain a single-actor Motoko canister with all logic in backend/main.mo (per project architecture).",
+    "Only create backend/migration.mo if required by conditional migration policy due to newly added stable state.",
+    "Do not edit files in frontend immutablePaths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui (compose existing UI components instead).",
+    "Use English for all user-facing strings."
   ],
   "nonGoals": [
-    "Do not integrate third-party authentication providers (including Internet Identity, OAuth, Auth0, etc.).",
-    "Do not add external databases or off-chain storage for accounts.",
-    "Do not add real-time features (WebSockets) as part of the account rewrite.",
-    "Do not implement payments or email/SMS verification as part of this request."
+    "Implement third-party authentication providers (only Internet Identity is supported).",
+    "Add external databases or non-Motoko backend services.",
+    "Implement real-time auth updates via websockets/push notifications.",
+    "Redesign the entire login/sign-up UI beyond what is necessary to remove the registration-not-implemented error and complete the registration flow."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

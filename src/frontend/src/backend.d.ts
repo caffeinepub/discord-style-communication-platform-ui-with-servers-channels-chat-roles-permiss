@@ -55,6 +55,11 @@ export interface Role {
     color: string;
     position: bigint;
 }
+export interface Session {
+    token: string;
+    expiresAt: bigint;
+    accountId: string;
+}
 export interface FriendRequest {
     to: Principal;
     from: Principal;
@@ -68,6 +73,11 @@ export interface ServerMember {
 export interface ServerMemberInfo {
     member: ServerMember;
     username: string;
+}
+export interface RegisterPayload {
+    username: string;
+    password: string;
+    email: string;
 }
 export interface VoiceChannelPresence {
     userId: Principal;
@@ -170,6 +180,11 @@ export interface backendInterface {
     joinVoiceChannel(serverId: bigint, voiceChannelId: bigint): Promise<void>;
     leaveServer(serverId: bigint): Promise<void>;
     leaveVoiceChannel(serverId: bigint, voiceChannelId: bigint): Promise<void>;
+    /**
+     * / Create new session for a new user registration
+     * / Allows anonymous/guest users to register (no authorization check needed)
+     */
+    register(arg0: RegisterPayload): Promise<Session>;
     removeFriend(friend: Principal): Promise<void>;
     removeRoleFromUser(serverId: bigint, _roleId: bigint, _user: Principal): Promise<void>;
     renameServer(serverId: bigint, newName: string): Promise<void>;
@@ -181,4 +196,9 @@ export interface backendInterface {
     setUserStatus(status: UserStatus): Promise<void>;
     setUsername(desiredUsername: string): Promise<void>;
     updateCategoryChannelOrdering(serverId: bigint, categoryOrder: Array<bigint>, textChannelOrderEntries: Array<[bigint, Array<bigint>]>, voiceChannelOrderEntries: Array<[bigint, Array<bigint>]>): Promise<void>;
+    /**
+     * / Validate session with the persistent store (future: make more secure)
+     * / No authorization needed - this is used to validate sessions
+     */
+    validateSession(token: string): Promise<Session | null>;
 }

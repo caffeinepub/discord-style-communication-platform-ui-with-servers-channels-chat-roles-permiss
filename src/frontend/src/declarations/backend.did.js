@@ -119,6 +119,16 @@ export const VoiceChannelPresence = IDL.Record({
   'voiceChannelId' : IDL.Nat,
   'serverId' : IDL.Nat,
 });
+export const RegisterPayload = IDL.Record({
+  'username' : IDL.Text,
+  'password' : IDL.Text,
+  'email' : IDL.Text,
+});
+export const Session = IDL.Record({
+  'token' : IDL.Text,
+  'expiresAt' : IDL.Int,
+  'accountId' : IDL.Text,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -208,6 +218,7 @@ export const idlService = IDL.Service({
   'joinVoiceChannel' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   'leaveServer' : IDL.Func([IDL.Nat], [], []),
   'leaveVoiceChannel' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+  'register' : IDL.Func([RegisterPayload], [Session], []),
   'removeFriend' : IDL.Func([IDL.Principal], [], []),
   'removeRoleFromUser' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Principal], [], []),
   'renameServer' : IDL.Func([IDL.Nat, IDL.Text], [], []),
@@ -236,6 +247,7 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
+  'validateSession' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
 });
 
 export const idlInitArgs = [];
@@ -352,6 +364,16 @@ export const idlFactory = ({ IDL }) => {
     'voiceChannelId' : IDL.Nat,
     'serverId' : IDL.Nat,
   });
+  const RegisterPayload = IDL.Record({
+    'username' : IDL.Text,
+    'password' : IDL.Text,
+    'email' : IDL.Text,
+  });
+  const Session = IDL.Record({
+    'token' : IDL.Text,
+    'expiresAt' : IDL.Int,
+    'accountId' : IDL.Text,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -457,6 +479,7 @@ export const idlFactory = ({ IDL }) => {
     'joinVoiceChannel' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
     'leaveServer' : IDL.Func([IDL.Nat], [], []),
     'leaveVoiceChannel' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
+    'register' : IDL.Func([RegisterPayload], [Session], []),
     'removeFriend' : IDL.Func([IDL.Principal], [], []),
     'removeRoleFromUser' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Principal], [], []),
     'renameServer' : IDL.Func([IDL.Nat, IDL.Text], [], []),
@@ -485,6 +508,7 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'validateSession' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
   });
 };
 

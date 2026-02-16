@@ -2,14 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-remove-internet-identity-id-ai-as-the-authentication-mechanism-and-implement-a-custom-canister-managed-account-system-that-supports-account-registration-and-login-using-app-managed-credentials-e-g-username-email-password-without-relying-on-internet-identity-or-any-external-identity-provider",
-      "featureTitle": "Remove Internet Identity (id.ai) as the authentication mechanism and implement a custom, canister-managed account system that supports account registration and login using app-managed credentials (e.g., username/email + password), without relying on Internet Identity or any external identity provider.",
+      "featureId": "feature-update-the-frontend-auth-flow-to-call-the-backend-registration-endpoint-and-remove-the-hardcoded-thrown-error-string-registration-endpoint-not-yet-implemented-in-backend-please-wait-for-backend-authentication-system-to-be-updated-on-success-store-the-returned-session-via-sessionstorage-save-and-transition-authstatus-to-authenticated",
+      "featureTitle": "Update the frontend auth flow to call the backend registration endpoint and remove the hardcoded thrown error string \"Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\". On success, store the returned session via sessionStorage.save and transition authStatus to \"authenticated\".",
       "files": [
-        "frontend/src/App.tsx",
         "frontend/src/auth/AuthProvider.tsx",
-        "frontend/src/auth/sessionStorage.ts",
-        "frontend/src/auth/useAuth.ts",
-        "frontend/src/pages/LoginScreen.tsx"
+        "frontend/src/auth/sessionStorage.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -20,18 +17,16 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-1"
+        "REQ-2"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-replace-the-current-frontend-authentication-wiring-which-depends-on-useinternetidentity-with-a-new-custom-auth-provider-hook-that-manages-session-tokens-and-exposes-login-logout-register-and-authstatus-for-the-ui",
-      "featureTitle": "Replace the current frontend authentication wiring (which depends on `useInternetIdentity`) with a new custom Auth provider/hook that manages session tokens and exposes `login`, `logout`, `register`, and `authStatus` for the UI.",
+      "featureId": "feature-add-a-backend-session-validation-endpoint-and-wire-it-into-session-restore-in-the-frontend-so-that-when-a-saved-session-exists-the-app-validates-it-with-the-backend-before-setting-authstatus-to-authenticated-replacing-the-current-temporary-assume-stored-session-is-valid-behavior",
+      "featureTitle": "Add a backend session validation endpoint and wire it into session restore in the frontend so that when a saved session exists, the app validates it with the backend before setting authStatus to \"authenticated\" (replacing the current 'Temporary: assume stored session is valid' behavior).",
       "files": [
-        "frontend/src/App.tsx",
         "frontend/src/auth/AuthProvider.tsx",
-        "frontend/src/hooks/useLogout.ts",
-        "frontend/src/pages/LoginScreen.tsx"
+        "frontend/src/auth/sessionStorage.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -42,48 +37,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-4"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-keep-immutable-frontend-hook-files-unmodified-by-introducing-new-auth-session-hooks-in-new-files-and-updating-only-editable-app-code-to-use-them",
-      "featureTitle": "Keep immutable frontend hook files unmodified by introducing new auth/session hooks in new files and updating only editable app code to use them.",
-      "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/auth/AuthProvider.tsx",
-        "frontend/src/hooks/useLogout.ts"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-6"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-update-user-facing-authentication-ui-copy-to-reflect-the-new-account-system-no-references-to-internet-identity-and-apply-a-consistent-coherent-visual-theme-to-the-auth-screens-and-related-auth-ui-states",
-      "featureTitle": "Update user-facing authentication UI copy to reflect the new account system (no references to Internet Identity), and apply a consistent, coherent visual theme to the auth screens and related auth UI states.",
-      "files": [
-        "frontend/src/components/auth/AuthLayout.tsx",
-        "frontend/src/pages/LoginScreen.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-7"
+        "REQ-3"
       ],
       "confidence": "high"
     }

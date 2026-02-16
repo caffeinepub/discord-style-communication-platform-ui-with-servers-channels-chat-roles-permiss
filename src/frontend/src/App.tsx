@@ -46,6 +46,7 @@ function AppContent() {
     );
   }
 
+  // Show login screen when unauthenticated or error
   if (!isAuthenticated) {
     return <LoginScreen />;
   }

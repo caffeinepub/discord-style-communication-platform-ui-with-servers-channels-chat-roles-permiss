@@ -137,6 +137,11 @@ export interface Role {
     color: string;
     position: bigint;
 }
+export interface Session {
+    token: string;
+    expiresAt: bigint;
+    accountId: string;
+}
 export interface FriendRequest {
     to: Principal;
     from: Principal;
@@ -150,6 +155,11 @@ export interface ServerMember {
 export interface ServerMemberInfo {
     member: ServerMember;
     username: string;
+}
+export interface RegisterPayload {
+    username: string;
+    password: string;
+    email: string;
 }
 export interface VoiceChannelPresence {
     userId: Principal;
@@ -253,6 +263,11 @@ export interface backendInterface {
     joinVoiceChannel(serverId: bigint, voiceChannelId: bigint): Promise<void>;
     leaveServer(serverId: bigint): Promise<void>;
     leaveVoiceChannel(serverId: bigint, voiceChannelId: bigint): Promise<void>;
+    /**
+     * / Create new session for a new user registration
+     * / Allows anonymous/guest users to register (no authorization check needed)
+     */
+    register(arg0: RegisterPayload): Promise<Session>;
     removeFriend(friend: Principal): Promise<void>;
     removeRoleFromUser(serverId: bigint, _roleId: bigint, _user: Principal): Promise<void>;
     renameServer(serverId: bigint, newName: string): Promise<void>;
@@ -264,8 +279,13 @@ export interface backendInterface {
     setUserStatus(status: UserStatus): Promise<void>;
     setUsername(desiredUsername: string): Promise<void>;
     updateCategoryChannelOrdering(serverId: bigint, categoryOrder: Array<bigint>, textChannelOrderEntries: Array<[bigint, Array<bigint>]>, voiceChannelOrderEntries: Array<[bigint, Array<bigint>]>): Promise<void>;
+    /**
+     * / Validate session with the persistent store (future: make more secure)
+     * / No authorization needed - this is used to validate sessions
+     */
+    validateSession(token: string): Promise<Session | null>;
 }
-import type { AuditEventType as _AuditEventType, AuditLogEntry as _AuditLogEntry, UserProfile as _UserProfile, UserRole as _UserRole, UserStatus as _UserStatus } from "./declarations/backend.did.d.ts";
+import type { AuditEventType as _AuditEventType, AuditLogEntry as _AuditLogEntry, Session as _Session, UserProfile as _UserProfile, UserRole as _UserRole, UserStatus as _UserStatus } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -818,6 +838,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async register(arg0: RegisterPayload): Promise<Session> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.register(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.register(arg0);
+            return result;
+        }
+    }
     async removeFriend(arg0: Principal): Promise<void> {
         if (this.processError) {
             try {
@@ -972,6 +1006,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async validateSession(arg0: string): Promise<Session | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.validateSession(arg0);
+                return from_candid_opt_n19(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.validateSession(arg0);
+            return from_candid_opt_n19(this._uploadFile, this._downloadFile, result);
+        }
+    }
 }
 function from_candid_AuditEventType_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AuditEventType): AuditEventType {
     return from_candid_variant_n12(_uploadFile, _downloadFile, value);
@@ -987,6 +1035,9 @@ function from_candid_UserStatus_n15(_uploadFile: (file: ExternalBlob) => Promise
 }
 function from_candid_opt_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserStatus]): UserStatus | null {
     return value.length === 0 ? null : from_candid_UserStatus_n15(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Session]): Session | null {
+    return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];

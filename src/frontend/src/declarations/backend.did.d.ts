@@ -51,6 +51,11 @@ export interface GetMembersWithRolesResponse {
   'roles' : Array<Role>,
 }
 export interface Permission { 'value' : boolean, 'name' : string }
+export interface RegisterPayload {
+  'username' : string,
+  'password' : string,
+  'email' : string,
+}
 export interface Role {
   'id' : bigint,
   'permissions' : Array<Permission>,
@@ -82,6 +87,11 @@ export interface ServerMemberInfo {
 export interface ServerMemberWithUsername {
   'member' : ServerMember,
   'username' : string,
+}
+export interface Session {
+  'token' : string,
+  'expiresAt' : bigint,
+  'accountId' : string,
 }
 export interface TextChannel { 'id' : bigint, 'name' : string }
 export interface TextChannelMessage {
@@ -176,6 +186,11 @@ export interface _SERVICE {
   'joinVoiceChannel' : ActorMethod<[bigint, bigint], undefined>,
   'leaveServer' : ActorMethod<[bigint], undefined>,
   'leaveVoiceChannel' : ActorMethod<[bigint, bigint], undefined>,
+  /**
+   * / Create new session for a new user registration
+   * / Allows anonymous/guest users to register (no authorization check needed)
+   */
+  'register' : ActorMethod<[RegisterPayload], Session>,
   'removeFriend' : ActorMethod<[Principal], undefined>,
   'removeRoleFromUser' : ActorMethod<[bigint, bigint, Principal], undefined>,
   'renameServer' : ActorMethod<[bigint, string], undefined>,
@@ -198,6 +213,11 @@ export interface _SERVICE {
     ],
     undefined
   >,
+  /**
+   * / Validate session with the persistent store (future: make more secure)
+   * / No authorization needed - this is used to validate sessions
+   */
+  'validateSession' : ActorMethod<[string], [] | [Session]>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

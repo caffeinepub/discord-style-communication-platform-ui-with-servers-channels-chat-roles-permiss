@@ -2,41 +2,25 @@
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
   "summary": "New project",
-  "architectural_notes": [
-    "Replace/remove id.ai-based authentication; use an internal/custom account system instead"
+  "architectural_notes": [],
+  "known_issues": [
+    "App shows error: 'Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.'"
   ],
-  "known_issues": [],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-remove-internet-identity-id-ai-as-the-authentication-mechanism-and-implement-a-custom-canister-managed-account-system-that-supports-account-registration-and-login-using-app-managed-credentials-e-g-username-email-password-without-relying-on-internet-identity-or-any-external-identity-provider",
-      "title": "Remove Internet Identity (id.ai) as the authentication mechanism and implement a custom, canister-managed account system that supports account registration and login using app-managed credentials (e.g., username/email + password), without relying on Internet Identity or any external identity provider.",
+      "id": "feature-update-the-frontend-auth-flow-to-call-the-backend-registration-endpoint-and-remove-the-hardcoded-thrown-error-string-registration-endpoint-not-yet-implemented-in-backend-please-wait-for-backend-authentication-system-to-be-updated-on-success-store-the-returned-session-via-sessionstorage-save-and-transition-authstatus-to-authenticated",
+      "title": "Update the frontend auth flow to call the backend registration endpoint and remove the hardcoded thrown error string \"Registration endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.\". On success, store the returned session via sessionStorage.save and transition authStatus to \"authenticated\".",
       "reqIds": [
-        "REQ-1"
+        "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-replace-the-current-frontend-authentication-wiring-which-depends-on-useinternetidentity-with-a-new-custom-auth-provider-hook-that-manages-session-tokens-and-exposes-login-logout-register-and-authstatus-for-the-ui",
-      "title": "Replace the current frontend authentication wiring (which depends on `useInternetIdentity`) with a new custom Auth provider/hook that manages session tokens and exposes `login`, `logout`, `register`, and `authStatus` for the UI.",
+      "id": "feature-add-a-backend-session-validation-endpoint-and-wire-it-into-session-restore-in-the-frontend-so-that-when-a-saved-session-exists-the-app-validates-it-with-the-backend-before-setting-authstatus-to-authenticated-replacing-the-current-temporary-assume-stored-session-is-valid-behavior",
+      "title": "Add a backend session validation endpoint and wire it into session restore in the frontend so that when a saved session exists, the app validates it with the backend before setting authStatus to \"authenticated\" (replacing the current 'Temporary: assume stored session is valid' behavior).",
       "reqIds": [
-        "REQ-4"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-keep-immutable-frontend-hook-files-unmodified-by-introducing-new-auth-session-hooks-in-new-files-and-updating-only-editable-app-code-to-use-them",
-      "title": "Keep immutable frontend hook files unmodified by introducing new auth/session hooks in new files and updating only editable app code to use them.",
-      "reqIds": [
-        "REQ-6"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-user-facing-authentication-ui-copy-to-reflect-the-new-account-system-no-references-to-internet-identity-and-apply-a-consistent-coherent-visual-theme-to-the-auth-screens-and-related-auth-ui-states",
-      "title": "Update user-facing authentication UI copy to reflect the new account system (no references to Internet Identity), and apply a consistent, coherent visual theme to the auth screens and related auth UI states.",
-      "reqIds": [
-        "REQ-7"
+        "REQ-3"
       ],
       "version": 1
     }
@@ -44,36 +28,20 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Redo the account system to not use id.ai; implement an internal/custom account system instead",
+      "summary": "Implement backend authentication system registration endpoint (remove 'Registration endpoint not yet implemented in backend' error)",
       "reqIds": [],
       "status": "pending"
     },
     {
-      "id": "AR-3",
-      "summary": "Update the backend (single Motoko actor) to support custom accounts and sessions, including secure password storage (hashed + salted) and session issuance/validation for all authenticated actions.",
+      "id": "AR-2",
+      "summary": "Implement a backend authentication registration endpoint that the frontend can call instead of throwing the current placeholder error. The endpoint must create a new account using the provided username, email, and password, and return a session object containing token, accountId, and expiresAt (matching the signature expected in frontend/src/auth/AuthProvider.tsx comments).",
       "reqIds": [
-        "REQ-2"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-4",
-      "summary": "Refactor authorization in `backend/main.mo` so that all user-protected operations currently gated by `AccessControl.hasPermission(accessControlState, caller, #user)` work with the new custom account/session system (i.e., no longer require Internet Identity-derived principals for normal user access).",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Update all frontend React Query data hooks/mutations that call authenticated backend methods (see `frontend/src/hooks/useQueries.ts`) to include/attach the new session token so authenticated operations continue to work end-to-end.",
-      "reqIds": [
-        "REQ-5"
+        "REQ-1"
       ],
       "status": "pending"
     }
   ],
-  "projectName": "Roles Admin",
+  "projectName": "Community Chat",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }
