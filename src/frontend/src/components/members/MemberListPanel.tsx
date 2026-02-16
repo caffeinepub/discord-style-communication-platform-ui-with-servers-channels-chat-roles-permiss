@@ -1,79 +1,68 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useGetServerMembersWithUsernames, useGetUserProfile } from '../../hooks/useQueries';
 import { useNavigation } from '../../state/navigation';
-import { Users } from 'lucide-react';
-import type { ServerMemberWithUsername } from '@/types/local';
-import { Principal } from '@dfinity/principal';
+import { useGetServerMembersWithUsernames, useGetUserProfile, useGetMemberDisplayColor } from '../../hooks/useQueries';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { sanitizeRoleColor } from '@/utils/roleColor';
+import type { ServerMemberWithUsername } from '@/backend';
 
 export default function MemberListPanel() {
   const { selectedServerId, setSelectedMemberId } = useNavigation();
-  const { data: membersWithUsernames = [], isLoading } = useGetServerMembersWithUsernames(selectedServerId);
-
-  if (!selectedServerId) {
-    return null;
-  }
+  const { data: membersWithUsernames = [] } = useGetServerMembersWithUsernames(selectedServerId);
 
   return (
-    <div className="w-60 bg-secondary border-l border-border flex flex-col">
-      <div className="h-12 border-b border-border flex items-center px-4">
-        <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-        <h3 className="font-semibold text-sm">Members</h3>
-        <span className="ml-auto text-xs text-muted-foreground">
-          {membersWithUsernames.length}
-        </span>
+    <div className="flex w-60 flex-col bg-[oklch(0.21_0.01_250)] border-l border-border">
+      <div className="flex h-12 items-center px-4 border-b border-border">
+        <h3 className="text-sm font-semibold">Members — {membersWithUsernames.length}</h3>
       </div>
-
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground text-center py-4">Loading members...</p>
-          ) : membersWithUsernames.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No members</p>
-          ) : (
-            membersWithUsernames.map((item: ServerMemberWithUsername) => (
-              <MemberRow
-                key={item.member.userId}
-                memberWithUsername={item}
-                onSelect={setSelectedMemberId}
-              />
-            ))
-          )}
+          {membersWithUsernames.map((memberData) => (
+            <MemberRow
+              key={memberData.member.userId.toString()}
+              memberData={memberData}
+              serverId={selectedServerId}
+              onClick={() => setSelectedMemberId(memberData.member.userId.toString())}
+            />
+          ))}
         </div>
       </ScrollArea>
     </div>
   );
 }
 
-interface MemberRowProps {
-  memberWithUsername: ServerMemberWithUsername;
-  onSelect: (memberId: string) => void;
-}
-
-function MemberRow({ memberWithUsername, onSelect }: MemberRowProps) {
-  const { member, username } = memberWithUsername;
-  const memberPrincipal = typeof member.userId === 'string' 
-    ? Principal.fromText(member.userId) 
-    : member.userId;
-  const { data: profile } = useGetUserProfile(memberPrincipal);
-
-  const principalStr = member.userId.toString();
-  const avatarIndex = (principalStr.charCodeAt(0) % 6) + 1;
+function MemberRow({ 
+  memberData, 
+  serverId,
+  onClick 
+}: { 
+  memberData: ServerMemberWithUsername;
+  serverId: bigint | null;
+  onClick: () => void;
+}) {
+  const { data: profile } = useGetUserProfile(memberData.member.userId);
+  const { data: roleColor } = useGetMemberDisplayColor(serverId, memberData.member.userId);
+  
+  const avatarIndex = (parseInt(memberData.member.userId.toString().slice(-2), 16) % 6) + 1;
   const defaultAvatar = `/assets/generated/avatar-default-0${avatarIndex}.dim_256x256.png`;
 
-  const displayName = profile?.name || username || principalStr.slice(0, 8);
-  const avatarUrl = profile?.avatarUrl || defaultAvatar;
+  const displayName = profile?.name || memberData.username || 'User';
+  
+  // Sanitize and apply role color
+  const sanitizedColor = sanitizeRoleColor(roleColor);
+  const nameStyle = sanitizedColor ? { color: sanitizedColor } : undefined;
 
   return (
     <button
-      onClick={() => onSelect(principalStr)}
-      className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent transition-colors text-left"
+      className="flex w-full items-center gap-2 rounded px-2 py-1.5 hover:bg-accent/50 transition-colors cursor-pointer"
+      onClick={onClick}
     >
       <Avatar className="h-8 w-8">
-        <AvatarImage src={avatarUrl} />
-        <AvatarFallback>{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+        <AvatarImage src={profile?.avatarUrl || defaultAvatar} />
+        <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
       </Avatar>
-      <span className="text-sm truncate">{displayName}</span>
+      <span className="text-sm truncate" style={nameStyle}>
+        {displayName}
+      </span>
     </button>
   );
 }

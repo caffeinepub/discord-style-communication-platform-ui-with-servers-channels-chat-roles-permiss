@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { useNavigation } from '../../state/navigation';
 import { useGetCategories, useIsCallerAdmin, useGetCategoryChannelOrdering, useUpdateCategoryChannelOrdering, useGetServer } from '../../hooks/useQueries';
 import { CategorySection } from '../channels/CategorySection';
 import CreateCategoryDialog from '../channels/CreateCategoryDialog';
-import type { ChannelCategory, ServerOrdering } from '../../types/local';
+import type { ChannelCategory, ServerOrdering } from '../../backend';
 import { applyOrderingToCategories, buildCategoryLevelOrdering } from '../../utils/channelOrdering';
 
 export function ChannelSidebar() {
@@ -58,7 +58,7 @@ export function ChannelSidebar() {
     newOrder.splice(targetIndex, 0, draggedCategory);
 
     // Build the full ordering structure
-    const categoryLevelOrdering = buildCategoryLevelOrdering(orderedCategories);
+    const categoryLevelOrdering = buildCategoryLevelOrdering(orderedCategories, persistedOrdering ?? null);
 
     const newServerOrdering: ServerOrdering = {
       categoryOrder: newOrder,

@@ -1,32 +1,23 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Admin reset control to wipe local replica data from User Settings",
+  "title": "Add bottom-left Profile Settings button (desktop)",
   "requirements": [
     {
-      "id": "REQ-3",
-      "summary": "Add an admin-only 'clean replica' reset control in User Settings with strong confirmation, success/error feedback, and cache refresh.",
+      "id": "REQ-1",
+      "summary": "Add a bottom-left desktop rail button that opens the existing User Settings overlay via showUserSettings.",
       "acceptanceCriteria": [
-        "The reset control is only visible/enabled when the current user is an admin (using the existing admin check query).",
-        "Triggering the reset shows a confirmation UI that reduces accidental activation (e.g., requires typing a specific phrase).",
-        "On success, the UI shows a success message and refreshes/invalidates relevant cached queries so the UI reflects an empty state (e.g., server list clears).",
-        "On failure (Unauthorized or network error), the UI shows an English error message without leaving the app in a broken/loading state."
+        "On desktop layout, a settings button is visible in the bottom-left corner of the app UI (within the leftmost rail area).",
+        "Clicking the button sets the existing navigation state to open the User Settings overlay (the view rendered by UserSettingsShell via showUserSettings).",
+        "The button has an English tooltip/label (e.g., \"User Settings\" or \"Profile Settings\").",
+        "The button is keyboard accessible (reachable via Tab and activatable via Enter/Space).",
+        "Mobile behavior is not regressed (existing settings entry points in MobileTopBar/MobileShell continue to work)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/components/nav/ServerRail.tsx",
           "operation": "modify",
-          "description": "Add React Query mutations/queries for the new backend capabilities used by the admin reset UI (admin-only wipe action and optional verification counts). Ensure errors surface as English-friendly messages, and on success invalidate/clear relevant query keys (e.g., servers, discovery, serverOrdering, categories, messages/presences, audit logs, friends, usernames/profiles, sessions) so the UI reflects an empty state. Use the authorization component’s admin-check pattern (existing isCallerAdmin query) to support gating in the UI; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/settings/UserSettings/components/AdminReplicaResetSection.tsx",
-          "operation": "create",
-          "description": "Create a dedicated admin-only settings section UI for 'Clean local replica state' that: (1) checks admin status via the existing admin check query, (2) provides a strong confirmation flow requiring typing an explicit phrase (e.g., \"CLEAN REPLICA\"), (3) triggers the wipe mutation, and (4) shows clear English success/error feedback and disables controls while pending. Optionally display post-reset verification counts using the verification query to confirm zeros. Use existing shadcn/ui components by composition (do not edit ui component files); verify the component's usage instructions before implementing. Use the authorization component’s role-based access gating via the existing admin check query; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/settings/UserSettings/pages/ProfilePage.tsx",
-          "operation": "modify",
-          "description": "Wire the new AdminReplicaResetSection into the User Settings profile page (within existing layout/sections) so it is reachable from the current settings flow. Ensure the control is not rendered for non-admin users, and that success triggers cache invalidation/refresh so lists like servers clear without requiring a reload. Keep all user-facing text in English. Use the authorization component’s admin-check gating (existing query) to ensure admin-only visibility; verify the component's usage instructions before implementing."
+          "description": "Add a new bottom-positioned \"Profile Settings\" (or \"User Settings\") control within the desktop left rail: import an appropriate icon (e.g., Settings) and wire its onClick to the existing navigation state setter (setShowUserSettings(true)) so MainContent renders UserSettingsShell. Ensure the control uses existing accessible button patterns (Button or button with aria-label) and an English Tooltip label, and keep the rail layout such that the control appears at the bottom-left area without affecting mobile entry points."
         }
       ]
     }

@@ -1,11 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Allow admins to fully reset (“clean”) the local replica/canister state back to an initial empty state and verify the reset quickly.
+**Goal:** Add a bottom-left “Profile Settings” button on desktop that opens the existing User Settings overlay.
 
 **Planned changes:**
-- Add an admin-only backend reset method that wipes all stored application data and resets all ID counters to their initial values.
-- Add an admin-only backend verification endpoint that returns a small set of counts/flags (e.g., servers, profiles, sessions, audit log entries) to confirm the state is empty after reset.
-- Add an admin-only control in frontend user settings to trigger the reset with a strong confirmation step (explicit confirmation text), plus clear English success/error feedback and cache/query invalidation so the UI reflects the clean state.
+- Add a settings button within the leftmost rail area of the desktop UI, positioned at the bottom-left.
+- Wire the button click to the existing navigation state/action to open the User Settings overlay (UserSettingsShell via `showUserSettings`).
+- Ensure the button includes an English label/tooltip and is keyboard accessible (Tab focus, Enter/Space activation).
+- Verify mobile settings entry points remain unchanged and continue to work.
 
-**User-visible outcome:** Admin users can initiate a “clean replica” reset from settings (with strong confirmation) and see confirmation/verification that the app has returned to an empty initial state; non-admins cannot access these controls or endpoints.
+**User-visible outcome:** Desktop users see a bottom-left “Profile Settings” button that opens the existing User Settings overlay when clicked (and can be accessed via keyboard), without impacting mobile behavior.

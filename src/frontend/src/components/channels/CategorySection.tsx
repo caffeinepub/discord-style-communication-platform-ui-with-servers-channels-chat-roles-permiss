@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Hash, Volume2, Plus } from 'lucide-react';
 import { useNavigation } from '../../state/navigation';
-import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering } from '../../types/local';
+import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering } from '../../backend';
 import CreateChannelDialog from './CreateChannelDialog';
 import { useIsCallerAdmin } from '../../hooks/useQueries';
 import { useUpdateCategoryChannelOrdering, useGetCategoryChannelOrdering } from '../../hooks/useQueries';
@@ -59,7 +59,7 @@ export function CategorySection({ serverId, category, allCategories, onToggleExp
     newOrder.splice(targetIndex, 0, draggedTextChannel);
 
     // Build the full ordering structure
-    const categoryLevelOrdering = buildCategoryLevelOrdering(allCategories);
+    const categoryLevelOrdering = buildCategoryLevelOrdering(allCategories, persistedOrdering ?? null);
     const updatedCategoryOrdering = categoryLevelOrdering.map(cat => {
       if (cat.id === category.id) {
         return { ...cat, textChannels: newOrder };
@@ -111,7 +111,7 @@ export function CategorySection({ serverId, category, allCategories, onToggleExp
     newOrder.splice(targetIndex, 0, draggedVoiceChannel);
 
     // Build the full ordering structure
-    const categoryLevelOrdering = buildCategoryLevelOrdering(allCategories);
+    const categoryLevelOrdering = buildCategoryLevelOrdering(allCategories, persistedOrdering ?? null);
     const updatedCategoryOrdering = categoryLevelOrdering.map(cat => {
       if (cat.id === category.id) {
         return { ...cat, voiceChannels: newOrder };

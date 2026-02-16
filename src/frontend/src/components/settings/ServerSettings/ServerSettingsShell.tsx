@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { useNavigation } from '../../../state/navigation';
 import OverviewPage from './pages/OverviewPage';
 import RolesPage from './pages/RolesPage';
-import ChannelsPage from './pages/ChannelsPage';
+import { ChannelsPage } from './pages/ChannelsPage';
 import AuditLogPage from './pages/AuditLogPage';
 import { cn } from '@/lib/utils';
 

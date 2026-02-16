@@ -1,20 +1,17 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useGetUserProfile } from '@/hooks/useQueries';
+import { useGetUserProfile, useGetMemberDisplayColor } from '@/hooks/useQueries';
 import { useNavigation } from '@/state/navigation';
-import type { TextChannelMessage } from '@/types/local';
-import { Principal } from '@dfinity/principal';
+import { sanitizeRoleColor } from '@/utils/roleColor';
+import type { TextChannelMessage } from '@/backend';
 
 interface MessageItemProps {
   message: TextChannelMessage;
 }
 
 export default function MessageItem({ message }: MessageItemProps) {
-  const { setSelectedMemberId } = useNavigation();
-  // Convert string to Principal for the query
-  const createdByPrincipal = typeof message.createdBy === 'string' 
-    ? Principal.fromText(message.createdBy) 
-    : message.createdBy;
-  const { data: profile } = useGetUserProfile(createdByPrincipal);
+  const { selectedServerId, setSelectedMemberId } = useNavigation();
+  const { data: profile } = useGetUserProfile(message.createdBy);
+  const { data: roleColor } = useGetMemberDisplayColor(selectedServerId, message.createdBy);
 
   // Generate a consistent avatar index based on the principal
   const principalStr = message.createdBy.toString();
@@ -28,8 +25,12 @@ export default function MessageItem({ message }: MessageItemProps) {
   const timestamp = Number(message.createdAt) / 1_000_000;
 
   const handleAuthorClick = () => {
-    setSelectedMemberId(principalStr);
+    setSelectedMemberId(message.createdBy.toString());
   };
+
+  // Sanitize and apply role color
+  const sanitizedColor = sanitizeRoleColor(roleColor);
+  const nameStyle = sanitizedColor ? { color: sanitizedColor } : undefined;
 
   return (
     <div className="flex gap-3 hover:bg-accent/30 px-4 py-2 -mx-4 rounded transition-colors">
@@ -48,6 +49,7 @@ export default function MessageItem({ message }: MessageItemProps) {
           <button
             onClick={handleAuthorClick}
             className="font-semibold hover:underline cursor-pointer"
+            style={nameStyle}
           >
             {authorName}
           </button>

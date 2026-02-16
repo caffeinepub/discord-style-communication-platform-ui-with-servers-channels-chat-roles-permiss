@@ -4,13 +4,13 @@
   "summary": "New project",
   "architectural_notes": [],
   "known_issues": [],
-  "isFixRequest": true,
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-add-an-admin-only-control-in-the-frontend-user-settings-that-triggers-the-backend-reset-clean-replica-action-with-a-strong-confirmation-step-explicit-confirmation-text-and-clear-success-error-feedback-in-english",
-      "title": "Add an admin-only control in the frontend user settings that triggers the backend reset (“clean replica”) action with a strong confirmation step (explicit confirmation text) and clear success/error feedback in English.",
+      "id": "feature-add-a-user-accessible-profile-settings-button-positioned-in-the-bottom-left-corner-of-the-desktop-ui-that-opens-the-existing-user-settings-overlay-when-clicked",
+      "title": "Add a user-accessible \"Profile Settings\" button positioned in the bottom-left corner of the desktop UI that opens the existing User Settings overlay when clicked.",
       "reqIds": [
-        "REQ-3"
+        "REQ-1"
       ],
       "version": 1
     }
@@ -18,28 +18,12 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Clean the replica (replicated environment/data)",
+      "summary": "Add a profile settings button in the bottom-left corner of the UI",
       "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Add a backend admin-only method that wipes all application data in the canister (intended to “clean the replica”), including servers, channels, roles, memberships, messages/presences, audit logs, friendships/requests/blocks, user profiles/statuses/usernames/emails, session data, and all ordering data, and resets all ID counters back to their initial values.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Expose a minimal verification endpoint for admins that returns a small set of counts/flags (e.g., number of servers, number of stored profiles, number of sessions, number of audit log entries) so developers can confirm that the replica data was cleaned without inspecting state manually.",
-      "reqIds": [
-        "REQ-2"
-      ],
       "status": "pending"
     }
   ],
-  "projectName": "Server Chat",
+  "projectName": "Caffeine Chat",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

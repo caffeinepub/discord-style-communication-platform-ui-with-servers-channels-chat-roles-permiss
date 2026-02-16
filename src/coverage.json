@@ -1,80 +1,34 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-16T22:21:50.975Z",
+  "generatedAt": "2026-02-16T22:31:57.781Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
+    "total": 1,
     "implemented": 1,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add a backend admin-only method that wipes all application data in the canister (intended to “clean the replica”), including servers, channels, roles, memberships, messages/presences, audit logs, friendships/requests/blocks, user profiles/statuses/usernames/emails, session data, and all ordering data, and resets all ID counters back to their initial values.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-2",
-        "summary": "Expose a minimal verification endpoint for admins that returns a small set of counts/flags (e.g., number of servers, number of stored profiles, number of sessions, number of audit log entries) so developers can confirm that the replica data was cleaned without inspecting state manually.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Add an admin-only control in the frontend user settings that triggers the backend reset (“clean replica”) action with a strong confirmation step (explicit confirmation text) and clear success/error feedback in English.",
+        "summary": "Add a user-accessible \"Profile Settings\" button positioned in the bottom-left corner of the desktop UI that opens the existing User Settings overlay when clicked.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/settings/UserSettings/components/AdminReplicaResetSection.tsx",
-          "frontend/src/components/settings/UserSettings/pages/ProfilePage.tsx"
+          "frontend/src/components/nav/ServerRail.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/settings/UserSettings/components/AdminReplicaResetSection.tsx",
-          "frontend/src/components/settings/UserSettings/pages/ProfilePage.tsx"
+          "frontend/src/components/nav/ServerRail.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/channels/CategorySection.tsx",
-    "frontend/src/components/chat/MessageItem.tsx",
-    "frontend/src/components/discovery/DiscoveryView.tsx",
-    "frontend/src/components/discovery/ServerPreviewCard.tsx",
-    "frontend/src/components/members/MemberListPanel.tsx",
-    "frontend/src/components/nav/ChannelSidebar.tsx",
-    "frontend/src/components/profile/RoleAssignmentDialog.tsx",
-    "frontend/src/components/profile/UserProfileOverlay.tsx",
-    "frontend/src/components/servers/ServerIcon.tsx",
-    "frontend/src/components/settings/ServerSettings/ServerSettingsShell.tsx",
-    "frontend/src/components/settings/ServerSettings/components/CreateChannelInSettingsDialog.tsx",
-    "frontend/src/components/settings/ServerSettings/components/MoveChannelDialog.tsx",
-    "frontend/src/components/settings/ServerSettings/components/RoleMemberAssignmentPanel.tsx",
-    "frontend/src/components/settings/ServerSettings/pages/AuditLogPage.tsx",
-    "frontend/src/components/settings/ServerSettings/pages/ChannelsPage.tsx",
-    "frontend/src/components/settings/ServerSettings/pages/RoleMemberAssignmentPanel.tsx",
-    "frontend/src/components/settings/ServerSettings/pages/RolesPage.tsx",
-    "frontend/src/components/settings/UserSettings/components/AdminReplicaResetSection.tsx",
-    "frontend/src/components/settings/UserSettings/pages/ProfilePage.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useBackendConnection.ts",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/types/local.ts",
-    "frontend/src/utils/channelOrdering.ts",
+    "frontend/src/components/nav/ServerRail.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useGetCallerUserProfile, useSaveCallerUserProfile, useGetCallerUsername, useSetUsername } from '../../../../hooks/useQueries';
+import { useGetCallerUserProfile, useSaveCallerUserProfile, useGetCallerUsername, useSetUsername, useGetCallerAccountEmail } from '../../../../hooks/useQueries';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
-import AdminReplicaResetSection from '../components/AdminReplicaResetSection';
 
 export default function ProfilePage() {
   const { data: userProfile, isLoading: profileLoading } = useGetCallerUserProfile();
   const { data: currentUsername, isLoading: usernameLoading } = useGetCallerUsername();
+  const { data: accountEmail, isLoading: emailLoading } = useGetCallerAccountEmail();
   const saveProfileMutation = useSaveCallerUserProfile();
   const setUsernameMutation = useSetUsername();
 
@@ -88,6 +88,23 @@ export default function ProfilePage() {
         </div>
 
         <div className="space-y-4">
+          {/* Account Email (read-only) */}
+          <div className="space-y-2">
+            <Label htmlFor="account-email">Email Address</Label>
+            <Input
+              id="account-email"
+              type="email"
+              value={emailLoading ? 'Loading...' : (accountEmail || 'No email on record')}
+              disabled
+              className="bg-muted"
+            />
+            <p className="text-xs text-muted-foreground">
+              {accountEmail 
+                ? 'Your email is only visible to you in account settings'
+                : 'No email address associated with this account'}
+            </p>
+          </div>
+
           {/* Username */}
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
@@ -207,11 +224,6 @@ export default function ProfilePage() {
           </Button>
         </div>
       </div>
-
-      <Separator />
-
-      {/* Admin Replica Reset Section - only visible to admins */}
-      <AdminReplicaResetSection />
     </div>
   );
 }

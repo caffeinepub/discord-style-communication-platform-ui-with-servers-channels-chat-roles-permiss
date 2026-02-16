@@ -1,108 +1,95 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useGetCategories, useMoveChannelToCategory } from '../../../../hooks/useQueries';
 import { Loader2 } from 'lucide-react';
-import type { ChannelCategory } from '../../../../types/local';
+import type { ChannelCategory } from '../../../../backend';
 
 interface MoveChannelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  serverId: bigint;
-  sourceCategoryId: bigint;
   channelId: bigint;
   channelName: string;
   isTextChannel: boolean;
+  currentCategoryId: bigint;
+  categories: ChannelCategory[];
+  onMove: (targetCategoryId: bigint) => void;
+  isPending?: boolean;
 }
 
 export default function MoveChannelDialog({
   open,
   onOpenChange,
-  serverId,
-  sourceCategoryId,
   channelId,
   channelName,
   isTextChannel,
+  currentCategoryId,
+  categories,
+  onMove,
+  isPending = false,
 }: MoveChannelDialogProps) {
   const [targetCategoryId, setTargetCategoryId] = useState<string>('');
-  const { data: categories = [], isLoading: categoriesLoading } = useGetCategories(serverId);
-  const moveChannel = useMoveChannelToCategory();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleMove = () => {
     if (!targetCategoryId) return;
-
-    try {
-      await moveChannel.mutateAsync({
-        serverId,
-        sourceCategoryId,
-        targetCategoryId: BigInt(targetCategoryId),
-        channelId,
-        isTextChannel,
-        position: null,
-      });
-
-      setTargetCategoryId('');
-      onOpenChange(false);
-    } catch (error) {
-      console.error('Failed to move channel:', error);
-    }
+    onMove(BigInt(targetCategoryId));
+    onOpenChange(false);
   };
 
-  // Filter out the source category
-  const availableCategories = categories.filter((cat: ChannelCategory) => cat.id !== sourceCategoryId);
+  const availableCategories = categories.filter((cat) => cat.id !== currentCategoryId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Move Channel</DialogTitle>
-          <DialogDescription>
-            Move "{channelName}" to a different category
-          </DialogDescription>
+          <DialogTitle>Move {isTextChannel ? 'Text' : 'Voice'} Channel</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="target-category">Target Category</Label>
+            <Label>Channel</Label>
+            <div className="text-sm text-muted-foreground">{channelName}</div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="target-category">Move to Category</Label>
             <Select value={targetCategoryId} onValueChange={setTargetCategoryId}>
               <SelectTrigger id="target-category">
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
-                {categoriesLoading ? (
-                  <div className="p-2 text-sm text-muted-foreground">Loading categories...</div>
-                ) : availableCategories.length === 0 ? (
-                  <div className="p-2 text-sm text-muted-foreground">No other categories available</div>
-                ) : (
-                  availableCategories.map((category: ChannelCategory) => (
-                    <SelectItem key={category.id.toString()} value={category.id.toString()}>
-                      {category.name}
-                    </SelectItem>
-                  ))
-                )}
+                {availableCategories.map((category) => (
+                  <SelectItem key={category.id.toString()} value={category.id.toString()}>
+                    {category.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!targetCategoryId || moveChannel.isPending}>
-              {moveChannel.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Moving...
-                </>
-              ) : (
-                'Move Channel'
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+          {availableCategories.length === 0 && (
+            <div className="text-sm text-muted-foreground">
+              No other categories available. Create a new category first.
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button onClick={handleMove} disabled={!targetCategoryId || isPending}>
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Moving...
+              </>
+            ) : (
+              'Move Channel'
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

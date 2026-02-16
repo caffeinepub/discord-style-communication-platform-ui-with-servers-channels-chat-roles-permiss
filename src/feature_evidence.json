@@ -2,12 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-an-admin-only-control-in-the-frontend-user-settings-that-triggers-the-backend-reset-clean-replica-action-with-a-strong-confirmation-step-explicit-confirmation-text-and-clear-success-error-feedback-in-english",
-      "featureTitle": "Add an admin-only control in the frontend user settings that triggers the backend reset (“clean replica”) action with a strong confirmation step (explicit confirmation text) and clear success/error feedback in English.",
+      "featureId": "feature-add-a-user-accessible-profile-settings-button-positioned-in-the-bottom-left-corner-of-the-desktop-ui-that-opens-the-existing-user-settings-overlay-when-clicked",
+      "featureTitle": "Add a user-accessible \"Profile Settings\" button positioned in the bottom-left corner of the desktop UI that opens the existing User Settings overlay when clicked.",
       "files": [
-        "frontend/src/components/settings/UserSettings/components/AdminReplicaResetSection.tsx",
-        "frontend/src/components/settings/UserSettings/pages/ProfilePage.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/components/nav/ServerRail.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,7 +16,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-3"
+        "REQ-1"
       ],
       "confidence": "high"
     }

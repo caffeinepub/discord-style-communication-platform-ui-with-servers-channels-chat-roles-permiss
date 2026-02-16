@@ -1,4 +1,4 @@
-import { Plus, Home, Compass } from 'lucide-react';
+import { Plus, Home, Compass, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { useBackendActionGuard } from '@/hooks/useBackendActionGuard';
 
 export default function ServerRail() {
-  const { currentView, selectedServerId, goHome, selectServer, setCurrentView } = useNavigation();
+  const { currentView, selectedServerId, goHome, selectServer, setCurrentView, setShowUserSettings } = useNavigation();
   const { data: servers = [] } = useGetAllServers();
   const { data: ordering = [] } = useGetServerOrdering();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -108,6 +108,20 @@ export default function ServerRail() {
             </Button>
           </TooltipTrigger>
           <TooltipContent side="right">Discover</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12 rounded-2xl hover:rounded-xl hover:bg-[oklch(0.45_0.15_145)]"
+              onClick={() => setShowUserSettings(true)}
+            >
+              <Settings className="h-6 w-6" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">User Settings</TooltipContent>
         </Tooltip>
       </div>
 
