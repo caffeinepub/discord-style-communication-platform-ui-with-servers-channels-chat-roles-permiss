@@ -2,53 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-prevent-the-app-from-being-stuck-on-the-global-loading-screen-by-ensuring-auth-initialization-always-resolves-to-a-non-initializing-state-authenticated-or-unauthenticated-even-when-the-backend-connection-is-not-ready-or-becomes-unreachable",
-      "featureTitle": "Prevent the app from being stuck on the global \"Loading...\" screen by ensuring auth initialization always resolves to a non-initializing state (authenticated or unauthenticated) even when the backend connection is not ready or becomes unreachable.",
+      "featureId": "feature-add-an-admin-only-control-in-the-frontend-user-settings-that-triggers-the-backend-reset-clean-replica-action-with-a-strong-confirmation-step-explicit-confirmation-text-and-clear-success-error-feedback-in-english",
+      "featureTitle": "Add an admin-only control in the frontend user settings that triggers the backend reset (“clean replica”) action with a strong confirmation step (explicit confirmation text) and clear success/error feedback in English.",
       "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/auth/AuthProvider.tsx",
-        "frontend/src/auth/sessionStorage.ts"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-implement-and-render-a-backend-connection-status-banner-component-that-clearly-shows-connection-state-loading-ready-error-and-provides-a-retry-action-that-re-attempts-actor-initialization-and-health-check",
-      "featureTitle": "Implement and render a backend connection status banner/component that clearly shows connection state (loading/ready/error) and provides a Retry action that re-attempts actor initialization and health check.",
-      "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/system/BackendConnectionBanner.tsx",
-        "frontend/src/pages/LoginScreen.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-harden-backend-health-checking-so-that-a-hanging-slow-healthcheck-call-cannot-keep-the-ui-in-a-perpetual-loading-state-e-g-add-a-client-side-timeout-and-surface-a-clear-error",
-      "featureTitle": "Harden backend health checking so that a hanging/slow healthCheck call cannot keep the UI in a perpetual loading state (e.g., add a client-side timeout and surface a clear error).",
-      "files": [
-        "frontend/src/hooks/useBackendConnection.ts",
-        "frontend/src/utils/withTimeout.ts"
+        "frontend/src/components/settings/UserSettings/components/AdminReplicaResetSection.tsx",
+        "frontend/src/components/settings/UserSettings/pages/ProfilePage.tsx",
+        "frontend/src/hooks/useQueries.ts"
       ],
       "components": [
         "authorization@4.0.0",

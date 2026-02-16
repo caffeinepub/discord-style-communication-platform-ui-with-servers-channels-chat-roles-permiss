@@ -1,56 +1,116 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-16T22:05:36.260Z",
-  "summary": "Implemented a backend connection banner with Retry and added a client-side timeout wrapper used for health checks. Auth initialization now reacts to backend connection errors and clears stored sessions, but the bounded-time fallback to exit the global initializing state when the backend/actor never becomes ready cannot be fully verified due to truncation of AuthProvider changes. The diff summary also indicates several unrelated UI/state/query changes not requested by the BuildRequest.",
+  "generatedAt": "2026-02-16T22:21:50.972Z",
+  "summary": "The diff clearly adds a new admin-only frontend section to trigger a “clean replica” action, but the backend reset + verification endpoints are not evidenced in the provided backend diff snippet. Additionally, the new UI does not clearly meet the success/error feedback and cache invalidation acceptance criteria based on the truncated component. The diff also includes multiple unrelated feature additions/changes (channel ordering/drag-drop, discovery UI, role management UI, local types) that were not requested by the BuildRequest.",
   "missing_requirements": [
     {
       "id": "REQ-1",
-      "requirement": "Ensure auth initialization always resolves away from authStatus === 'initializing' within a bounded time even if backend readiness never occurs (e.g., actor init hangs), clearing any stored session and returning user to Login with an English backend-not-reachable message.",
-      "reason": "AuthProvider.tsx shows INITIALIZATION_TIMEOUT_MS and mentions a timeout effect, but the implementation is truncated, so it is not verifiable that the timeout actually transitions authStatus out of 'initializing' and clears the session in the 'backend never becomes ready' scenario.",
+      "requirement": "Add a backend admin-only method that wipes all application data in the canister and resets all ID counters back to their initial values; non-admin calls must be rejected; post-reset healthCheck must still work and app flows must work from a clean slate.",
+      "reason": "backend/main.mo is truncated and does not show any new admin-only wipe/reset method implementation, nor evidence that all specified state (servers/channels/roles/memberships/messages/presences/audit logs/friendships/blocks/profiles/statuses/usernames/emails/sessions/ordering data) and ID counters are reset, nor evidence of Unauthorized behavior or healthCheck behavior.",
       "evidence": [
-        "frontend/src/auth/AuthProvider.tsx (truncated)"
+        "backend/main.mo (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "Expose an admin-only verification endpoint returning a small set of counts/flags to confirm replica data was cleaned, reporting zeros immediately after reset.",
+      "reason": "No backend endpoint returning counts/flags is visible in the provided diff summary. The frontend calls a hook (useAdminCheckWipeResult) but the corresponding backend method is not evidenced in the backend diff snippet.",
+      "evidence": [
+        "backend/main.mo (truncated)",
+        "frontend/src/components/settings/UserSettings/components/AdminReplicaResetSection.tsx"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "On success, show a success message and refresh/invalidate relevant cached queries so the UI reflects an empty state; on failure, show an English error message without leaving the app broken/loading.",
+      "reason": "The new AdminReplicaResetSection logs errors to console but does not show any user-facing error Alert/toast/message. Success UI is truncated and cache invalidation/refresh of app queries (e.g., server list) is not evidenced; only a delayed refetch of the verification query is shown.",
+      "evidence": [
+        "frontend/src/components/settings/UserSettings/components/AdminReplicaResetSection.tsx (truncated)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Changes to React Query hooks for backend operations, including corrected updateCategoryChannelOrdering and optimistic updates for channel reordering.",
-      "reason": "Not requested by REQ-1/2/3, which focus on connection/auth initialization loading behavior and a banner with retry.",
+      "description": "Channel/category drag-and-drop ordering UI and persisted ordering mutations/queries (admin-gated).",
+      "reason": "Not requested by REQ-1/2/3; appears unrelated to admin replica reset feature.",
       "evidence": [
-        "frontend/src/hooks/useQueries.ts (mentioned in frontend-file-summaries.txt)",
-        "frontend-file-summaries.txt"
+        "frontend/src/components/channels/CategorySection.tsx",
+        "frontend/src/components/nav/ChannelSidebar.tsx",
+        "frontend/src/components/settings/ServerSettings/pages/ChannelsPage.tsx (truncated)"
       ]
     },
     {
-      "description": "Navigation and settings context refactors/features (mutual exclusion between server/user settings, theme/accent/text scale/keybind persistence, createElement usage to avoid JSX parsing issues).",
-      "reason": "Not requested by the BuildRequest; unrelated to backend connection error surfacing or retry flow.",
+      "description": "Discovery view and server preview/join UI.",
+      "reason": "Not requested by the BuildRequest; unrelated to admin replica reset.",
       "evidence": [
-        "frontend/src/state/navigation.ts (mentioned in frontend-file-summaries.txt)",
-        "frontend/src/state/settings.ts (mentioned in frontend-file-summaries.txt)",
-        "frontend-file-summaries.txt"
+        "frontend/src/components/discovery/DiscoveryView.tsx",
+        "frontend/src/components/discovery/ServerPreviewCard.tsx"
       ]
     },
     {
-      "description": "UI behavior changes that disable/guard actions when backend connection is not ready (e.g., ServerRail \"Add a Server\" disabled with tooltip; CreateServerDialog guarded by useBackendActionGuard).",
-      "reason": "Not requested by the BuildRequest; requirements only ask for preventing infinite loading and surfacing backend connection status with retry.",
+      "description": "Member list panel and profile overlay enhancements (avatar defaults, member selection).",
+      "reason": "Not requested by the BuildRequest; unrelated to admin replica reset.",
       "evidence": [
-        "frontend/src/components/nav/ServerRail.tsx (mentioned in frontend-file-summaries.txt)",
-        "frontend/src/components/servers/CreateServerDialog.tsx (mentioned in frontend-file-summaries.txt)",
-        "frontend-file-summaries.txt"
+        "frontend/src/components/members/MemberListPanel.tsx",
+        "frontend/src/components/profile/UserProfileOverlay.tsx (truncated)",
+        "frontend/src/components/chat/MessageItem.tsx"
+      ]
+    },
+    {
+      "description": "Role assignment dialogs/panels and server settings shell/pages (roles, audit log, channels).",
+      "reason": "Not requested by the BuildRequest; unrelated to admin replica reset.",
+      "evidence": [
+        "frontend/src/components/profile/RoleAssignmentDialog.tsx",
+        "frontend/src/components/settings/ServerSettings/components/RoleMemberAssignmentPanel.tsx (truncated)",
+        "frontend/src/components/settings/ServerSettings/pages/RolesPage.tsx (truncated)",
+        "frontend/src/components/settings/ServerSettings/pages/AuditLogPage.tsx",
+        "frontend/src/components/settings/ServerSettings/ServerSettingsShell.tsx"
+      ]
+    },
+    {
+      "description": "Addition of frontend local type definitions to allow compiling features not implemented in backend.",
+      "reason": "Not requested by the BuildRequest; explicitly states types are for features not yet implemented.",
+      "evidence": [
+        "frontend/src/types/local.ts"
+      ]
+    },
+    {
+      "description": "Backend connection hook comment/behavior change stating no healthCheck exists (and thus no health check performed).",
+      "reason": "BuildRequest acceptance criteria references an existing healthCheck endpoint remaining true after reset; this change suggests healthCheck may not exist / is not used, and is unrelated to adding the admin reset feature itself.",
+      "evidence": [
+        "frontend/src/hooks/useBackendConnection.ts"
       ]
     }
   ],
-  "confidence": 0.66,
+  "confidence": 0.62,
   "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/App.tsx",
-    "frontend/src/auth/AuthProvider.tsx",
-    "frontend/src/auth/sessionStorage.ts",
-    "frontend/src/components/system/BackendConnectionBanner.tsx",
+    "frontend/src/components/channels/CategorySection.tsx",
+    "frontend/src/components/chat/MessageItem.tsx",
+    "frontend/src/components/discovery/DiscoveryView.tsx",
+    "frontend/src/components/discovery/ServerPreviewCard.tsx",
+    "frontend/src/components/members/MemberListPanel.tsx",
+    "frontend/src/components/nav/ChannelSidebar.tsx",
+    "frontend/src/components/profile/RoleAssignmentDialog.tsx",
+    "frontend/src/components/profile/UserProfileOverlay.tsx",
+    "frontend/src/components/servers/ServerIcon.tsx",
+    "frontend/src/components/settings/ServerSettings/ServerSettingsShell.tsx",
+    "frontend/src/components/settings/ServerSettings/components/CreateChannelInSettingsDialog.tsx",
+    "frontend/src/components/settings/ServerSettings/components/MoveChannelDialog.tsx",
+    "frontend/src/components/settings/ServerSettings/components/RoleMemberAssignmentPanel.tsx",
+    "frontend/src/components/settings/ServerSettings/pages/AuditLogPage.tsx",
+    "frontend/src/components/settings/ServerSettings/pages/ChannelsPage.tsx",
+    "frontend/src/components/settings/ServerSettings/pages/RoleMemberAssignmentPanel.tsx",
+    "frontend/src/components/settings/ServerSettings/pages/RolesPage.tsx",
+    "frontend/src/components/settings/UserSettings/components/AdminReplicaResetSection.tsx",
+    "frontend/src/components/settings/UserSettings/pages/ProfilePage.tsx",
     "frontend/src/hooks/useBackendConnection.ts",
-    "frontend/src/pages/LoginScreen.tsx",
-    "frontend/src/utils/withTimeout.ts",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/types/local.ts",
+    "frontend/src/utils/channelOrdering.ts",
     "project_state.json"
   ]
 }

@@ -3,37 +3,42 @@
   "projectStateVersion": 3,
   "summary": "New project",
   "architectural_notes": [],
-  "known_issues": [
-    "App is stuck on loading (possible regression after Draft Version 26 deployment)."
-  ],
+  "known_issues": [],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-prevent-the-app-from-being-stuck-on-the-global-loading-screen-by-ensuring-auth-initialization-always-resolves-to-a-non-initializing-state-authenticated-or-unauthenticated-even-when-the-backend-connection-is-not-ready-or-becomes-unreachable",
-      "title": "Prevent the app from being stuck on the global \"Loading...\" screen by ensuring auth initialization always resolves to a non-initializing state (authenticated or unauthenticated) even when the backend connection is not ready or becomes unreachable.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-and-render-a-backend-connection-status-banner-component-that-clearly-shows-connection-state-loading-ready-error-and-provides-a-retry-action-that-re-attempts-actor-initialization-and-health-check",
-      "title": "Implement and render a backend connection status banner/component that clearly shows connection state (loading/ready/error) and provides a Retry action that re-attempts actor initialization and health check.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-harden-backend-health-checking-so-that-a-hanging-slow-healthcheck-call-cannot-keep-the-ui-in-a-perpetual-loading-state-e-g-add-a-client-side-timeout-and-surface-a-clear-error",
-      "title": "Harden backend health checking so that a hanging/slow healthCheck call cannot keep the UI in a perpetual loading state (e.g., add a client-side timeout and surface a clear error).",
+      "id": "feature-add-an-admin-only-control-in-the-frontend-user-settings-that-triggers-the-backend-reset-clean-replica-action-with-a-strong-confirmation-step-explicit-confirmation-text-and-clear-success-error-feedback-in-english",
+      "title": "Add an admin-only control in the frontend user settings that triggers the backend reset (“clean replica”) action with a strong confirmation step (explicit confirmation text) and clear success/error feedback in English.",
       "reqIds": [
         "REQ-3"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Clean the replica (replicated environment/data)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Add a backend admin-only method that wipes all application data in the canister (intended to “clean the replica”), including servers, channels, roles, memberships, messages/presences, audit logs, friendships/requests/blocks, user profiles/statuses/usernames/emails, session data, and all ordering data, and resets all ID counters back to their initial values.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Expose a minimal verification endpoint for admins that returns a small set of counts/flags (e.g., number of servers, number of stored profiles, number of sessions, number of audit log entries) so developers can confirm that the replica data was cleaned without inspecting state manually.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    }
+  ],
   "projectName": "Server Chat",
   "clarification_mode": "instant",
   "clarification_rounds": 0

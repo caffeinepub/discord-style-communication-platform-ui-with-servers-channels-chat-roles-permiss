@@ -1,84 +1,32 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix infinite Loading state with backend-connection errors and retry",
+  "title": "Admin reset control to wipe local replica data from User Settings",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Ensure auth initialization always leaves 'initializing' (to unauthenticated or explicit error) when backend readiness cannot be achieved, clearing stored sessions when necessary.",
-      "acceptanceCriteria": [
-        "If the backend is unreachable or the health check fails, the app does not remain in authStatus === 'initializing' indefinitely.",
-        "Within a bounded time (e.g., after a short timeout) the UI transitions away from the full-screen Loading state to either the Login screen or an explicit connection error state with user action available.",
-        "When a stored session exists but backend readiness never occurs, the session is cleared (or marked invalid) and the user is returned to the Login screen with an English error message indicating the backend is not reachable."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/auth/AuthProvider.tsx",
-          "operation": "modify",
-          "description": "Add a bounded initialization window for session restore/validation: if a stored session exists but backend connection is not ready within a short timeout (or connection state becomes error), clear persisted session, set authStatus to 'unauthenticated', and set an English error message indicating the backend is not reachable. Ensure authStatus never remains 'initializing' indefinitely."
-        },
-        {
-          "path": "frontend/src/auth/sessionStorage.ts",
-          "operation": "modify",
-          "description": "Add a small helper to support session invalidation during initialization (e.g., optional reason/flag or a dedicated invalidate/clear-and-log function) so AuthProvider can consistently clear stored sessions when backend readiness never occurs."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Update the global Loading screen behavior to incorporate the new non-stuck auth initialization flow: ensure the UI can transition to the Login screen (unauthenticated) and display surfaced auth error messaging (via existing LoginScreen authError handling)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Implement a BackendConnectionBanner component that displays connection state and offers a Retry action wired to useBackendConnection().retry, and render it on top-level surfaces including the Loading screen.",
-      "acceptanceCriteria": [
-        "A non-empty implementation exists for frontend/src/components/system/BackendConnectionBanner.tsx.",
-        "When connection state is 'error', the banner shows an English error message and a Retry button.",
-        "Clicking Retry triggers the existing retry flow (via useBackendConnection().retry) and updates the UI state accordingly.",
-        "The banner is visible on the global Loading screen and/or other appropriate top-level surfaces so users are not left without feedback."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/system/BackendConnectionBanner.tsx",
-          "operation": "modify",
-          "description": "Implement the banner UI using existing app styling and shadcn/ui primitives (e.g., Alert/Button) without editing files under frontend/src/components/ui. The component should read state/error/retry from useBackendConnection(), show loading/ready/error messaging, and render a Retry button when in error."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Wire BackendConnectionBanner into the Loading screen UI so connection errors are visible even when auth is initializing. Also render it in a top-level authenticated surface (e.g., above ResponsiveShell) and unauthenticated surface (e.g., above LoginScreen) so users always have feedback and a Retry action when the backend becomes unreachable."
-        },
-        {
-          "path": "frontend/src/pages/LoginScreen.tsx",
-          "operation": "modify",
-          "description": "Add a small top-of-screen area (or within the AuthLayout content) to render BackendConnectionBanner (or a compact variant) so unauthenticated users see backend connection status and can Retry without leaving the screen."
-        }
-      ]
-    },
-    {
       "id": "REQ-3",
-      "summary": "Add a client-side timeout around health checking so slow/hanging healthCheck cannot keep the UI stuck in a loading state, and make the error recoverable via Retry.",
+      "summary": "Add an admin-only 'clean replica' reset control in User Settings with strong confirmation, success/error feedback, and cache refresh.",
       "acceptanceCriteria": [
-        "If healthCheck does not resolve within the configured timeout, the connection state becomes 'error' with an English error message.",
-        "The error state is recoverable via Retry without requiring a hard refresh.",
-        "The app no longer appears to be endlessly loading when the backend is down or misconfigured."
+        "The reset control is only visible/enabled when the current user is an admin (using the existing admin check query).",
+        "Triggering the reset shows a confirmation UI that reduces accidental activation (e.g., requires typing a specific phrase).",
+        "On success, the UI shows a success message and refreshes/invalidates relevant cached queries so the UI reflects an empty state (e.g., server list clears).",
+        "On failure (Unauthorized or network error), the UI shows an English error message without leaving the app in a broken/loading state."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useBackendConnection.ts",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Wrap actor.healthCheck() with a client-side timeout (Promise.race) and surface a clear English timeout error message when exceeded. Ensure the hook reports state='error' on timeout/failure and does not remain 'loading' indefinitely."
+          "description": "Add React Query mutations/queries for the new backend capabilities used by the admin reset UI (admin-only wipe action and optional verification counts). Ensure errors surface as English-friendly messages, and on success invalidate/clear relevant query keys (e.g., servers, discovery, serverOrdering, categories, messages/presences, audit logs, friends, usernames/profiles, sessions) so the UI reflects an empty state. Use the authorization component’s admin-check pattern (existing isCallerAdmin query) to support gating in the UI; verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/hooks/useBackendConnection.ts",
-          "operation": "modify",
-          "description": "Harden the Retry behavior: when retry is invoked, trigger actor re-initialization (existing retryActor) and also force a fresh health probe (e.g., via React Query invalidation/refetch) so the UI can recover from a previous health-check timeout/error without a hard refresh."
-        },
-        {
-          "path": "frontend/src/utils/withTimeout.ts",
+          "path": "frontend/src/components/settings/UserSettings/components/AdminReplicaResetSection.tsx",
           "operation": "create",
-          "description": "Create a small utility to apply timeouts to promises (used by useBackendConnection health checking) to keep timeout logic consistent and easy to test/reuse."
+          "description": "Create a dedicated admin-only settings section UI for 'Clean local replica state' that: (1) checks admin status via the existing admin check query, (2) provides a strong confirmation flow requiring typing an explicit phrase (e.g., \"CLEAN REPLICA\"), (3) triggers the wipe mutation, and (4) shows clear English success/error feedback and disables controls while pending. Optionally display post-reset verification counts using the verification query to confirm zeros. Use existing shadcn/ui components by composition (do not edit ui component files); verify the component's usage instructions before implementing. Use the authorization component’s role-based access gating via the existing admin check query; verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/settings/UserSettings/pages/ProfilePage.tsx",
+          "operation": "modify",
+          "description": "Wire the new AdminReplicaResetSection into the User Settings profile page (within existing layout/sections) so it is reachable from the current settings flow. Ensure the control is not rendered for non-admin users, and that success triggers cache invalidation/refresh so lists like servers clear without requiring a reload. Keep all user-facing text in English. Use the authorization component’s admin-check gating (existing query) to ensure admin-only visibility; verify the component's usage instructions before implementing."
         }
       ]
     }

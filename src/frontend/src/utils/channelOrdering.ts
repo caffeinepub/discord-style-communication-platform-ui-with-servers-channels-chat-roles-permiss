@@ -1,31 +1,28 @@
-import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering, CategoryLevelOrdering } from '../backend';
+import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering, CategoryLevelOrdering } from '../types/local';
 
 /**
- * Merge persisted ordering with current server data
- * Ensures missing IDs are appended and unknown IDs are ignored
+ * Apply ordering to categories
  */
 export function applyOrderingToCategories(
   categories: ChannelCategory[],
   ordering: ServerOrdering | null
 ): ChannelCategory[] {
-  if (!ordering || !ordering.categoryOrder || ordering.categoryOrder.length === 0) {
-    return categories;
-  }
+  if (!ordering) return categories;
+
+  const categoryMap = new Map<bigint, ChannelCategory>();
+  categories.forEach((cat) => categoryMap.set(cat.id, cat));
 
   const ordered: ChannelCategory[] = [];
-  const categoryMap = new Map(categories.map(c => [c.id.toString(), c]));
-
-  // Add categories in the specified order
-  ordering.categoryOrder.forEach(catId => {
-    const cat = categoryMap.get(catId.toString());
-    if (cat) {
-      ordered.push(cat);
-      categoryMap.delete(catId.toString());
+  for (const catId of ordering.categoryOrder) {
+    const category = categoryMap.get(catId);
+    if (category) {
+      ordered.push(category);
+      categoryMap.delete(catId);
     }
-  });
+  }
 
-  // Add any remaining categories not in the ordering
-  categoryMap.forEach(cat => ordered.push(cat));
+  // Add any categories not in the ordering
+  categoryMap.forEach((cat) => ordered.push(cat));
 
   return ordered;
 }
@@ -37,28 +34,25 @@ export function applyOrderingToTextChannels(
   category: ChannelCategory,
   ordering: ServerOrdering | null
 ): TextChannel[] {
-  if (!ordering || !ordering.categories || ordering.categories.length === 0) {
-    return category.textChannels;
-  }
+  if (!ordering) return category.textChannels;
 
-  const categoryOrdering = ordering.categories.find(c => c.id === category.id);
-  if (!categoryOrdering || categoryOrdering.textChannels.length === 0) {
-    return category.textChannels;
-  }
+  const catOrdering = ordering.categories.find((c) => c.id === category.id);
+  if (!catOrdering) return category.textChannels;
+
+  const channelMap = new Map<bigint, TextChannel>();
+  category.textChannels.forEach((ch) => channelMap.set(ch.id, ch));
 
   const ordered: TextChannel[] = [];
-  const channelMap = new Map(category.textChannels.map(ch => [ch.id.toString(), ch]));
-
-  categoryOrdering.textChannels.forEach(chId => {
-    const ch = channelMap.get(chId.toString());
-    if (ch) {
-      ordered.push(ch);
-      channelMap.delete(chId.toString());
+  for (const chId of catOrdering.textChannels) {
+    const channel = channelMap.get(chId);
+    if (channel) {
+      ordered.push(channel);
+      channelMap.delete(chId);
     }
-  });
+  }
 
-  // Add any remaining channels not in the ordering
-  channelMap.forEach(ch => ordered.push(ch));
+  // Add any channels not in the ordering
+  channelMap.forEach((ch) => ordered.push(ch));
 
   return ordered;
 }
@@ -70,46 +64,121 @@ export function applyOrderingToVoiceChannels(
   category: ChannelCategory,
   ordering: ServerOrdering | null
 ): VoiceChannel[] {
-  if (!ordering || !ordering.categories || ordering.categories.length === 0) {
-    return category.voiceChannels;
-  }
+  if (!ordering) return category.voiceChannels;
 
-  const categoryOrdering = ordering.categories.find(c => c.id === category.id);
-  if (!categoryOrdering || categoryOrdering.voiceChannels.length === 0) {
-    return category.voiceChannels;
-  }
+  const catOrdering = ordering.categories.find((c) => c.id === category.id);
+  if (!catOrdering) return category.voiceChannels;
+
+  const channelMap = new Map<bigint, VoiceChannel>();
+  category.voiceChannels.forEach((ch) => channelMap.set(ch.id, ch));
 
   const ordered: VoiceChannel[] = [];
-  const channelMap = new Map(category.voiceChannels.map(ch => [ch.id.toString(), ch]));
-
-  categoryOrdering.voiceChannels.forEach(chId => {
-    const ch = channelMap.get(chId.toString());
-    if (ch) {
-      ordered.push(ch);
-      channelMap.delete(chId.toString());
+  for (const chId of catOrdering.voiceChannels) {
+    const channel = channelMap.get(chId);
+    if (channel) {
+      ordered.push(channel);
+      channelMap.delete(chId);
     }
-  });
+  }
 
-  // Add any remaining channels not in the ordering
-  channelMap.forEach(ch => ordered.push(ch));
+  // Add any channels not in the ordering
+  channelMap.forEach((ch) => ordered.push(ch));
 
   return ordered;
 }
 
 /**
- * Build CategoryLevelOrdering array from current ordering state
+ * Build CategoryLevelOrdering array from categories
  */
 export function buildCategoryLevelOrdering(
+  categories: ChannelCategory[]
+): CategoryLevelOrdering[] {
+  return categories.map((category) => ({
+    id: category.id,
+    textChannels: category.textChannels.map((ch) => ch.id),
+    voiceChannels: category.voiceChannels.map((ch) => ch.id),
+  }));
+}
+
+/**
+ * Build ServerOrdering from categories
+ */
+export function buildServerOrdering(
+  categories: ChannelCategory[]
+): ServerOrdering {
+  return {
+    categoryOrder: categories.map((cat) => cat.id),
+    categories: buildCategoryLevelOrdering(categories),
+  };
+}
+
+/**
+ * Merge persisted ordering with current server data
+ */
+export function applyOrdering(
   categories: ChannelCategory[],
   ordering: ServerOrdering | null
-): CategoryLevelOrdering[] {
-  return categories.map(category => {
-    const existingOrdering = ordering?.categories.find(c => c.id === category.id);
-    
-    return {
-      id: category.id,
-      textChannels: existingOrdering?.textChannels || category.textChannels.map(ch => ch.id),
-      voiceChannels: existingOrdering?.voiceChannels || category.voiceChannels.map(ch => ch.id),
-    };
-  });
+): ChannelCategory[] {
+  if (!ordering) return categories;
+
+  // Create a map of categories by ID for quick lookup
+  const categoryMap = new Map<bigint, ChannelCategory>();
+  categories.forEach((cat) => categoryMap.set(cat.id, cat));
+
+  // Apply category order
+  const orderedCategories: ChannelCategory[] = [];
+  for (const catId of ordering.categoryOrder) {
+    const category = categoryMap.get(catId);
+    if (category) {
+      // Find ordering for this category
+      const catOrdering = ordering.categories.find((c) => c.id === catId);
+      if (catOrdering) {
+        // Apply channel ordering within category
+        const orderedTextChannels = applyChannelOrdering(
+          category.textChannels,
+          catOrdering.textChannels
+        );
+        const orderedVoiceChannels = applyChannelOrdering(
+          category.voiceChannels,
+          catOrdering.voiceChannels
+        );
+
+        orderedCategories.push({
+          ...category,
+          textChannels: orderedTextChannels,
+          voiceChannels: orderedVoiceChannels,
+        });
+      } else {
+        orderedCategories.push(category);
+      }
+      categoryMap.delete(catId);
+    }
+  }
+
+  // Add any categories not in the ordering
+  categoryMap.forEach((cat) => orderedCategories.push(cat));
+
+  return orderedCategories;
+}
+
+function applyChannelOrdering<T extends { id: bigint }>(
+  channels: T[],
+  order: bigint[]
+): T[] {
+  const channelMap = new Map<bigint, T>();
+  channels.forEach((ch) => channelMap.set(ch.id, ch));
+
+  const ordered: T[] = [];
+  for (const chId of order) {
+    const channel = channelMap.get(chId);
+    if (channel) {
+      ordered.push(channel);
+      channelMap.delete(chId);
+    }
+  }
+
+  // Add any channels not in the ordering
+  channelMap.forEach((ch) => ordered.push(ch));
+
+  return ordered;
 }

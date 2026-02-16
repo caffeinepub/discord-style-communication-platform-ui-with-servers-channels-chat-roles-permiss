@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
-import { useDiscoverServers, useJoinServer } from '../../hooks/useQueries';
+import { useDiscoverServers } from '../../hooks/useQueries';
 import ServerPreviewCard from './ServerPreviewCard';
 
 export default function DiscoveryView() {
   const [searchQuery, setSearchQuery] = useState('');
   const { data: servers = [] } = useDiscoverServers();
-  const joinServer = useJoinServer();
 
   // Filter servers: only show community-enabled servers
   const communityServers = servers.filter((server) => server.communityMode);
@@ -38,7 +37,6 @@ export default function DiscoveryView() {
             <ServerPreviewCard
               key={server.id.toString()}
               server={server}
-              onJoin={() => joinServer.mutate(server.id)}
             />
           ))}
         </div>
