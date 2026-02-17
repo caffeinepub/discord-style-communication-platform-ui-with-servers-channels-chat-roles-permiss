@@ -1,17 +1,16 @@
 import Map "mo:core/Map";
 import Text "mo:core/Text";
-import Int "mo:core/Int";
 import Principal "mo:core/Principal";
 import Time "mo:core/Time";
-import AccessControl "authorization/access-control";
-import MixinAuthorization "authorization/MixinAuthorization";
 import Runtime "mo:core/Runtime";
-import Migration "migration";
+import Auth "authorization/access-control";
+import MixinAuthorization "authorization/MixinAuthorization";
 
-(with migration = Migration.run)
 actor {
-  let accessControlState = AccessControl.initState();
-  include MixinAuthorization(accessControlState);
+  let credentialsStore = Map.empty<Principal, Credentials>();
+  let userProfiles = Map.empty<Principal, UserProfile>();
+
+  var accessControlState : Auth.AccessControlState = Auth.initState();
 
   type RegisterPayload = {
     username : Text;
@@ -20,16 +19,8 @@ actor {
   };
 
   type LoginPayload = {
-    loginIdentifier : Text; // email or username
+    loginIdentifier : Text;
     password : Text;
-  };
-
-  type Session = {
-    token : Text;
-    accountId : ?Text;
-    expiresAt : Int;
-    email : Text;
-    principal : Principal;
   };
 
   public type UserProfile = {
@@ -41,71 +32,79 @@ actor {
     badges : [Text];
   };
 
-  type Credentials = {
-    username : Text;
-    email : Text;
-    password : Text;
-    accountId : Text;
-    principal : Principal;
+  public type RegistrationResult = {
+    #success;
+    #error : RegistrationError;
   };
 
   public type RegistrationError = {
     #alreadyRegistered;
     #usernameTaken;
     #emailTaken;
+    #unknown;
   };
 
-  let userProfiles = Map.empty<Principal, UserProfile>();
-  let sessionStore = Map.empty<Text, Session>();
-  let credentialsByUsername = Map.empty<Text, Credentials>();
-  let credentialsByEmail = Map.empty<Text, Credentials>();
-  let credentialsByPrincipal = Map.empty<Principal, Credentials>();
+  public type Session = {
+    token : Text;
+    expiresAt : Int;
+    email : Text;
+  };
 
-  /// Converts everything to lowercase and trims spaces.
+  public type Credentials = {
+    username : Text;
+    email : Text;
+    password : Text;
+    principal : Principal;
+  };
+
+  include MixinAuthorization(accessControlState);
+
+  // Converts everything to lowercase and trims spaces.
   func sanitizeText(input : Text) : Text {
-    let lower = input.toLower();
-    let trimmedBegin = lower.trimStart(#char(' '));
-    trimmedBegin.trimEnd(#char(' '));
+    let trimmed = input.trimStart(#char(' '));
+    let trimmedEnd = trimmed.trimEnd(#char(' '));
+    trimmedEnd.toLower();
   };
 
-  public shared ({ caller }) func register(payload : RegisterPayload) : async ?RegistrationError {
+  // Register a new user in the backend.
+  public shared ({ caller }) func register(payload : RegisterPayload) : async RegistrationResult {
     let sanitizedUsername = sanitizeText(payload.username);
     let sanitizedEmail = sanitizeText(payload.email);
 
-    // Check if the caller principal has stored credentials (not just a role check)
-    if (credentialsByPrincipal.containsKey(caller)) {
-      // Caller principal is already registered
-      return ?#alreadyRegistered;
+    // Check if the caller principal already exists in credentialsStore
+    if (credentialsStore.containsKey(caller)) {
+      return #error(#alreadyRegistered);
     };
 
-    // Check uniqueness by username
-    if (credentialsByUsername.containsKey(sanitizedUsername)) {
-      return ?#usernameTaken;
+    // Check if the username is already taken (case-insensitive check)
+    let usernameExists = credentialsStore.values().any(
+      func(credentials) {
+        credentials.username.toLower() == sanitizedUsername
+      }
+    );
+
+    if (usernameExists) {
+      return #error(#usernameTaken);
     };
 
-    // Check uniqueness by email (case-insensitive)
-    if (credentialsByEmail.containsKey(sanitizedEmail)) {
-      return ?#emailTaken;
+    // Check if the email is already taken (case-insensitive)
+    let emailExists = credentialsStore.values().any(
+      func(credentials) { credentials.email.toLower() == sanitizedEmail }
+    );
+
+    if (emailExists) {
+      return #error(#emailTaken);
     };
 
-    let accountId = payload.username.concat("Account");
     let credentials : Credentials = {
       username = sanitizedUsername;
       email = sanitizedEmail;
       password = payload.password;
-      accountId;
       principal = caller;
     };
 
-    // Store credentials by username and email separately
-    credentialsByUsername.add(sanitizedUsername, credentials);
-    credentialsByEmail.add(sanitizedEmail, credentials);
-
-    // Store credentials indexed by principal
-    credentialsByPrincipal.add(caller, credentials);
-
-    // Assign user role to the newly registered principal
-    AccessControl.assignRole(accessControlState, caller, caller, #user);
+    // Store credentials for the principal
+    credentialsStore.add(caller, credentials);
 
     // Create initial user profile
     let initialProfile : UserProfile = {
@@ -118,17 +117,29 @@ actor {
     };
     userProfiles.add(caller, initialProfile);
 
-    null; // Success - no error.
+    // Assign default "user" role to the newly registered account
+    // This must not trap - catch any errors and return appropriate error result
+    try {
+      Auth.assignRole(accessControlState, caller, caller, #user);
+      #success;
+    } catch (e) {
+      // If role assignment fails, return error instead of trapping
+      // Clean up the registration data
+      credentialsStore.remove(caller);
+      userProfiles.remove(caller);
+      #error(#unknown);
+    };
   };
 
   public shared ({ caller }) func login(payload : LoginPayload) : async ?Session {
     let sanitizedIdentifier = sanitizeText(payload.loginIdentifier);
 
-    // Try to find credentials by username, then by email
-    let credentialsOpt = switch (credentialsByUsername.get(sanitizedIdentifier)) {
-      case (?creds) { ?creds };
-      case (null) { credentialsByEmail.get(sanitizedIdentifier) };
-    };
+    // Try to find by username or email (case-insensitive)
+    let credentialsOpt = credentialsStore.values().find(
+      func(creds) {
+        creds.username.toLower() == sanitizedIdentifier or creds.email.toLower() == sanitizedIdentifier
+      }
+    );
 
     switch (credentialsOpt) {
       case (null) { null };
@@ -137,56 +148,40 @@ actor {
           return null;
         };
 
-        // Verify the caller matches the stored principal for these credentials
+        // Verify the caller matches the stored principal
         if (caller != credentials.principal) {
           return null;
         };
 
-        // Create new session token
-        let token = caller.toText().concat("_").concat(Time.now().toText());
+        let token = credentials.principal.toText().concat("_").concat(Time.now().toText());
         let session : Session = {
           token;
-          accountId = ?credentials.accountId;
           expiresAt = Time.now() + 86_400_000_000_000;
           email = credentials.email;
-          principal = caller; // Store the owner of the session
         };
 
-        sessionStore.add(token, session);
         ?session;
       };
     };
   };
 
-  public query ({ caller }) func validateSession(token : Text) : async ?Session {
-    switch (sessionStore.get(token)) {
-      case (null) { null };
-      case (?session) {
-        if (caller != session.principal) {
-          // Only the original session owner can validate this session
-          return null;
-        };
-        if (Time.now() > session.expiresAt) { null } else { ?session };
-      };
-    };
-  };
-
+  // Profile Management
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (Auth.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view profiles");
     };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+    if (caller != user and not Auth.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (Auth.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
     userProfiles.add(caller, profile);

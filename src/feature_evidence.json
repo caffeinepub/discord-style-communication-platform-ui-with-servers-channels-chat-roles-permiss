@@ -1,24 +1,4 @@
 {
   "kind": "feature_evidence_report",
-  "features": [
-    {
-      "featureId": "feature-improve-frontend-error-reporting-for-the-registration-flow-so-that-when-backend-registration-fails-the-ui-shows-the-specific-mapped-allowlisted-error-message-e-g-already-registered-username-email-taken-rather-than-the-generic-registration-failed-please-try-again-whenever-possible",
-      "featureTitle": "Improve frontend error reporting for the registration flow so that when backend registration fails, the UI shows the specific mapped/allowlisted error message (e.g., already registered, username/email taken) rather than the generic 'Registration failed. Please try again.' whenever possible.",
-      "files": [
-        "frontend/src/auth/authMessages.ts"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-4"
-      ],
-      "confidence": "high"
-    }
-  ]
+  "features": []
 }

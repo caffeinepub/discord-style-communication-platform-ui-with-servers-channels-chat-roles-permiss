@@ -10,6 +10,7 @@ export const AUTH_MESSAGES = {
   USERNAME_OR_EMAIL_TAKEN: 'Username or email is already taken. Please try a different one or sign in.',
   ALREADY_REGISTERED: 'This Internet Identity has already been used to create an account. Please use Sign In instead, or log out and use a different Internet Identity to create a new account.',
   REGISTRATION_FAILED: 'Registration failed. Please try again.',
+  POST_REGISTRATION_LOGIN_FAILED: 'Account created successfully! However, automatic sign-in failed. Please use the Sign In tab to log in with your new credentials.',
   
   // Session errors
   SESSION_EXPIRED: 'Your session has expired. Please sign in again.',
@@ -56,6 +57,11 @@ export function sanitizeAuthMessageForFlow(
  * Categorizes an error message into its appropriate flow
  */
 export function categorizeErrorFlow(message: string): 'signin' | 'signup' | 'connection' {
+  // Check for post-registration login failure (should be shown on signup tab with guidance to signin)
+  if (message === AUTH_MESSAGES.POST_REGISTRATION_LOGIN_FAILED) {
+    return 'signup';
+  }
+  
   // Check for sign-in related keywords
   if (
     message.includes('Sign in') ||
@@ -85,36 +91,29 @@ export function categorizeErrorFlow(message: string): 'signin' | 'signup' | 'con
 }
 
 /**
- * Maps backend RegistrationError variants to user-friendly messages
- * The backend returns string enum values: "emailTaken", "usernameTaken", "alreadyRegistered"
+ * Maps backend RegistrationError enum to user-friendly messages
+ * The backend returns RegistrationError enum values
  */
 export function mapRegistrationError(error: any): string {
   if (!error) {
     return AUTH_MESSAGES.REGISTRATION_FAILED;
   }
   
-  // Handle string enum values from backend
-  if (typeof error === 'string') {
-    switch (error) {
-      case 'emailTaken':
-      case 'usernameTaken':
-        return AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;
-      case 'alreadyRegistered':
-        return AUTH_MESSAGES.ALREADY_REGISTERED;
-      default:
-        return AUTH_MESSAGES.REGISTRATION_FAILED;
-    }
-  }
+  // Handle enum string values from backend
+  // The RegistrationError enum has values: emailTaken, usernameTaken, alreadyRegistered, unknown_
+  const errorStr = typeof error === 'string' ? error : String(error);
   
-  // Handle object-style error (legacy support)
-  if (typeof error === 'object') {
-    if ('emailTaken' in error || 'usernameTaken' in error) {
+  switch (errorStr) {
+    case 'emailTaken':
+    case 'usernameTaken':
       return AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;
-    }
-    if ('alreadyRegistered' in error) {
+    case 'alreadyRegistered':
       return AUTH_MESSAGES.ALREADY_REGISTERED;
-    }
+    case 'unknown_':
+    case 'unknown':
+      return AUTH_MESSAGES.REGISTRATION_FAILED;
+    default:
+      console.warn('Unmapped registration error:', error);
+      return AUTH_MESSAGES.REGISTRATION_FAILED;
   }
-  
-  return AUTH_MESSAGES.REGISTRATION_FAILED;
 }

@@ -8,10 +8,8 @@ export interface None {
 }
 export type Option<T> = Some<T> | None;
 export interface Session {
-    principal: Principal;
     token: string;
     expiresAt: bigint;
-    accountId?: string;
     email: string;
 }
 export interface RegisterPayload {
@@ -19,6 +17,17 @@ export interface RegisterPayload {
     password: string;
     email: string;
 }
+export interface LoginPayload {
+    password: string;
+    loginIdentifier: string;
+}
+export type RegistrationResult = {
+    __kind__: "error";
+    error: RegistrationError;
+} | {
+    __kind__: "success";
+    success: null;
+};
 export interface UserProfile {
     customStatus: string;
     aboutMe: string;
@@ -27,13 +36,10 @@ export interface UserProfile {
     avatarUrl: string;
     bannerUrl: string;
 }
-export interface LoginPayload {
-    password: string;
-    loginIdentifier: string;
-}
 export enum RegistrationError {
     emailTaken = "emailTaken",
     alreadyRegistered = "alreadyRegistered",
+    unknown_ = "unknown",
     usernameTaken = "usernameTaken"
 }
 export enum UserRole {
@@ -48,7 +54,6 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     login(payload: LoginPayload): Promise<Session | null>;
-    register(payload: RegisterPayload): Promise<RegistrationError | null>;
+    register(payload: RegisterPayload): Promise<RegistrationResult>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    validateSession(token: string): Promise<Session | null>;
 }

@@ -26,10 +26,8 @@ export const LoginPayload = IDL.Record({
   'loginIdentifier' : IDL.Text,
 });
 export const Session = IDL.Record({
-  'principal' : IDL.Principal,
   'token' : IDL.Text,
   'expiresAt' : IDL.Int,
-  'accountId' : IDL.Opt(IDL.Text),
   'email' : IDL.Text,
 });
 export const RegisterPayload = IDL.Record({
@@ -40,7 +38,12 @@ export const RegisterPayload = IDL.Record({
 export const RegistrationError = IDL.Variant({
   'emailTaken' : IDL.Null,
   'alreadyRegistered' : IDL.Null,
+  'unknown' : IDL.Null,
   'usernameTaken' : IDL.Null,
+});
+export const RegistrationResult = IDL.Variant({
+  'error' : RegistrationError,
+  'success' : IDL.Null,
 });
 
 export const idlService = IDL.Service({
@@ -55,9 +58,8 @@ export const idlService = IDL.Service({
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'login' : IDL.Func([LoginPayload], [IDL.Opt(Session)], []),
-  'register' : IDL.Func([RegisterPayload], [IDL.Opt(RegistrationError)], []),
+  'register' : IDL.Func([RegisterPayload], [RegistrationResult], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'validateSession' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
 });
 
 export const idlInitArgs = [];
@@ -81,10 +83,8 @@ export const idlFactory = ({ IDL }) => {
     'loginIdentifier' : IDL.Text,
   });
   const Session = IDL.Record({
-    'principal' : IDL.Principal,
     'token' : IDL.Text,
     'expiresAt' : IDL.Int,
-    'accountId' : IDL.Opt(IDL.Text),
     'email' : IDL.Text,
   });
   const RegisterPayload = IDL.Record({
@@ -95,7 +95,12 @@ export const idlFactory = ({ IDL }) => {
   const RegistrationError = IDL.Variant({
     'emailTaken' : IDL.Null,
     'alreadyRegistered' : IDL.Null,
+    'unknown' : IDL.Null,
     'usernameTaken' : IDL.Null,
+  });
+  const RegistrationResult = IDL.Variant({
+    'error' : RegistrationError,
+    'success' : IDL.Null,
   });
   
   return IDL.Service({
@@ -110,9 +115,8 @@ export const idlFactory = ({ IDL }) => {
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'login' : IDL.Func([LoginPayload], [IDL.Opt(Session)], []),
-    'register' : IDL.Func([RegisterPayload], [IDL.Opt(RegistrationError)], []),
+    'register' : IDL.Func([RegisterPayload], [RegistrationResult], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'validateSession' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
   });
 };
 

@@ -1,92 +1,55 @@
 {
   "kind": "build_request",
-  "title": "Fix failing user registration and session creation",
+  "title": "Fix sign-up by auto-assigning default user role without admin permissions",
   "projectName": "Caffeine Chat",
-  "priority": "normal",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Fix backend registration persistence so that creating an account actually stores credentials, session tokens, and the initial user profile in canister state (i.e., all Map/collection updates performed during register/login/saveCallerUserProfile must be truly mutating/persisted, not discarded).",
+      "text": "Update backend registration so that every newly registered account is automatically assigned the default \"user\" role without requiring the caller to be an admin, ensuring sign-up no longer fails with \"Unauthorized: Only admins can assign user roles\".",
       "target": "backend",
       "source": {
         "messageIds": [
-          "recent-messages-5"
+          "recent-messages-7"
         ],
         "quotes": [
-          "Registration failed. Please try again. please just fix it"
+          "1"
         ]
       },
       "acceptanceCriteria": [
-        "Creating a new account with a never-before-used Internet Identity succeeds (backend register returns null) and the user is able to proceed to an authenticated state without seeing 'Registration failed. Please try again.'",
-        "Immediately after successful registration, a login using the same Internet Identity + the chosen username/email + password returns a non-null Session with a non-empty token",
-        "After registration, calling getCallerUserProfile succeeds for the same caller and returns a non-null profile with name set to the sanitized username",
-        "After a canister upgrade/redeploy during development, registration still works (no runtime traps due to collection/mutation issues)"
+        "A brand-new principal can call register successfully without any pre-existing roles/permissions.",
+        "After successful registration, getCallerUserProfile does not trap with \"Unauthorized: Only users can view profiles\" for the same principal.",
+        "The registration flow does not trigger or surface the error text \"Unauthorized: Only admins can assign user roles\" during sign-up."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Make backend registration/login input normalization and uniqueness checks consistent and robust: sanitize (trim + lowercase) username/email/loginIdentifier before checking and storing, and ensure uniqueness checks and lookups always use the sanitized values.",
+      "text": "Ensure the backend \"register\" method never traps due to role assignment during sign-up; if role assignment fails for any reason, the method must return RegistrationResult.#error with an appropriate RegistrationError instead of trapping.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "recent-messages-5"
+          "recent-messages-3",
+          "recent-messages-6"
         ],
         "quotes": [
-          "Registration failed. Please try again. please just fix it"
+          "Unauthorized: Only admins can assign user roles",
+          "it gives this error when is ign up"
         ]
       },
       "acceptanceCriteria": [
-        "Registering with an email that differs only by case or surrounding spaces is rejected with the email-taken error variant",
-        "Registering with a username that differs only by case or surrounding spaces is rejected with the username-taken error variant",
-        "Logging in with email/username that differs only by case or surrounding spaces still succeeds (when the correct password + Internet Identity are used)"
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Fix backend session creation/ownership bookkeeping so that validateSession accepts the token produced by a successful login for the same caller until it expires (no false invalidation due to token ownership mismatches).",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "recent-messages-5"
-        ],
-        "quotes": [
-          "Registration failed. Please try again. please just fix it"
-        ]
-      },
-      "acceptanceCriteria": [
-        "After login returns a Session, calling validateSession(session.token) as the same caller returns that same session (non-null)",
-        "validateSession returns null for expired sessions and for tokens not owned by the caller",
-        "A newly registered user can complete the current frontend flow: register -> post-registration login -> session saved -> session validates on refresh"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Improve frontend error reporting for the registration flow so that when backend registration fails, the UI shows the specific mapped/allowlisted error message (e.g., already registered, username/email taken) rather than the generic 'Registration failed. Please try again.' whenever possible.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "recent-messages-5"
-        ],
-        "quotes": [
-          "Registration failed. Please try again. please just fix it"
-        ]
-      },
-      "acceptanceCriteria": [
-        "If the backend returns #alreadyRegistered, the Sign Up tab shows the exact allowlisted message from AUTH_MESSAGES.ALREADY_REGISTERED",
-        "If the backend returns #usernameTaken or #emailTaken, the Sign Up tab shows the exact allowlisted message from AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN",
-        "If the backend is not ready/unreachable, the UI shows the existing allowlisted connection message(s) rather than a generic registration failure"
+        "Register does not trap during role assignment; it returns a RegistrationResult value in all cases.",
+        "Frontend receives a structured RegistrationResult response (success or error) rather than a canister trap for the sign-up path."
       ]
     }
   ],
   "constraints": [
-    "Keep all backend logic in the existing single Motoko actor (backend/main.mo); do not introduce additional backend services.",
-    "Use English for all user-facing text.",
-    "Do not edit files under frontend/src/components/ui or any other immutable paths listed in SYSTEM_CONTEXT."
+    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
+    "Do not edit files in frontend immutable paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui."
   ],
   "nonGoals": [
-    "Adding third-party authentication providers (only Internet Identity is in scope).",
-    "Adding an external database or migrating to a different backend technology.",
-    "Redesigning unrelated parts of the chat/server/channel features."
+    "Do not make all users admins by default.",
+    "Do not remove the role/permission system from the app.",
+    "Do not redesign the authentication UI beyond what is required to confirm the backend fix."
   ],
   "imageRequirements": {
     "required": [],

@@ -1,44 +1,35 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "New project",
-  "architectural_notes": [],
+  "summary": "Project includes user registration with role assignment; fix backend so sign-up assigns a default role without requiring admin privileges.",
+  "architectural_notes": [
+    "Registration flow must not call admin-protected role assignment; new users should receive a default role without admin checks."
+  ],
   "known_issues": [
-    "User reports registration flow failing with message: \"Registration failed. Please try again.\""
+    "Sign-up fails with error: \"Unauthorized: Only admins can assign user roles\" due to registration calling admin-only role assignment."
   ],
   "isFixRequest": true,
-  "existing_features": [
-    {
-      "id": "feature-improve-frontend-error-reporting-for-the-registration-flow-so-that-when-backend-registration-fails-the-ui-shows-the-specific-mapped-allowlisted-error-message-e-g-already-registered-username-email-taken-rather-than-the-generic-registration-failed-please-try-again-whenever-possible",
-      "title": "Improve frontend error reporting for the registration flow so that when backend registration fails, the UI shows the specific mapped/allowlisted error message (e.g., already registered, username/email taken) rather than the generic 'Registration failed. Please try again.' whenever possible.",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "version": 1
-    }
-  ],
+  "existing_features": [],
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Fix backend registration persistence so that creating an account actually stores credentials, session tokens, and the initial user profile in canister state (i.e., all Map/collection updates performed during register/login/saveCallerUserProfile must be truly mutating/persisted, not discarded).",
+      "summary": "Fix sign-up: automatically assign a default user role during registration without requiring admin permissions",
+      "reqIds": [],
+      "status": "in_progress"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Update backend registration so that every newly registered account is automatically assigned the default \"user\" role without requiring the caller to be an admin, ensuring sign-up no longer fails with \"Unauthorized: Only admins can assign user roles\".",
       "reqIds": [
         "REQ-1"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-2",
-      "summary": "Make backend registration/login input normalization and uniqueness checks consistent and robust: sanitize (trim + lowercase) username/email/loginIdentifier before checking and storing, and ensure uniqueness checks and lookups always use the sanitized values.",
+      "id": "AR-3",
+      "summary": "Ensure the backend \"register\" method never traps due to role assignment during sign-up; if role assignment fails for any reason, the method must return RegistrationResult.#error with an appropriate RegistrationError instead of trapping.",
       "reqIds": [
         "REQ-2"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Fix backend session creation/ownership bookkeeping so that validateSession accepts the token produced by a successful login for the same caller until it expires (no false invalidation due to token ownership mismatches).",
-      "reqIds": [
-        "REQ-3"
       ],
       "status": "pending"
     }

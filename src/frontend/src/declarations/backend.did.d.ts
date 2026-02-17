@@ -21,12 +21,13 @@ export interface RegisterPayload {
 }
 export type RegistrationError = { 'emailTaken' : null } |
   { 'alreadyRegistered' : null } |
+  { 'unknown' : null } |
   { 'usernameTaken' : null };
+export type RegistrationResult = { 'error' : RegistrationError } |
+  { 'success' : null };
 export interface Session {
-  'principal' : Principal,
   'token' : string,
   'expiresAt' : bigint,
-  'accountId' : [] | [string],
   'email' : string,
 }
 export interface UserProfile {
@@ -48,9 +49,8 @@ export interface _SERVICE {
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'login' : ActorMethod<[LoginPayload], [] | [Session]>,
-  'register' : ActorMethod<[RegisterPayload], [] | [RegistrationError]>,
+  'register' : ActorMethod<[RegisterPayload], RegistrationResult>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'validateSession' : ActorMethod<[string], [] | [Session]>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

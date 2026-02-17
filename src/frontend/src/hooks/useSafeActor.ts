@@ -55,7 +55,7 @@ export function useSafeActor(): SafeActorResult {
       }
 
       // Verify that the actor has the required methods for authentication
-      if (typeof newActor.register !== 'function' || typeof newActor.validateSession !== 'function') {
+      if (typeof newActor.register !== 'function' || typeof newActor.login !== 'function') {
         throw new Error('Backend actor is missing required authentication methods. Please ensure the backend is deployed correctly.');
       }
 

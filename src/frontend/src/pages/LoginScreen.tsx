@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthContext } from '../auth/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
-import { categorizeErrorFlow } from '../auth/authMessages';
+import { AlertCircle, CheckCircle } from 'lucide-react';
+import { categorizeErrorFlow, AUTH_MESSAGES } from '../auth/authMessages';
 
 export default function LoginScreen() {
-  const { login, register, error: authError } = useAuthContext();
+  const { login, register, error: authError, clearError } = useAuthContext();
   
   // Sign In form state
   const [signInIdentifier, setSignInIdentifier] = useState('');
@@ -27,9 +27,23 @@ export default function LoginScreen() {
   // Active tab state
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
 
+  // Clear local errors when switching tabs
+  useEffect(() => {
+    setSignInError(null);
+    setSignUpError(null);
+  }, [activeTab]);
+
+  // Clear auth context error when switching tabs
+  useEffect(() => {
+    if (authError) {
+      clearError();
+    }
+  }, [activeTab, clearError]);
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignInError(null);
+    clearError();
     
     // Client-side validation
     if (!signInIdentifier.trim() || !signInPassword.trim()) {
@@ -52,6 +66,7 @@ export default function LoginScreen() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignUpError(null);
+    clearError();
     
     // Client-side validation
     if (!signUpUsername.trim() || !signUpEmail.trim() || !signUpPassword.trim()) {
@@ -74,17 +89,41 @@ export default function LoginScreen() {
       await register(signUpUsername, signUpEmail, signUpPassword);
       // Success - auth context will update and App will show main content
     } catch (err: any) {
-      // Error is already set in auth context, but we also set it locally for immediate feedback
-      setSignUpError(err.message || 'Registration failed. Please try again.');
+      // Error is already set in auth context
+      const errorMessage = err.message || 'Registration failed. Please try again.';
+      setSignUpError(errorMessage);
+      
+      // If this is a post-registration login failure, switch to sign-in tab
+      if (errorMessage === AUTH_MESSAGES.POST_REGISTRATION_LOGIN_FAILED) {
+        // Pre-fill the sign-in form with the email they just registered
+        setSignInIdentifier(signUpEmail);
+        setSignInPassword(signUpPassword);
+        // Switch to sign-in tab after a brief delay to show the message
+        setTimeout(() => {
+          setActiveTab('signin');
+        }, 3000);
+      }
     } finally {
       setSignUpLoading(false);
     }
   };
 
   // Determine which error to show on which tab
-  // Auth errors from context should be displayed on the appropriate tab
-  const signInDisplayError = activeTab === 'signin' ? (signInError || (authError && categorizeErrorFlow(authError) === 'signin' ? authError : null)) : null;
-  const signUpDisplayError = activeTab === 'signup' ? (signUpError || (authError && (categorizeErrorFlow(authError) === 'signup' || categorizeErrorFlow(authError) === 'signin') ? authError : null)) : null;
+  // Only show auth context errors on the appropriate tab based on error flow
+  const authErrorFlow = authError ? categorizeErrorFlow(authError) : null;
+  
+  // Sign In tab: show sign-in errors only
+  const signInDisplayError = activeTab === 'signin' 
+    ? (signInError || (authError && authErrorFlow === 'signin' ? authError : null))
+    : null;
+  
+  // Sign Up tab: show sign-up errors only (including post-registration login failures)
+  const signUpDisplayError = activeTab === 'signup' 
+    ? (signUpError || (authError && authErrorFlow === 'signup' ? authError : null))
+    : null;
+
+  // Check if the signup error is the post-registration success message
+  const isPostRegistrationSuccess = signUpDisplayError === AUTH_MESSAGES.POST_REGISTRATION_LOGIN_FAILED;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4">
@@ -152,9 +191,20 @@ export default function LoginScreen() {
 
           <TabsContent value="signup" className="space-y-4">
             {signUpDisplayError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{signUpDisplayError}</AlertDescription>
+              <Alert variant={isPostRegistrationSuccess ? "default" : "destructive"}>
+                {isPostRegistrationSuccess ? (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <AlertCircle className="h-4 w-4" />
+                )}
+                <AlertDescription>
+                  {signUpDisplayError}
+                  {isPostRegistrationSuccess && (
+                    <span className="block mt-2 text-sm text-muted-foreground">
+                      Switching to Sign In tab in a moment...
+                    </span>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
             
@@ -212,9 +262,11 @@ export default function LoginScreen() {
 
         <footer className="mt-8 text-center text-sm text-muted-foreground">
           <p>
-            © {new Date().getFullYear()} · Built with ❤️ using{' '}
+            Built with ❤️ using{' '}
             <a
-              href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+              href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(
+                typeof window !== 'undefined' ? window.location.hostname : 'unknown-app'
+              )}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"
@@ -222,6 +274,7 @@ export default function LoginScreen() {
               caffeine.ai
             </a>
           </p>
+          <p className="mt-1">© {new Date().getFullYear()}</p>
         </footer>
       </div>
     </div>

@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useCallback, useRef, useCont
 import { sessionStorage } from './sessionStorage';
 import { useBackendConnection } from '../hooks/useBackendConnection';
 import { AUTH_MESSAGES, mapRegistrationError, sanitizeAuthMessageForFlow } from './authMessages';
-import type { RegisterPayload, LoginPayload, Session, RegistrationError } from '../backend';
+import type { RegisterPayload, LoginPayload, Session, RegistrationResult } from '../backend';
 
 export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated' | 'error';
 
@@ -14,6 +14,7 @@ interface AuthContextValue {
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
+  clearError: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Validate session with backend when actor is ready
+      // Session exists in storage - restore it when backend is ready
       if (isReady && actor) {
         initializationAttempted.current = true;
         
@@ -55,37 +56,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           initializationTimeoutRef.current = null;
         }
 
-        try {
-          // Defensive check: ensure validateSession exists
-          if (typeof actor.validateSession !== 'function') {
-            console.error('Backend actor missing validateSession method');
-            sessionStorage.clearWithReason('Backend actor incompatible - missing validateSession');
-            setAuthStatus('unauthenticated');
-            setError(sanitizeAuthMessageForFlow('Backend connection error', 'connection'));
-            return;
-          }
-
-          const validatedSession = await actor.validateSession(session.token);
-          
-          if (!validatedSession) {
-            // Session is invalid or expired
-            sessionStorage.clearWithReason('Session validation returned null');
-            setAuthStatus('unauthenticated');
-            setError(AUTH_MESSAGES.SESSION_EXPIRED);
-            return;
-          }
-          
-          // Session is valid, restore auth state
-          setSessionToken(validatedSession.token);
-          setAccountId(validatedSession.accountId || null);
-          setAuthStatus('authenticated');
-          setError(null);
-        } catch (err) {
-          console.error('Session validation failed:', err);
-          sessionStorage.clearWithReason('Session validation threw error');
+        // Check if session has expired
+        if (session.expiresAt && session.expiresAt > 0 && Date.now() > session.expiresAt) {
+          console.log('Session expired during initialization');
+          sessionStorage.clearWithReason('Session expired');
           setAuthStatus('unauthenticated');
-          setError(AUTH_MESSAGES.SESSION_INVALID);
+          setError(AUTH_MESSAGES.SESSION_EXPIRED);
+          return;
         }
+        
+        // Session is valid, restore auth state
+        console.log('Restoring session from storage');
+        setSessionToken(session.token);
+        setAccountId(session.accountId || null);
+        setAuthStatus('authenticated');
+        setError(null);
       } else if (connectionError) {
         // Backend connection failed - clear session and show error
         initializationAttempted.current = true;
@@ -179,10 +164,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(errorMsg);
       }
       
-      // Convert bigint expiresAt to number for storage
+      // Session type has: token, expiresAt (bigint), email
+      // Store session data
       const sessionData = {
         token: response.token,
-        accountId: response.accountId, // Pass through as-is (optional)
+        accountId: response.email, // Use email as accountId for compatibility
         expiresAt: response.expiresAt as any, // Let sessionStorage handle bigint conversion
       };
       
@@ -251,16 +237,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isReady
       });
       
-      // Backend returns RegistrationError | null
-      // null = success, error object = failure with reason
-      const errorResponse: RegistrationError | null = await actor.register(payload);
+      // Backend returns RegistrationResult discriminated union
+      // { __kind__: "success", success: null } or { __kind__: "error", error: RegistrationError }
+      const result: RegistrationResult = await actor.register(payload);
       
-      if (errorResponse !== null) {
+      console.log('Registration result received:', { 
+        step: 'register_response', 
+        resultKind: result.__kind__,
+        result
+      });
+      
+      // Check if registration failed
+      if (result.__kind__ === 'error') {
         // Registration failed - map the error to a user-friendly message
-        const errorMsg = mapRegistrationError(errorResponse);
+        const errorMsg = mapRegistrationError(result.error);
         console.error('Registration failed:', { 
-          step: 'register_call', 
-          error: errorResponse, 
+          step: 'register_error', 
+          error: result.error, 
           mappedMessage: errorMsg 
         });
         setError(errorMsg);
@@ -268,61 +261,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error(errorMsg);
       }
       
+      // Registration succeeded (__kind__ === 'success')
       console.log('Registration succeeded, attempting post-registration login...', { 
         step: 'post_register_login_start',
         actorReady: !!actor,
         isReady
       });
       
-      // Registration succeeded - now log in to get a session
+      // Now log in to get a session - try email first, then username
       try {
-        // Call login - this will handle session creation and state updates
-        await login(username, password);
-        console.log('Post-registration login succeeded', { 
+        // Try logging in with email first (most reliable)
+        await login(email, password);
+        console.log('Post-registration login succeeded with email', { 
           step: 'post_register_login_success' 
         });
-        // Login succeeded - state is now authenticated, no need to set error
-      } catch (loginErr: any) {
-        // Post-registration login failed - this is a sign-in error, not a registration error
-        console.error('Post-registration login failed:', { 
-          step: 'post_register_login_error', 
-          error: loginErr.message || loginErr 
+        // Login succeeded - state is now authenticated
+        return;
+      } catch (emailLoginErr: any) {
+        console.warn('Post-registration login with email failed, trying username...', { 
+          step: 'post_register_login_email_failed',
+          error: emailLoginErr.message 
         });
         
-        // Sanitize the error for sign-in flow (not registration flow)
-        const errorMsg = sanitizeAuthMessageForFlow(
-          loginErr.message || AUTH_MESSAGES.LOGIN_FAILED, 
-          'signin'
-        );
-        setError(errorMsg);
-        setAuthStatus('unauthenticated');
-        throw new Error(errorMsg);
+        // Try with username as fallback
+        try {
+          await login(username, password);
+          console.log('Post-registration login succeeded with username', { 
+            step: 'post_register_login_success_username' 
+          });
+          // Login succeeded - state is now authenticated
+          return;
+        } catch (usernameLoginErr: any) {
+          // Both login attempts failed - this is a critical error
+          console.error('Post-registration login failed with both email and username:', { 
+            step: 'post_register_login_both_failed',
+            emailError: emailLoginErr.message,
+            usernameError: usernameLoginErr.message
+          });
+          
+          // Registration succeeded but login failed - show a specific message
+          const errorMsg = AUTH_MESSAGES.POST_REGISTRATION_LOGIN_FAILED;
+          setError(errorMsg);
+          setAuthStatus('unauthenticated');
+          throw new Error(errorMsg);
+        }
       }
       
     } catch (err: any) {
-      // Determine if this is a registration error or a login error
+      // If error is already set and matches the thrown error, don't overwrite
       const errorMessage = err.message || AUTH_MESSAGES.REGISTRATION_FAILED;
       
-      // If the error is already an allowlisted message, use it as-is
-      // Otherwise, categorize based on the error content
-      let flow: 'signin' | 'signup' = 'signup';
-      
-      // Check if this is a sign-in related error
-      if (
-        errorMessage.includes('Sign in') ||
-        errorMessage.includes('login') ||
-        errorMessage === AUTH_MESSAGES.INVALID_CREDENTIALS ||
-        errorMessage === AUTH_MESSAGES.LOGIN_FAILED
-      ) {
-        flow = 'signin';
-      }
-      
-      // Sanitize for the appropriate flow
-      const sanitizedMessage = sanitizeAuthMessageForFlow(errorMessage, flow);
-      
-      // Only set error if it's not already set (avoid overwriting more specific errors)
-      if (!error) {
-        setError(sanitizedMessage);
+      // Only update error if it's not already set to avoid overwriting more specific errors
+      if (!error || error !== errorMessage) {
+        setError(errorMessage);
       }
       
       // Ensure we're in unauthenticated state
@@ -330,7 +321,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuthStatus('unauthenticated');
       }
       
-      throw new Error(sanitizedMessage);
+      throw err;
     }
   }, [actor, isReady, login, error, authStatus]);
 
@@ -342,6 +333,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
   }, []);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   const value: AuthContextValue = {
     authStatus,
     sessionToken,
@@ -350,6 +345,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     register,
     logout,
     error,
+    clearError,
   };
 
   return React.createElement(AuthContext.Provider, { value }, children);

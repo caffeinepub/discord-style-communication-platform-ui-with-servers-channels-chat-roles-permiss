@@ -1,33 +1,6 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix registration flow error messaging (Caffeine Chat)",
-  "requirements": [
-    {
-      "id": "REQ-4",
-      "summary": "Show specific allowlisted registration errors (already registered / username-email taken / connection) instead of a generic registration failure whenever possible.",
-      "acceptanceCriteria": [
-        "If the backend returns #alreadyRegistered, the Sign Up tab shows the exact allowlisted message from AUTH_MESSAGES.ALREADY_REGISTERED",
-        "If the backend returns #usernameTaken or #emailTaken, the Sign Up tab shows the exact allowlisted message from AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN",
-        "If the backend is not ready/unreachable, the UI shows the existing allowlisted connection message(s) rather than a generic registration failure"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/auth/authMessages.ts",
-          "operation": "modify",
-          "description": "Update mapRegistrationError to correctly map backend register() error shapes from the generated types (including string enum values like \"alreadyRegistered\" / \"emailTaken\" / \"usernameTaken\"), while preserving allowlisted message enforcement via AUTH_MESSAGES."
-        },
-        {
-          "path": "frontend/src/auth/AuthProvider.tsx",
-          "operation": "modify",
-          "description": "Ensure the register() flow always surfaces allowlisted, specific messages: use the improved mapRegistrationError for non-null registration results; preserve/propagate connection-not-ready messages (AUTH_MESSAGES.BACKEND_NOT_READY / AUTH_MESSAGES.CONNECTION_ERROR / AUTH_MESSAGES.CONNECTION_TIMEOUT) instead of falling back to AUTH_MESSAGES.REGISTRATION_FAILED."
-        },
-        {
-          "path": "frontend/src/pages/LoginScreen.tsx",
-          "operation": "modify",
-          "description": "Adjust Sign Up error rendering to prefer the auth context error when it is a signup-flow/connection-flow allowlisted message, ensuring mapped registration errors appear on the Sign Up tab (and are not replaced by the generic local fallback)."
-        }
-      ]
-    }
-  ]
+  "title": "Frontend-only plan: No changes required for backend-only registration role fix",
+  "requirements": []
 }
