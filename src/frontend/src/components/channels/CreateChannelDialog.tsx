@@ -20,8 +20,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 interface CreateChannelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  serverId: bigint;
-  categoryId: bigint;
+  serverId: string;
+  categoryId: string;
 }
 
 type ChannelType = 'text' | 'voice';

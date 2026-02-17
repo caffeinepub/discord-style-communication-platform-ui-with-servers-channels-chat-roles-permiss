@@ -6,8 +6,8 @@ type ChannelType = 'text' | 'voice' | 'stage';
 
 interface NavigationState {
   currentView: ViewType;
-  selectedServerId: bigint | null;
-  selectedChannelId: bigint | null;
+  selectedServerId: string | null;
+  selectedChannelId: string | null;
   selectedChannelType: ChannelType | null;
   homeTab: HomeTab;
   expandedCategories: Record<string, boolean>;
@@ -18,8 +18,8 @@ interface NavigationState {
 
 interface NavigationContextType extends NavigationState {
   setCurrentView: (view: ViewType) => void;
-  selectServer: (serverId: bigint | null) => void;
-  selectChannel: (channelId: bigint | null, type: ChannelType | null) => void;
+  selectServer: (serverId: string | null) => void;
+  selectChannel: (channelId: string | null, type: ChannelType | null) => void;
   setHomeTab: (tab: HomeTab) => void;
   toggleCategory: (categoryId: string) => void;
   setShowServerSettings: (show: boolean) => void;
@@ -47,7 +47,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, currentView: view, showServerSettings: false, showUserSettings: false }));
   };
 
-  const selectServer = (serverId: bigint | null) => {
+  const selectServer = (serverId: string | null) => {
     setState((prev) => ({
       ...prev,
       currentView: 'server',
@@ -59,7 +59,7 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const selectChannel = (channelId: bigint | null, type: ChannelType | null) => {
+  const selectChannel = (channelId: string | null, type: ChannelType | null) => {
     setState((prev) => ({
       ...prev,
       selectedChannelId: channelId,

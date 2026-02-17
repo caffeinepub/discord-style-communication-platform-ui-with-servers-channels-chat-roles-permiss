@@ -10,6 +10,20 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface Category {
+  'id' : string,
+  'name' : string,
+  'serverId' : string,
+}
+export interface Channel {
+  'id' : string,
+  'categoryId' : string,
+  'channelType' : ChannelType,
+  'name' : string,
+  'serverId' : string,
+}
+export type ChannelType = { 'voice' : null } |
+  { 'text' : null };
 export interface CreateServerPayload {
   'name' : string,
   'description' : string,
@@ -50,17 +64,24 @@ export type UserRole = { 'admin' : null } |
   { 'guest' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addTextChannelToCategory' : ActorMethod<[string, string, string], Channel>,
+  'addVoiceChannelToCategory' : ActorMethod<[string, string, string], Channel>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'createServer' : ActorMethod<[CreateServerPayload], undefined>,
+  'createCategory' : ActorMethod<[string, string], Category>,
+  'createServer' : ActorMethod<[CreateServerPayload], Server>,
+  'deleteCategory' : ActorMethod<[string, string], undefined>,
   'getAllServers' : ActorMethod<[], Array<Server>>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getCallerUsername' : ActorMethod<[], [] | [string]>,
-  'getServerById' : ActorMethod<[string], [] | [Server]>,
-  'getUserProfile' : ActorMethod<[string], [] | [UserProfile]>,
-  'getUsernameForUser' : ActorMethod<[Principal], [] | [string]>,
+  'getCategories' : ActorMethod<[string], Array<Category>>,
+  'getServer' : ActorMethod<[string], [] | [Server]>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'isMemberOfServer' : ActorMethod<[string], boolean>,
   'register' : ActorMethod<[RegisterPayload], RegistrationResult>,
+  'renameCategory' : ActorMethod<[string, string, string], undefined>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setCategoryOrder' : ActorMethod<[string, Array<string>], undefined>,
+  'setChannelOrder' : ActorMethod<[string, string, Array<string>], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

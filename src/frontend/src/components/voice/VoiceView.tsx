@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useNavigation } from '@/state/navigation';
 import { useGetVoiceChannelPresences, useJoinVoiceChannel, useLeaveVoiceChannel } from '@/hooks/useQueries';
-import { useGetCategories, useGetUserProfile } from '@/hooks/useQueries';
+import { useGetCategories, useGetUserProfileByUsername } from '@/hooks/useQueries';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 
 export default function VoiceView() {
@@ -23,10 +23,8 @@ export default function VoiceView() {
   const joinVoice = useJoinVoiceChannel();
   const leaveVoice = useLeaveVoiceChannel();
 
-  // Find the current channel name
-  const channelName = categories
-    .flatMap((cat) => cat.voiceChannels)
-    .find((ch) => ch.id === selectedChannelId)?.name || 'Voice Channel';
+  // Find the current channel name - categories from backend don't have channels yet
+  const channelName = 'Voice Channel';
 
   // Check if current user is connected
   const isConnected = useMemo(() => {
@@ -135,7 +133,7 @@ interface ParticipantRowProps {
 }
 
 function ParticipantRow({ participant }: ParticipantRowProps) {
-  const { data: profile } = useGetUserProfile(participant.userId);
+  const { data: profile } = useGetUserProfileByUsername(participant.userId.toString());
 
   const avatarIndex = (parseInt(participant.userId.toString().slice(-2), 16) % 6) + 1;
   const defaultAvatar = `/assets/generated/avatar-default-0${avatarIndex}.dim_256x256.png`;
@@ -147,11 +145,7 @@ function ParticipantRow({ participant }: ParticipantRowProps) {
         <AvatarFallback>{profile?.name?.charAt(0) || 'U'}</AvatarFallback>
       </Avatar>
       <div className="flex-1">
-        <p className="font-medium">{profile?.name || 'User'}</p>
-        <p className="text-xs text-muted-foreground">{participant.userId.toString().slice(0, 8)}...</p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Mic className="h-4 w-4 text-muted-foreground" />
+        <p className="text-sm font-medium">{profile?.name || 'User'}</p>
       </div>
     </div>
   );

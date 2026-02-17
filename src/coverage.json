@@ -1,40 +1,52 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T06:17:19.267Z",
+  "generatedAt": "2026-02-17T20:57:31.893Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 1,
+    "total": 4,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Implement server creation and listing in the Motoko backend so the frontend \"Create Server\" flow works end-to-end.",
+        "summary": "Add a public shared backend actor method named `register` so the frontend runtime actor verification passes (it currently expects a `register` function to exist).",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Add/align any additional backend server endpoints that the existing UI immediately depends on after server creation (server ordering and basic membership), to prevent follow-on failures after a successful create.",
+        "summary": "Implement backend registration logic that persists a new user's credentials/profile using the existing in-memory stores (e.g., usernames, credentialsStore, userProfiles) and returns a structured result indicating success or a specific error (e.g., already registered, username taken, email taken).",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Ensure the frontend Create Server dialog provides a clear error when server creation fails and does not silently do nothing.",
+        "summary": "Update the frontend authentication flow to call the backend `register` method (instead of simulating registration) and surface backend registration errors as user-facing English messages in the signup flow.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/servers/CreateServerDialog.tsx"
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/auth/authMessages.ts"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/components/servers/CreateServerDialog.tsx"
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/auth/authMessages.ts"
+        ]
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Ensure the frontend TypeScript backend actor typings include the `register` method so the app compiles and `useSafeActor` can safely validate the actor API at runtime.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/backend.d.ts",
+          "frontend/src/hooks/useSafeActor.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/backend.d.ts"
         ]
       }
     ]
@@ -46,21 +58,12 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/auth/AuthProvider.tsx",
+    "frontend/src/auth/authMessages.ts",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
-    "frontend/src/components/channels/CreateCategoryDialog.tsx",
-    "frontend/src/components/channels/CreateChannelDialog.tsx",
-    "frontend/src/components/discovery/DiscoveryView.tsx",
-    "frontend/src/components/discovery/ServerPreviewCard.tsx",
-    "frontend/src/components/nav/ServerRail.tsx",
-    "frontend/src/components/profile/RoleAssignmentDialog.tsx",
-    "frontend/src/components/servers/CreateServerDialog.tsx",
-    "frontend/src/components/settings/ServerSettings/components/CreateChannelInSettingsDialog.tsx",
-    "frontend/src/components/settings/ServerSettings/pages/ChannelsPage.tsx",
-    "frontend/src/components/settings/ServerSettings/pages/RolesPage.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

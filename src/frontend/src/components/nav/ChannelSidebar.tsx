@@ -1,160 +1,130 @@
-import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Hash, Volume2, ChevronDown, Settings, Plus } from 'lucide-react';
 import { useNavigation } from '../../state/navigation';
-import { useGetCategories, useIsCallerAdmin, useGetCategoryChannelOrdering, useUpdateCategoryChannelOrdering, useGetServer } from '../../hooks/useQueries';
-import { CategorySection } from '../channels/CategorySection';
+import { useGetServer, useGetCategories, useIsCallerAdmin } from '../../hooks/useQueries';
+import { useState } from 'react';
 import CreateCategoryDialog from '../channels/CreateCategoryDialog';
-import type { ChannelCategory, ServerOrdering } from '../../types/backend-extended';
-import { applyOrderingToCategories, buildCategoryLevelOrdering } from '../../utils/channelOrdering';
+import type { Category } from '../../backend';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export function ChannelSidebar() {
-  const { selectedServerId, expandedCategories, toggleCategory, setShowServerSettings } = useNavigation();
-  const { data: categories = [], isLoading } = useGetCategories(selectedServerId);
-  const { data: server, isLoading: serverLoading } = useGetServer(selectedServerId);
+interface ChannelSidebarProps {
+  serverId: string | null;
+}
+
+export default function ChannelSidebar({ serverId }: ChannelSidebarProps) {
+  const { selectedChannelId, selectedChannelType, selectChannel, setShowServerSettings, expandedCategories, toggleCategory } = useNavigation();
+  const { data: server, isLoading: serverLoading } = useGetServer(serverId);
+  const { data: categories = [], isLoading: categoriesLoading } = useGetCategories(serverId);
   const { data: isAdmin } = useIsCallerAdmin();
-  const [createCategoryOpen, setCreateCategoryOpen] = useState(false);
-  const { data: persistedOrdering } = useGetCategoryChannelOrdering(selectedServerId);
-  const updateOrdering = useUpdateCategoryChannelOrdering();
+  const [createCategoryDialogOpen, setCreateCategoryDialogOpen] = useState(false);
 
-  const [draggedCategory, setDraggedCategory] = useState<bigint | null>(null);
-
-  // Apply persisted ordering to categories
-  const orderedCategories = applyOrderingToCategories(categories, persistedOrdering ?? null);
-
-  // Merge expansion state
-  const categoriesWithExpansion = orderedCategories.map((cat) => ({
-    ...cat,
-    isExpanded: expandedCategories[cat.id.toString()] ?? cat.isExpanded,
-  }));
-
-  const handleCategoryDragStart = (categoryId: bigint) => {
-    if (!isAdmin) return;
-    setDraggedCategory(categoryId);
-  };
-
-  const handleCategoryDragOver = (e: React.DragEvent, targetCategoryId: bigint) => {
-    if (!isAdmin || !draggedCategory) return;
-    e.preventDefault();
-  };
-
-  const handleCategoryDrop = (e: React.DragEvent, targetCategoryId: bigint) => {
-    e.preventDefault();
-    if (!isAdmin || !draggedCategory || draggedCategory === targetCategoryId || !selectedServerId) {
-      setDraggedCategory(null);
-      return;
-    }
-
-    const currentOrder = orderedCategories.map(cat => cat.id);
-    const draggedIndex = currentOrder.findIndex(id => id === draggedCategory);
-    const targetIndex = currentOrder.findIndex(id => id === targetCategoryId);
-
-    if (draggedIndex === -1 || targetIndex === -1) {
-      setDraggedCategory(null);
-      return;
-    }
-
-    const newOrder = [...currentOrder];
-    newOrder.splice(draggedIndex, 1);
-    newOrder.splice(targetIndex, 0, draggedCategory);
-
-    // Build the full ordering structure
-    const categoryLevelOrdering = buildCategoryLevelOrdering(orderedCategories, persistedOrdering ?? null);
-
-    const newServerOrdering: ServerOrdering = {
-      categoryOrder: newOrder,
-      categories: categoryLevelOrdering,
-    };
-
-    updateOrdering.mutate({
-      serverId: selectedServerId,
-      ordering: newServerOrdering,
-    });
-
-    setDraggedCategory(null);
-  };
-
-  const handleHeaderClick = () => {
-    if (selectedServerId) {
-      setShowServerSettings(true);
-    }
-  };
-
-  const handleCreateCategoryClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCreateCategoryOpen(true);
-  };
-
-  if (!selectedServerId) {
+  if (!serverId) {
     return (
-      <div className="w-60 bg-secondary border-r border-border flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">No server selected</p>
+      <div className="w-60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r border-border flex flex-col">
+        <div className="h-12 border-b border-border flex items-center justify-center px-4">
+          <span className="text-sm text-muted-foreground">No server selected</span>
+        </div>
       </div>
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="w-60 bg-secondary border-r border-border flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading channels...</p>
-      </div>
-    );
-  }
-
-  // Determine the header text
-  const headerText = serverLoading ? 'Loading...' : (server?.name || 'Server');
+  const isLoading = serverLoading || categoriesLoading;
 
   return (
-    <div className="w-60 bg-secondary border-r border-border flex flex-col">
-      <div 
-        className="h-12 border-b border-border flex items-center justify-between px-4 cursor-pointer hover:bg-accent/50 transition-colors group"
-        onClick={handleHeaderClick}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleHeaderClick();
-          }
-        }}
-        title="Server Settings"
+    <div className="w-60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r border-border flex flex-col">
+      {/* Server Header */}
+      <button
+        onClick={() => setShowServerSettings(true)}
+        className="h-12 border-b border-border flex items-center justify-between px-4 hover:bg-accent transition-colors group"
       >
-        <h2 className="font-semibold text-sm truncate flex-1">{headerText}</h2>
-        {isAdmin && (
+        {serverLoading ? (
+          <Skeleton className="h-5 w-32" />
+        ) : (
+          <span className="font-semibold truncate">{server?.name || 'Loading...'}</span>
+        )}
+        <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+      </button>
+
+      {/* Channel List */}
+      <div className="flex-1 overflow-y-auto py-2">
+        {isLoading ? (
+          <div className="space-y-2 px-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+          </div>
+        ) : categories.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <p className="text-sm text-muted-foreground mb-4">No categories yet</p>
+            {isAdmin && (
+              <button
+                onClick={() => setCreateCategoryDialogOpen(true)}
+                className="text-sm text-primary hover:underline"
+              >
+                Create your first category
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {categories.map((category: Category) => {
+              const isExpanded = expandedCategories[category.id] !== false;
+              
+              return (
+                <div key={category.id} className="group">
+                  <button
+                    onClick={() => toggleCategory(category.id)}
+                    className="flex w-full items-center gap-1 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ChevronDown
+                      className={`h-3 w-3 transition-transform ${
+                        isExpanded ? '' : '-rotate-90'
+                      }`}
+                    />
+                    <span className="flex-1 text-left">{category.name}</span>
+                    {isAdmin && (
+                      <Plus
+                        className="h-4 w-4 opacity-0 group-hover:opacity-100 hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // TODO: Open create channel dialog for this category
+                        }}
+                      />
+                    )}
+                  </button>
+
+                  {isExpanded && (
+                    <div className="space-y-0.5 mt-1">
+                      {/* Placeholder for channels - will be populated when channels are fetched */}
+                      <div className="px-4 py-2 text-xs text-muted-foreground">
+                        No channels yet
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Add Category Button */}
+        {isAdmin && !isLoading && (
           <button
-            onClick={handleCreateCategoryClick}
-            className="p-1 hover:bg-accent rounded transition-colors z-10"
-            title="Create Category"
+            onClick={() => setCreateCategoryDialogOpen(true)}
+            className="flex items-center gap-2 px-2 py-1.5 mx-2 mt-2 rounded text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
             <Plus className="h-4 w-4" />
+            <span>Add Category</span>
           </button>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto py-2">
-        {categoriesWithExpansion.map((category: ChannelCategory) => (
-          <div
-            key={category.id.toString()}
-            draggable={isAdmin}
-            onDragStart={() => handleCategoryDragStart(category.id)}
-            onDragOver={(e) => handleCategoryDragOver(e, category.id)}
-            onDrop={(e) => handleCategoryDrop(e, category.id)}
-            className={isAdmin ? 'cursor-move' : ''}
-          >
-            <CategorySection
-              serverId={selectedServerId}
-              category={category}
-              allCategories={orderedCategories}
-              onToggleExpanded={toggleCategory}
-            />
-          </div>
-        ))}
-      </div>
-
-      <CreateCategoryDialog
-        open={createCategoryOpen}
-        onOpenChange={setCreateCategoryOpen}
-        serverId={selectedServerId}
-      />
+      {serverId && (
+        <CreateCategoryDialog
+          open={createCategoryDialogOpen}
+          onOpenChange={setCreateCategoryDialogOpen}
+          serverId={serverId}
+        />
+      )}
     </div>
   );
 }

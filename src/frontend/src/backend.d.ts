@@ -7,6 +7,11 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface Category {
+    id: string;
+    name: string;
+    serverId: string;
+}
 export interface CreateServerPayload {
     name: string;
     description: string;
@@ -26,6 +31,13 @@ export type RegistrationResult = {
     __kind__: "success";
     success: null;
 };
+export interface Channel {
+    id: string;
+    categoryId: string;
+    channelType: ChannelType;
+    name: string;
+    serverId: string;
+}
 export interface UserProfile {
     customStatus: string;
     aboutMe: string;
@@ -42,6 +54,10 @@ export interface Server {
     isPublic: boolean;
     iconURL: string;
 }
+export enum ChannelType {
+    voice = "voice",
+    text = "text"
+}
 export enum RegistrationError {
     emailTaken = "emailTaken",
     roleAssignmentFailed = "roleAssignmentFailed",
@@ -55,15 +71,22 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
+    addTextChannelToCategory(serverId: string, categoryId: string, name: string): Promise<Channel>;
+    addVoiceChannelToCategory(serverId: string, categoryId: string, name: string): Promise<Channel>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    createServer(payload: CreateServerPayload): Promise<void>;
+    createCategory(serverId: string, name: string): Promise<Category>;
+    createServer(payload: CreateServerPayload): Promise<Server>;
+    deleteCategory(serverId: string, categoryId: string): Promise<void>;
     getAllServers(): Promise<Array<Server>>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getCallerUsername(): Promise<string | null>;
-    getServerById(id: string): Promise<Server | null>;
-    getUserProfile(username: string): Promise<UserProfile | null>;
-    getUsernameForUser(user: Principal): Promise<string | null>;
+    getCategories(serverId: string): Promise<Array<Category>>;
+    getServer(id: string): Promise<Server | null>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
-    isMemberOfServer(serverId: string): Promise<boolean>;
     register(payload: RegisterPayload): Promise<RegistrationResult>;
+    renameCategory(serverId: string, categoryId: string, newName: string): Promise<void>;
+    saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setCategoryOrder(serverId: string, newOrder: Array<string>): Promise<void>;
+    setChannelOrder(serverId: string, categoryId: string, newOrder: Array<string>): Promise<void>;
 }

@@ -8,10 +8,26 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
+export const ChannelType = IDL.Variant({
+  'voice' : IDL.Null,
+  'text' : IDL.Null,
+});
+export const Channel = IDL.Record({
+  'id' : IDL.Text,
+  'categoryId' : IDL.Text,
+  'channelType' : ChannelType,
+  'name' : IDL.Text,
+  'serverId' : IDL.Text,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
   'guest' : IDL.Null,
+});
+export const Category = IDL.Record({
+  'id' : IDL.Text,
+  'name' : IDL.Text,
+  'serverId' : IDL.Text,
 });
 export const CreateServerPayload = IDL.Record({
   'name' : IDL.Text,
@@ -55,30 +71,58 @@ export const RegistrationResult = IDL.Variant({
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'addTextChannelToCategory' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text],
+      [Channel],
+      [],
+    ),
+  'addVoiceChannelToCategory' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text],
+      [Channel],
+      [],
+    ),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'createServer' : IDL.Func([CreateServerPayload], [], []),
+  'createCategory' : IDL.Func([IDL.Text, IDL.Text], [Category], []),
+  'createServer' : IDL.Func([CreateServerPayload], [Server], []),
+  'deleteCategory' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'getAllServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
+  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getCallerUsername' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
-  'getServerById' : IDL.Func([IDL.Text], [IDL.Opt(Server)], ['query']),
-  'getUserProfile' : IDL.Func([IDL.Text], [IDL.Opt(UserProfile)], ['query']),
-  'getUsernameForUser' : IDL.Func(
+  'getCategories' : IDL.Func([IDL.Text], [IDL.Vec(Category)], ['query']),
+  'getServer' : IDL.Func([IDL.Text], [IDL.Opt(Server)], ['query']),
+  'getUserProfile' : IDL.Func(
       [IDL.Principal],
-      [IDL.Opt(IDL.Text)],
+      [IDL.Opt(UserProfile)],
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'isMemberOfServer' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
   'register' : IDL.Func([RegisterPayload], [RegistrationResult], []),
+  'renameCategory' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
+  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setCategoryOrder' : IDL.Func([IDL.Text, IDL.Vec(IDL.Text)], [], []),
+  'setChannelOrder' : IDL.Func([IDL.Text, IDL.Text, IDL.Vec(IDL.Text)], [], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
+  const ChannelType = IDL.Variant({ 'voice' : IDL.Null, 'text' : IDL.Null });
+  const Channel = IDL.Record({
+    'id' : IDL.Text,
+    'categoryId' : IDL.Text,
+    'channelType' : ChannelType,
+    'name' : IDL.Text,
+    'serverId' : IDL.Text,
+  });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
     'user' : IDL.Null,
     'guest' : IDL.Null,
+  });
+  const Category = IDL.Record({
+    'id' : IDL.Text,
+    'name' : IDL.Text,
+    'serverId' : IDL.Text,
   });
   const CreateServerPayload = IDL.Record({
     'name' : IDL.Text,
@@ -122,21 +166,40 @@ export const idlFactory = ({ IDL }) => {
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'addTextChannelToCategory' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [Channel],
+        [],
+      ),
+    'addVoiceChannelToCategory' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [Channel],
+        [],
+      ),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'createServer' : IDL.Func([CreateServerPayload], [], []),
+    'createCategory' : IDL.Func([IDL.Text, IDL.Text], [Category], []),
+    'createServer' : IDL.Func([CreateServerPayload], [Server], []),
+    'deleteCategory' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'getAllServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
+    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getCallerUsername' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
-    'getServerById' : IDL.Func([IDL.Text], [IDL.Opt(Server)], ['query']),
-    'getUserProfile' : IDL.Func([IDL.Text], [IDL.Opt(UserProfile)], ['query']),
-    'getUsernameForUser' : IDL.Func(
+    'getCategories' : IDL.Func([IDL.Text], [IDL.Vec(Category)], ['query']),
+    'getServer' : IDL.Func([IDL.Text], [IDL.Opt(Server)], ['query']),
+    'getUserProfile' : IDL.Func(
         [IDL.Principal],
-        [IDL.Opt(IDL.Text)],
+        [IDL.Opt(UserProfile)],
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'isMemberOfServer' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'register' : IDL.Func([RegisterPayload], [RegistrationResult], []),
+    'renameCategory' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
+    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setCategoryOrder' : IDL.Func([IDL.Text, IDL.Vec(IDL.Text)], [], []),
+    'setChannelOrder' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Vec(IDL.Text)],
+        [],
+        [],
+      ),
   });
 };
 

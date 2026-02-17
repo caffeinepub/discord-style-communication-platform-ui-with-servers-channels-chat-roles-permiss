@@ -1,25 +1,46 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Caffeine Chat — Fix Create Server dialog error handling and post-create refresh",
+  "title": "Caffeine Chat: Wire signup to backend register + align frontend actor typings",
   "requirements": [
     {
       "id": "REQ-3",
-      "summary": "Ensure Create Server dialog surfaces creation failures via English toast messaging and reliably refreshes the server rail on success.",
+      "summary": "Update signup flow to call backend `register` and display backend registration errors as English messages.",
       "acceptanceCriteria": [
-        "If `createServer` fails, the user sees an English toast error message (using the existing mutation `onError` behavior) and the dialog remains open with the entered values preserved.",
-        "If `createServer` succeeds, the dialog closes, inputs clear, and the new server appears in the server rail after React Query invalidation (no manual refresh required)."
+        "Submitting the signup form triggers an actual backend `register` call.",
+        "If backend `register` returns an error (e.g., username taken), the UI shows a clear English error message and the user remains unauthenticated.",
+        "On successful registration, the app proceeds to the existing post-registration behavior (e.g., login/session creation) without showing the backend connection error banner."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
+          "path": "frontend/src/auth/AuthProvider.tsx",
           "operation": "modify",
-          "description": "Harden `useCreateServer` so it calls the backend create-server capability using a compatible invocation (supporting the existing frontend type expectations and preventing signature mismatches from causing silent failures), while keeping the existing English toast `onError` behavior and ensuring React Query invalidates the server list queries on success."
+          "description": "Replace simulated registration with a real `actor.register({ username, email, password })` call. Interpret the returned `RegistrationResult` (success vs error) and map backend `RegistrationError` values to allowlisted English UI messages via `mapRegistrationError` / `sanitizeAuthMessageForFlow`. Ensure error results keep auth state unauthenticated, while success continues with existing post-registration behavior (current login/session flow). Verify the selected component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/components/servers/CreateServerDialog.tsx",
+          "path": "frontend/src/auth/authMessages.ts",
           "operation": "modify",
-          "description": "Update submit handling so attempts that cannot proceed do not silently no-op (e.g., show an English toast when submission is blocked by backend-disabled state), and ensure that on mutation errors the dialog stays open and preserves the entered values while relying on the existing mutation `onError` toast for failure messaging; keep the current success behavior (clear inputs + close) so invalidation-driven server rail refresh occurs."
+          "description": "Ensure the registration error mapping covers all backend `RegistrationError` cases used by `register` (alreadyRegistered, usernameTaken, emailTaken, roleAssignmentFailed, unknown) and returns English, allowlisted messages suitable for the signup flow. Verify the selected component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Ensure frontend backend actor typings include `register` so TypeScript builds and `useSafeActor` can validate the API.",
+      "acceptanceCriteria": [
+        "The frontend builds successfully with no TypeScript errors related to missing `register` on the backend interface/type.",
+        "Runtime verification in `useSafeActor` recognizes `register` as a function on the actor instance."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/backend.d.ts",
+          "operation": "modify",
+          "description": "Verify/align the `backendInterface` type so it includes `register(payload: RegisterPayload): Promise<RegistrationResult>` and that `RegisterPayload`, `RegistrationResult`, and `RegistrationError` match what the frontend uses in the signup flow and runtime validation. Verify the selected component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useSafeActor.ts",
+          "operation": "modify",
+          "description": "Confirm the runtime actor verification remains compatible with the typed actor API (i.e., `register` is treated as a required callable function) and that any logged/returned errors stay user-safe (English) via the existing UI error handling paths. Verify the selected component's usage instructions before implementing."
         }
       ]
     }

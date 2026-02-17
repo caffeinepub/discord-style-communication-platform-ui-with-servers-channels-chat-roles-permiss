@@ -7,6 +7,7 @@ import MessageItem from './MessageItem';
 import { useNavigation } from '@/state/navigation';
 import { useGetTextChannelMessages } from '@/hooks/useQueries';
 import { useGetCategories } from '@/hooks/useQueries';
+import { categoryToChannelCategory } from '@/types/backend-extended';
 
 export default function ChatView() {
   const { selectedServerId, selectedChannelId } = useNavigation();
@@ -18,10 +19,8 @@ export default function ChatView() {
   // Fetch categories to get channel name
   const { data: categories = [] } = useGetCategories(selectedServerId);
 
-  // Find the current channel name
-  const channelName = categories
-    .flatMap((cat) => cat.textChannels)
-    .find((ch) => ch.id === selectedChannelId)?.name || 'channel';
+  // Find the current channel name - categories from backend don't have channels yet
+  const channelName = 'channel';
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {

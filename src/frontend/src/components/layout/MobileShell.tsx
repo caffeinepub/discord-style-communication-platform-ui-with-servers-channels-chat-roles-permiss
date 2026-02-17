@@ -3,7 +3,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
 import ServerRail from '../nav/ServerRail';
-import { ChannelSidebar } from '../nav/ChannelSidebar';
+import ChannelSidebar from '../nav/ChannelSidebar';
 import MemberListPanel from '../members/MemberListPanel';
 import MainContent from './MainContent';
 import MobileTopBar from '../nav/MobileTopBar';
@@ -26,9 +26,8 @@ export default function MobileShell() {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <MobileTopBar
-        onOpenServers={() => setShowServers(true)}
-        onOpenChannels={() => setShowChannels(true)}
-        onOpenMembers={() => setShowMembers(true)}
+        onMenuClick={() => setShowChannels(true)}
+        onMembersClick={() => setShowMembers(true)}
       />
 
       <div className="flex-1 overflow-hidden">
@@ -56,7 +55,7 @@ export default function MobileShell() {
       <Sheet open={showChannels} onOpenChange={setShowChannels}>
         <SheetContent side="left" className="w-64 p-0 flex flex-col">
           <div className="flex-1 overflow-hidden">
-            <ChannelSidebar />
+            <ChannelSidebar serverId={selectedServerId} />
           </div>
           <div className="p-2 border-t border-border">
             <Button

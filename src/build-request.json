@@ -1,85 +1,92 @@
 {
   "kind": "build_request",
-  "title": "Fix Create Server button (implement missing backend server APIs)",
+  "title": "Fix backend connection error by adding required register method",
   "projectName": "Caffeine Chat",
-  "priority": "high",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Implement server creation and listing in the Motoko backend so the frontend \"Create Server\" flow works end-to-end.",
+      "text": "Add a public shared backend actor method named `register` so the frontend runtime actor verification passes (it currently expects a `register` function to exist).",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-1"
         ],
         "quotes": [
-          "making servers doesnt work when I press the create server button"
+          "Backend actor missing required authentication methods. Expected: register"
         ]
       },
       "acceptanceCriteria": [
-        "Backend actor exposes a callable method `createServer(name: Text, description: Text)` that returns a created server (or created server id) without trapping for a valid logged-in user.",
-        "Backend actor exposes a callable method `getAllServers()` that returns the caller's visible/joined servers in a format compatible with the existing frontend `Server` type usage (including `id` and `name`).",
-        "Creating a server via `createServer` causes that new server to appear in subsequent `getAllServers()` results for the creator."
+        "The backend canister exports a callable `register` method (Candid/actor method) named exactly `register`.",
+        "On app load, `useSafeActor` no longer reports: \"Backend actor missing required authentication methods. Expected: register\"."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add/align any additional backend server endpoints that the existing UI immediately depends on after server creation (server ordering and basic membership), to prevent follow-on failures after a successful create.",
+      "text": "Implement backend registration logic that persists a new user's credentials/profile using the existing in-memory stores (e.g., usernames, credentialsStore, userProfiles) and returns a structured result indicating success or a specific error (e.g., already registered, username taken, email taken).",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-1"
         ],
         "quotes": [
-          "making servers doesnt work when I press the create server button"
+          "Backend actor missing required authentication methods. Expected: register"
         ]
       },
       "acceptanceCriteria": [
-        "Backend actor exposes `getServer(serverId)` and returns `null` (not trap) when a server id is unknown or not visible to the caller.",
-        "Backend actor exposes `getServerOrdering()` and `setServerOrdering(ordering)` (even if initially implemented as simple per-user persistence) so the server rail ordering query does not error.",
-        "Backend actor exposes `joinServer(serverId)` and `leaveServer(serverId)` so Discovery join buttons do not error when used."
+        "Calling `register` with a new username/email stores the user data and returns a success result.",
+        "Calling `register` from the same caller principal when already registered returns an error result indicating the user is already registered.",
+        "Calling `register` with a username/email that is already in use returns an error result indicating the conflict (username taken and/or email taken)."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Ensure the frontend Create Server dialog provides a clear error when server creation fails and does not silently do nothing.",
+      "text": "Update the frontend authentication flow to call the backend `register` method (instead of simulating registration) and surface backend registration errors as user-facing English messages in the signup flow.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3"
+          "msg-1"
         ],
         "quotes": [
-          "making servers doesnt work when I press the create server button"
+          "Backend actor missing required authentication methods. Expected: register"
         ]
       },
       "acceptanceCriteria": [
-        "If `createServer` fails, the user sees an English toast error message (using the existing mutation `onError` behavior) and the dialog remains open with the entered values preserved.",
-        "If `createServer` succeeds, the dialog closes, inputs clear, and the new server appears in the server rail after React Query invalidation (no manual refresh required)."
+        "Submitting the signup form triggers an actual backend `register` call.",
+        "If backend `register` returns an error (e.g., username taken), the UI shows a clear English error message and the user remains unauthenticated.",
+        "On successful registration, the app proceeds to the existing post-registration behavior (e.g., login/session creation) without showing the backend connection error banner."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Ensure the frontend TypeScript backend actor typings include the `register` method so the app compiles and `useSafeActor` can safely validate the actor API at runtime.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "Backend actor missing required authentication methods. Expected: register"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The frontend builds successfully with no TypeScript errors related to missing `register` on the backend interface/type.",
+        "Runtime verification in `useSafeActor` recognizes `register` as a function on the actor instance."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single-actor Motoko canister with all logic in `backend/main.mo`.",
-    "Create or update `backend/migration.mo` only if required by existing stable state upgrade needs; do not add a migration unnecessarily.",
-    "Do not edit any frontend files under `frontend/src/hooks/useInternetIdentity.ts`, `frontend/src/hooks/useInternetIdentity.tsx`, `frontend/src/hooks/useActor.ts`, `frontend/src/main.tsx`, or anything in `frontend/src/components/ui` (compose instead).",
-    "Use English for all user-facing UI text."
+    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
+    "Do not edit frontend immutable paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui.",
+    "All user-facing text must be in English."
   ],
   "nonGoals": [
-    "Implement full server settings editing (e.g., `updateServerSettings`) beyond what is necessary to make server creation and basic navigation work.",
-    "Implement full channel/category/role/message systems unless required to prevent immediate runtime errors in the create-server path."
+    "Implementing third-party authentication providers (only Internet Identity is supported).",
+    "Adding external database/storage beyond the canister state.",
+    "Implementing real-time communication (WebSockets) or push notifications."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }

@@ -2,28 +2,44 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useGetFriends, useGetFriendRequests, useSendFriendRequest, useAcceptFriendRequest, useRejectFriendRequest } from '../../hooks/useQueries';
-import { toast } from 'sonner';
+import { UserPlus, Check, X } from 'lucide-react';
 import FriendRow from './FriendRow';
+import { useGetFriends, useGetFriendRequests, useSendFriendRequest, useAcceptFriendRequest, useDeclineFriendRequest } from '../../hooks/useQueries';
+import { toast } from 'sonner';
 
 export default function FriendsHomeView() {
-  const [friendInput, setFriendInput] = useState('');
+  const [friendUsername, setFriendUsername] = useState('');
   const { data: friends = [] } = useGetFriends();
-  const { data: requests = [] } = useGetFriendRequests();
+  const { data: friendRequests = [] } = useGetFriendRequests();
   const sendRequest = useSendFriendRequest();
   const acceptRequest = useAcceptFriendRequest();
-  const rejectRequest = useRejectFriendRequest();
+  const declineRequest = useDeclineFriendRequest();
 
-  const handleAddFriend = async (e: React.FormEvent) => {
+  const handleSendRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!friendInput.trim()) return;
+    if (!friendUsername.trim()) return;
 
     try {
-      await sendRequest.mutateAsync(friendInput.trim());
-      setFriendInput('');
+      await sendRequest.mutateAsync(friendUsername.trim());
+      setFriendUsername('');
     } catch (error) {
-      toast.error('Failed to send friend request');
+      // Error is already handled by the mutation
+    }
+  };
+
+  const handleAccept = async (username: string) => {
+    try {
+      await acceptRequest.mutateAsync(username);
+    } catch (error) {
+      // Error is already handled by the mutation
+    }
+  };
+
+  const handleDecline = async (username: string) => {
+    try {
+      await declineRequest.mutateAsync(username);
+    } catch (error) {
+      // Error is already handled by the mutation
     }
   };
 
@@ -33,88 +49,103 @@ export default function FriendsHomeView() {
         <h2 className="font-semibold">Friends</h2>
       </div>
 
-      <div className="flex-1 overflow-hidden">
-        <Tabs defaultValue="all" className="h-full flex flex-col">
-          <div className="px-4 pt-4">
-            <TabsList>
-              <TabsTrigger value="online">Online</TabsTrigger>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
-              <TabsTrigger value="blocked">Blocked</TabsTrigger>
-              <TabsTrigger value="add">Add Friend</TabsTrigger>
-            </TabsList>
-          </div>
+      <Tabs defaultValue="all" className="flex-1 flex flex-col">
+        <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-4">
+          <TabsTrigger value="online">Online</TabsTrigger>
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="blocked">Blocked</TabsTrigger>
+          <TabsTrigger value="add" className="ml-auto text-success">
+            Add Friend
+          </TabsTrigger>
+        </TabsList>
 
-          <div className="flex-1 overflow-auto px-4 pb-4">
-            <TabsContent value="online" className="mt-4">
-              <div className="space-y-2">
-                {friends.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">No friends online</p>
-                )}
-                {friends.map((username) => (
-                  <FriendRow key={username} username={username} />
-                ))}
+        <div className="flex-1 overflow-y-auto">
+          <TabsContent value="online" className="p-4 space-y-2 mt-0">
+            {friends.filter(() => false).map((username) => (
+              <FriendRow key={username} username={username} />
+            ))}
+            {friends.filter(() => false).length === 0 && (
+              <div className="text-center text-muted-foreground py-12">
+                <p>No friends online</p>
               </div>
-            </TabsContent>
+            )}
+          </TabsContent>
 
-            <TabsContent value="all" className="mt-4">
-              <div className="space-y-2">
-                {friends.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">No friends yet</p>
-                )}
-                {friends.map((username) => (
-                  <FriendRow key={username} username={username} />
-                ))}
+          <TabsContent value="all" className="p-4 space-y-2 mt-0">
+            {friends.map((username) => (
+              <FriendRow key={username} username={username} />
+            ))}
+            {friends.length === 0 && (
+              <div className="text-center text-muted-foreground py-12">
+                <p>No friends yet</p>
+                <p className="text-sm mt-2">Add friends to start chatting</p>
               </div>
-            </TabsContent>
+            )}
+          </TabsContent>
 
-            <TabsContent value="pending" className="mt-4">
-              <div className="space-y-2">
-                {requests.length === 0 && (
-                  <p className="text-center text-muted-foreground py-8">No pending requests</p>
-                )}
-                {requests.map((request) => (
-                  <div
-                    key={request.from}
-                    className="flex items-center justify-between p-3 rounded-lg bg-accent/30"
+          <TabsContent value="pending" className="p-4 space-y-2 mt-0">
+            {friendRequests.map((request) => (
+              <div
+                key={request.from}
+                className="flex items-center justify-between p-3 rounded-lg bg-accent/30 hover:bg-accent/50 transition-colors"
+              >
+                <FriendRow username={request.from} />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 text-success hover:text-success hover:bg-success/10"
+                    onClick={() => handleAccept(request.from)}
                   >
-                    <span className="text-sm font-medium">{request.from}</span>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => acceptRequest.mutate(request.from)}>
-                        Accept
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => rejectRequest.mutate(request.from)}>
-                        Decline
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="blocked" className="mt-4">
-              <p className="text-center text-muted-foreground py-8">No blocked users</p>
-            </TabsContent>
-
-            <TabsContent value="add" className="mt-4">
-              <form onSubmit={handleAddFriend} className="space-y-4 max-w-md">
-                <div className="space-y-2">
-                  <Label htmlFor="friend-id">Friend's Username</Label>
-                  <Input
-                    id="friend-id"
-                    value={friendInput}
-                    onChange={(e) => setFriendInput(e.target.value)}
-                    placeholder="Enter username"
-                  />
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => handleDecline(request.from)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button type="submit" disabled={!friendInput.trim() || sendRequest.isPending}>
-                  Send Friend Request
+              </div>
+            ))}
+            {friendRequests.length === 0 && (
+              <div className="text-center text-muted-foreground py-12">
+                <p>No pending friend requests</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="blocked" className="p-4 space-y-2 mt-0">
+            <div className="text-center text-muted-foreground py-12">
+              <p>No blocked users</p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="add" className="p-4 mt-0">
+            <div className="max-w-2xl">
+              <h3 className="text-lg font-semibold mb-2">Add Friend</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                You can add friends by their username.
+              </p>
+              <form onSubmit={handleSendRequest} className="flex gap-2">
+                <Input
+                  placeholder="Enter username"
+                  value={friendUsername}
+                  onChange={(e) => setFriendUsername(e.target.value)}
+                  className="flex-1"
+                />
+                <Button type="submit" disabled={!friendUsername.trim() || sendRequest.isPending}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  {sendRequest.isPending ? 'Sending...' : 'Send Request'}
                 </Button>
               </form>
-            </TabsContent>
-          </div>
-        </Tabs>
-      </div>
+            </div>
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 }

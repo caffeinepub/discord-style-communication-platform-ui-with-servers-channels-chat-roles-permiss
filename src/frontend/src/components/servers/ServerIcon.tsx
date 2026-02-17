@@ -1,14 +1,15 @@
-import type { Server } from '../../types/backend-extended';
+import type { Server as BackendServer } from '../../backend';
 
 interface ServerIconProps {
-  server: Server;
+  server: BackendServer;
+  size?: 'sm' | 'md' | 'lg';
 }
 
-export default function ServerIcon({ server }: ServerIconProps) {
-  if (server.iconUrl) {
+export default function ServerIcon({ server, size = 'md' }: ServerIconProps) {
+  if (server.iconURL) {
     return (
       <img
-        src={server.iconUrl}
+        src={server.iconURL}
         alt={server.name}
         className="h-full w-full rounded-2xl group-hover:rounded-xl transition-all object-cover"
       />

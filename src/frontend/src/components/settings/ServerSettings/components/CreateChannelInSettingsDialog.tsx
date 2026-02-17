@@ -20,14 +20,14 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Hash, Volume2, AlertCircle } from 'lucide-react';
-import { useAddTextChannelToCategory, useAddVoiceChannelToCategory, useGetCategories } from '@/hooks/useQueries';
+import { useGetCategories, useAddTextChannelToCategory, useAddVoiceChannelToCategory } from '../../../../hooks/useQueries';
 import { useBackendActionGuard } from '@/hooks/useBackendActionGuard';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface CreateChannelInSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  serverId: bigint;
+  serverId: string;
 }
 
 type ChannelType = 'text' | 'voice';
@@ -40,6 +40,7 @@ export default function CreateChannelInSettingsDialog({
   const [channelName, setChannelName] = useState('');
   const [channelType, setChannelType] = useState<ChannelType>('text');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  
   const { data: categories = [] } = useGetCategories(serverId);
   const addTextChannel = useAddTextChannelToCategory();
   const addVoiceChannel = useAddVoiceChannelToCategory();
@@ -53,17 +54,16 @@ export default function CreateChannelInSettingsDialog({
     if (!channelName.trim() || !selectedCategoryId || backendDisabled) return;
 
     try {
-      const categoryId = BigInt(selectedCategoryId);
       if (channelType === 'text') {
         await addTextChannel.mutateAsync({
           serverId,
-          categoryId,
+          categoryId: selectedCategoryId,
           name: channelName.trim(),
         });
       } else {
         await addVoiceChannel.mutateAsync({
           serverId,
-          categoryId,
+          categoryId: selectedCategoryId,
           name: channelName.trim(),
         });
       }
@@ -111,6 +111,23 @@ export default function CreateChannelInSettingsDialog({
                 </AlertDescription>
               </Alert>
             )}
+
+            <div className="grid gap-2">
+              <Label>Category</Label>
+              <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid gap-2">
               <Label>Channel Type</Label>
               <RadioGroup
@@ -150,26 +167,6 @@ export default function CreateChannelInSettingsDialog({
                   </Label>
                 </div>
               </RadioGroup>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="category">Category</Label>
-              <Select
-                value={selectedCategoryId}
-                onValueChange={setSelectedCategoryId}
-                disabled={backendDisabled || isPending}
-              >
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id.toString()} value={category.id.toString()}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="grid gap-2">

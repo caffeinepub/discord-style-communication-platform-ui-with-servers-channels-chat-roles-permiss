@@ -98,19 +98,26 @@ export function categorizeErrorFlow(message: string): 'signin' | 'signup' | 'con
 }
 
 /**
- * Maps backend RegistrationError enum to user-friendly messages
- * The backend returns RegistrationError enum values
+ * Maps backend RegistrationError to user-friendly messages
+ * Handles both the variant object structure and enum string values
  */
 export function mapRegistrationError(error: any): string {
   if (!error) {
     return AUTH_MESSAGES.REGISTRATION_FAILED;
   }
   
-  // Handle enum string values from backend
-  // The RegistrationError enum has values: emailTaken, usernameTaken, alreadyRegistered, roleAssignmentFailed, unknown_
-  const errorStr = typeof error === 'string' ? error : String(error);
+  // Handle variant object structure: { __kind__: 'emailTaken' | 'usernameTaken' | ... }
+  let errorKind: string;
+  if (typeof error === 'object' && error.__kind__) {
+    errorKind = error.__kind__;
+  } else if (typeof error === 'string') {
+    errorKind = error;
+  } else {
+    errorKind = String(error);
+  }
   
-  switch (errorStr) {
+  // Map error kinds to user-friendly messages
+  switch (errorKind) {
     case 'emailTaken':
     case 'usernameTaken':
       return AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;

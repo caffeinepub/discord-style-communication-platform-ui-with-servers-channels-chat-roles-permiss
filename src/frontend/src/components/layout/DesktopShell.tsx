@@ -1,5 +1,5 @@
 import ServerRail from '../nav/ServerRail';
-import { ChannelSidebar } from '../nav/ChannelSidebar';
+import ChannelSidebar from '../nav/ChannelSidebar';
 import MemberListPanel from '../members/MemberListPanel';
 import MainContent from './MainContent';
 import { useNavigation } from '../../state/navigation';
@@ -11,7 +11,7 @@ export default function DesktopShell() {
   return (
     <div className="flex h-screen overflow-hidden">
       <ServerRail />
-      {(currentView === 'server' || currentView === 'home') && <ChannelSidebar />}
+      {(currentView === 'server' || currentView === 'home') && <ChannelSidebar serverId={selectedServerId} />}
       <div className="flex-1 flex flex-col min-w-0">
         <MainContent />
       </div>

@@ -4,41 +4,41 @@ import { useNavigation } from '../../state/navigation';
 import type { ChannelCategory, TextChannel, VoiceChannel, ServerOrdering } from '../../types/backend-extended';
 import CreateChannelDialog from './CreateChannelDialog';
 import { useIsCallerAdmin } from '../../hooks/useQueries';
-import { useUpdateCategoryChannelOrdering, useGetCategoryChannelOrdering } from '../../hooks/useQueries';
-import { applyOrderingToTextChannels, applyOrderingToVoiceChannels, buildCategoryLevelOrdering } from '../../utils/channelOrdering';
+import { useSetChannelOrder } from '../../hooks/useQueries';
+import { applyOrderingToTextChannels, applyOrderingToVoiceChannels } from '../../utils/channelOrdering';
 
 interface CategorySectionProps {
-  serverId: bigint;
+  serverId: string;
   category: ChannelCategory;
   allCategories: ChannelCategory[];
   onToggleExpanded: (categoryId: string) => void;
+  persistedOrdering: ServerOrdering | null;
 }
 
-export function CategorySection({ serverId, category, allCategories, onToggleExpanded }: CategorySectionProps) {
+export function CategorySection({ serverId, category, allCategories, onToggleExpanded, persistedOrdering }: CategorySectionProps) {
   const { selectedChannelId, selectedChannelType, selectChannel } = useNavigation();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const { data: isAdmin } = useIsCallerAdmin();
-  const updateOrdering = useUpdateCategoryChannelOrdering();
-  const { data: persistedOrdering } = useGetCategoryChannelOrdering(serverId);
+  const setChannelOrder = useSetChannelOrder();
 
-  const [draggedTextChannel, setDraggedTextChannel] = useState<bigint | null>(null);
-  const [draggedVoiceChannel, setDraggedVoiceChannel] = useState<bigint | null>(null);
+  const [draggedTextChannel, setDraggedTextChannel] = useState<string | null>(null);
+  const [draggedVoiceChannel, setDraggedVoiceChannel] = useState<string | null>(null);
 
   // Apply persisted ordering to channels
   const orderedTextChannels = applyOrderingToTextChannels(category, persistedOrdering ?? null);
   const orderedVoiceChannels = applyOrderingToVoiceChannels(category, persistedOrdering ?? null);
 
-  const handleTextChannelDragStart = (channelId: bigint) => {
+  const handleTextChannelDragStart = (channelId: string) => {
     if (!isAdmin) return;
     setDraggedTextChannel(channelId);
   };
 
-  const handleTextChannelDragOver = (e: React.DragEvent, targetChannelId: bigint) => {
+  const handleTextChannelDragOver = (e: React.DragEvent, targetChannelId: string) => {
     if (!isAdmin || !draggedTextChannel) return;
     e.preventDefault();
   };
 
-  const handleTextChannelDrop = (e: React.DragEvent, targetChannelId: bigint) => {
+  const handleTextChannelDrop = (e: React.DragEvent, targetChannelId: string) => {
     e.preventDefault();
     if (!isAdmin || !draggedTextChannel || draggedTextChannel === targetChannelId) {
       setDraggedTextChannel(null);
@@ -58,39 +58,26 @@ export function CategorySection({ serverId, category, allCategories, onToggleExp
     newOrder.splice(draggedIndex, 1);
     newOrder.splice(targetIndex, 0, draggedTextChannel);
 
-    // Build the full ordering structure
-    const categoryLevelOrdering = buildCategoryLevelOrdering(allCategories, persistedOrdering ?? null);
-    const updatedCategoryOrdering = categoryLevelOrdering.map(cat => {
-      if (cat.id === category.id) {
-        return { ...cat, textChannels: newOrder };
-      }
-      return cat;
-    });
-
-    const newServerOrdering: ServerOrdering = {
-      categoryOrder: persistedOrdering?.categoryOrder ?? allCategories.map(c => c.id),
-      categories: updatedCategoryOrdering,
-    };
-
-    updateOrdering.mutate({
+    setChannelOrder.mutate({
       serverId,
-      ordering: newServerOrdering,
+      categoryId: category.id,
+      newOrder,
     });
 
     setDraggedTextChannel(null);
   };
 
-  const handleVoiceChannelDragStart = (channelId: bigint) => {
+  const handleVoiceChannelDragStart = (channelId: string) => {
     if (!isAdmin) return;
     setDraggedVoiceChannel(channelId);
   };
 
-  const handleVoiceChannelDragOver = (e: React.DragEvent, targetChannelId: bigint) => {
+  const handleVoiceChannelDragOver = (e: React.DragEvent, targetChannelId: string) => {
     if (!isAdmin || !draggedVoiceChannel) return;
     e.preventDefault();
   };
 
-  const handleVoiceChannelDrop = (e: React.DragEvent, targetChannelId: bigint) => {
+  const handleVoiceChannelDrop = (e: React.DragEvent, targetChannelId: string) => {
     e.preventDefault();
     if (!isAdmin || !draggedVoiceChannel || draggedVoiceChannel === targetChannelId) {
       setDraggedVoiceChannel(null);
@@ -110,23 +97,10 @@ export function CategorySection({ serverId, category, allCategories, onToggleExp
     newOrder.splice(draggedIndex, 1);
     newOrder.splice(targetIndex, 0, draggedVoiceChannel);
 
-    // Build the full ordering structure
-    const categoryLevelOrdering = buildCategoryLevelOrdering(allCategories, persistedOrdering ?? null);
-    const updatedCategoryOrdering = categoryLevelOrdering.map(cat => {
-      if (cat.id === category.id) {
-        return { ...cat, voiceChannels: newOrder };
-      }
-      return cat;
-    });
-
-    const newServerOrdering: ServerOrdering = {
-      categoryOrder: persistedOrdering?.categoryOrder ?? allCategories.map(c => c.id),
-      categories: updatedCategoryOrdering,
-    };
-
-    updateOrdering.mutate({
+    setChannelOrder.mutate({
       serverId,
-      ordering: newServerOrdering,
+      categoryId: category.id,
+      newOrder,
     });
 
     setDraggedVoiceChannel(null);
@@ -135,8 +109,8 @@ export function CategorySection({ serverId, category, allCategories, onToggleExp
   return (
     <div className="mb-2">
       <button
-        onClick={() => onToggleExpanded(category.id.toString())}
-        className="flex w-full items-center gap-1 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => onToggleExpanded(category.id)}
+        className="flex w-full items-center gap-1 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors group"
       >
         {category.isExpanded ? (
           <ChevronDown className="h-3 w-3" />
@@ -159,7 +133,7 @@ export function CategorySection({ serverId, category, allCategories, onToggleExp
         <div className="space-y-0.5">
           {orderedTextChannels.map((channel: TextChannel) => (
             <div
-              key={channel.id.toString()}
+              key={channel.id}
               draggable={isAdmin}
               onDragStart={() => handleTextChannelDragStart(channel.id)}
               onDragOver={(e) => handleTextChannelDragOver(e, channel.id)}
@@ -178,7 +152,7 @@ export function CategorySection({ serverId, category, allCategories, onToggleExp
 
           {orderedVoiceChannels.map((channel: VoiceChannel) => (
             <div
-              key={channel.id.toString()}
+              key={channel.id}
               draggable={isAdmin}
               onDragStart={() => handleVoiceChannelDragStart(channel.id)}
               onDragOver={(e) => handleVoiceChannelDragOver(e, channel.id)}

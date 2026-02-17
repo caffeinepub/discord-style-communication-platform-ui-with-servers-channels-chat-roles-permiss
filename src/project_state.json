@@ -4,15 +4,23 @@
   "summary": "New project",
   "architectural_notes": [],
   "known_issues": [
-    "Create server button does not work (server creation fails when user presses 'Create Server')."
+    "Backend connection error: backend actor missing required authentication methods (Expected: register). Suggested remediation: restart dfx replica clean and redeploy backend."
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-ensure-the-frontend-create-server-dialog-provides-a-clear-error-when-server-creation-fails-and-does-not-silently-do-nothing",
-      "title": "Ensure the frontend Create Server dialog provides a clear error when server creation fails and does not silently do nothing.",
+      "id": "feature-update-the-frontend-authentication-flow-to-call-the-backend-register-method-instead-of-simulating-registration-and-surface-backend-registration-errors-as-user-facing-english-messages-in-the-signup-flow",
+      "title": "Update the frontend authentication flow to call the backend `register` method (instead of simulating registration) and surface backend registration errors as user-facing English messages in the signup flow.",
       "reqIds": [
         "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-the-frontend-typescript-backend-actor-typings-include-the-register-method-so-the-app-compiles-and-usesafeactor-can-safely-validate-the-actor-api-at-runtime",
+      "title": "Ensure the frontend TypeScript backend actor typings include the `register` method so the app compiles and `useSafeActor` can safely validate the actor API at runtime.",
+      "reqIds": [
+        "REQ-4"
       ],
       "version": 1
     }
@@ -20,7 +28,7 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Implement server creation and listing in the Motoko backend so the frontend \"Create Server\" flow works end-to-end.",
+      "summary": "Add a public shared backend actor method named `register` so the frontend runtime actor verification passes (it currently expects a `register` function to exist).",
       "reqIds": [
         "REQ-1"
       ],
@@ -28,7 +36,7 @@
     },
     {
       "id": "AR-2",
-      "summary": "Add/align any additional backend server endpoints that the existing UI immediately depends on after server creation (server ordering and basic membership), to prevent follow-on failures after a successful create.",
+      "summary": "Implement backend registration logic that persists a new user's credentials/profile using the existing in-memory stores (e.g., usernames, credentialsStore, userProfiles) and returns a structured result indicating success or a specific error (e.g., already registered, username taken, email taken).",
       "reqIds": [
         "REQ-2"
       ],

@@ -12,7 +12,6 @@ import UserProfileOverlay from './components/profile/UserProfileOverlay';
 import { setupXPathElementRemoval } from './utils/hideElementByXPath';
 import { AuthProvider } from './auth/AuthProvider';
 import { BackendConnectionBanner } from './components/system/BackendConnectionBanner';
-import { Principal } from '@dfinity/principal';
 
 function AppContent() {
   const { authStatus } = useAuth();
@@ -89,9 +88,7 @@ function AuthenticatedApp({ showProfileSetup, onProfileSetupComplete }: { showPr
         open={showProfileSetup}
         onComplete={onProfileSetupComplete}
       />
-      {selectedMemberId && (
-        <UserProfileOverlay userId={Principal.fromText(selectedMemberId)} />
-      )}
+      {selectedMemberId && <UserProfileOverlay />}
     </>
   );
 }

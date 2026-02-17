@@ -2,11 +2,11 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-ensure-the-frontend-create-server-dialog-provides-a-clear-error-when-server-creation-fails-and-does-not-silently-do-nothing",
-      "featureTitle": "Ensure the frontend Create Server dialog provides a clear error when server creation fails and does not silently do nothing.",
+      "featureId": "feature-update-the-frontend-authentication-flow-to-call-the-backend-register-method-instead-of-simulating-registration-and-surface-backend-registration-errors-as-user-facing-english-messages-in-the-signup-flow",
+      "featureTitle": "Update the frontend authentication flow to call the backend `register` method (instead of simulating registration) and surface backend registration errors as user-facing English messages in the signup flow.",
       "files": [
-        "frontend/src/components/servers/CreateServerDialog.tsx",
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/auth/AuthProvider.tsx",
+        "frontend/src/auth/authMessages.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,6 +18,23 @@
       ],
       "testIds": [
         "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-ensure-the-frontend-typescript-backend-actor-typings-include-the-register-method-so-the-app-compiles-and-usesafeactor-can-safely-validate-the-actor-api-at-runtime",
+      "featureTitle": "Ensure the frontend TypeScript backend actor typings include the `register` method so the app compiles and `useSafeActor` can safely validate the actor API at runtime.",
+      "files": [],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
       ],
       "confidence": "high"
     }

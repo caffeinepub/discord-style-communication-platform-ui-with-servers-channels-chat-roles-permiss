@@ -4,7 +4,7 @@ import { useGetServerMembersWithUsernames, useGetUserProfileByUsername } from '.
 import { useNavigation } from '../../state/navigation';
 
 interface MemberListPanelProps {
-  serverId: bigint;
+  serverId: string;
 }
 
 function MemberRow({ username, userId }: { username: string; userId: string }) {

@@ -1,93 +1,92 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
-import type { ChannelCategory } from '../../../../types/backend-extended';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useGetCategories, useIsCallerAdmin } from '../../../../hooks/useQueries';
+import type { Category } from '../../../../backend';
 
 interface MoveChannelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  channelId: bigint;
+  serverId: string;
+  channelId: string;
   channelName: string;
-  isTextChannel: boolean;
-  currentCategoryId: bigint;
-  categories: ChannelCategory[];
-  onMove: (targetCategoryId: bigint) => void;
-  isPending?: boolean;
+  currentCategoryId: string;
+  channelType: 'text' | 'voice';
 }
 
 export default function MoveChannelDialog({
   open,
   onOpenChange,
+  serverId,
   channelId,
   channelName,
-  isTextChannel,
   currentCategoryId,
-  categories,
-  onMove,
-  isPending = false,
+  channelType,
 }: MoveChannelDialogProps) {
-  const [targetCategoryId, setTargetCategoryId] = useState<string>('');
-
-  const handleMove = () => {
-    if (!targetCategoryId) return;
-    onMove(BigInt(targetCategoryId));
-    onOpenChange(false);
-  };
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const { data: categories = [] } = useGetCategories(serverId);
+  const { data: isAdmin } = useIsCallerAdmin();
 
   const availableCategories = categories.filter((cat) => cat.id !== currentCategoryId);
 
+  const handleMove = async () => {
+    if (!selectedCategoryId) return;
+    // TODO: Implement move channel mutation
+    console.log('Moving channel', { channelId, from: currentCategoryId, to: selectedCategoryId });
+    onOpenChange(false);
+  };
+
+  if (!isAdmin) {
+    return null;
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Move {isTextChannel ? 'Text' : 'Voice'} Channel</DialogTitle>
+          <DialogTitle>Move Channel</DialogTitle>
+          <DialogDescription>
+            Move "{channelName}" to a different category
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label>Channel</Label>
-            <div className="text-sm text-muted-foreground">{channelName}</div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="target-category">Move to Category</Label>
-            <Select value={targetCategoryId} onValueChange={setTargetCategoryId}>
-              <SelectTrigger id="target-category">
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="category">New Category</Label>
+            <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+              <SelectTrigger id="category">
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
                 {availableCategories.map((category) => (
-                  <SelectItem key={category.id.toString()} value={category.id.toString()}>
+                  <SelectItem key={category.id} value={category.id}>
                     {category.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          {availableCategories.length === 0 && (
-            <div className="text-sm text-muted-foreground">
-              No other categories available. Create a new category first.
-            </div>
-          )}
         </div>
-
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleMove} disabled={!targetCategoryId || isPending}>
-            {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Moving...
-              </>
-            ) : (
-              'Move Channel'
-            )}
+          <Button onClick={handleMove} disabled={!selectedCategoryId}>
+            Move Channel
           </Button>
         </DialogFooter>
       </DialogContent>

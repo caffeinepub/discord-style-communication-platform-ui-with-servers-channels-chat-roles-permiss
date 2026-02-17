@@ -19,7 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 interface CreateCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  serverId: bigint;
+  serverId: string;
 }
 
 export default function CreateCategoryDialog({

@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { sessionStorage } from './sessionStorage';
 import { useBackendConnection } from '../hooks/useBackendConnection';
-import { AUTH_MESSAGES, mapRegistrationError, sanitizeAuthMessageForFlow } from './authMessages';
+import { AUTH_MESSAGES, sanitizeAuthMessageForFlow, mapRegistrationError } from './authMessages';
 import type { RegisterPayload, RegistrationResult } from '../backend';
 
 export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated' | 'error';
@@ -171,25 +171,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(errorMsg);
     }
 
-    // Defensive check: ensure register exists
-    if (typeof actor.register !== 'function') {
-      const errorMsg = AUTH_MESSAGES.REGISTRATION_FAILED;
-      console.error('Registration attempt failed: backend register method not available', {
-        step: 'register_method_check'
-      });
-      setError(errorMsg);
-      setAuthStatus('unauthenticated');
-      throw new Error(errorMsg);
-    }
-
     try {
-      const payload: RegisterPayload = {
-        username,
-        email,
-        password,
-      };
-      
-      console.log('Attempting registration...', { 
+      // Call the actual backend register method
+      console.log('Calling backend register...', { 
         step: 'register_call', 
         username, 
         email,
@@ -197,28 +181,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isReady
       });
       
+      const payload: RegisterPayload = {
+        username,
+        email,
+        password,
+      };
+      
       const result: RegistrationResult = await actor.register(payload);
       
-      console.log('Registration result received:', { 
-        step: 'register_response', 
-        resultKind: result.__kind__,
-        result
+      console.log('Backend register result:', { 
+        step: 'register_result',
+        kind: result.__kind__
       });
       
-      // Check if registration failed
+      // Handle registration result
       if (result.__kind__ === 'error') {
+        // Map backend error to user-friendly message
         const errorMsg = mapRegistrationError(result.error);
-        console.error('Registration failed:', { 
-          step: 'register_error', 
-          error: result.error, 
-          mappedMessage: errorMsg 
+        console.error('Registration failed with backend error:', { 
+          step: 'register_error',
+          error: result.error,
+          mappedMessage: errorMsg
         });
         setError(errorMsg);
         setAuthStatus('unauthenticated');
         throw new Error(errorMsg);
       }
       
-      // Registration succeeded - auto-login
+      // Registration succeeded - proceed with login
       console.log('Registration succeeded, logging in...', { 
         step: 'post_register_login_start'
       });
@@ -244,6 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       let errorMessage = err.message || AUTH_MESSAGES.REGISTRATION_FAILED;
       
+      // Handle backend trap errors (e.g., role assignment failures)
       if (errorMessage.includes('Only admins can assign user roles') || 
           (errorMessage.includes('Unauthorized') && errorMessage.includes('role'))) {
         console.error('Backend role assignment trap during registration:', { 
@@ -252,6 +243,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         errorMessage = sanitizeAuthMessageForFlow(errorMessage, 'signup');
       }
+      
+      // Sanitize error message for signup flow
+      errorMessage = sanitizeAuthMessageForFlow(errorMessage, 'signup');
       
       if (!error || error !== errorMessage) {
         setError(errorMessage);
