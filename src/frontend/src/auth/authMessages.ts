@@ -8,6 +8,7 @@ export const AUTH_MESSAGES = {
   
   // Registration errors
   USERNAME_OR_EMAIL_TAKEN: 'Username or email is already taken. Please try a different one or sign in.',
+  ALREADY_REGISTERED: 'This account is already registered. Please sign in instead.',
   REGISTRATION_FAILED: 'Registration failed. Please try again.',
   
   // Session errors
@@ -19,3 +20,24 @@ export const AUTH_MESSAGES = {
   CONNECTION_ERROR: 'Unable to connect to the backend. Please check that the local replica is running and try again.',
   CONNECTION_TIMEOUT: 'Connection timeout. Please check that the local replica is running and refresh the page.',
 } as const;
+
+/**
+ * Maps backend registration error variants to user-facing messages
+ */
+export function mapRegistrationError(error: { notAGuest?: null; usernameTaken?: null; emailTaken?: null } | string): string {
+  // Handle string-based error (for backwards compatibility or unknown errors)
+  if (typeof error === 'string') {
+    return AUTH_MESSAGES.REGISTRATION_FAILED;
+  }
+  
+  // Map backend RegistrationError variants
+  if ('notAGuest' in error) {
+    return AUTH_MESSAGES.ALREADY_REGISTERED;
+  }
+  if ('usernameTaken' in error || 'emailTaken' in error) {
+    return AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;
+  }
+  
+  // Fallback for unknown error structure
+  return AUTH_MESSAGES.REGISTRATION_FAILED;
+}

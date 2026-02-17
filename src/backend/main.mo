@@ -5,23 +5,24 @@ import Principal "mo:core/Principal";
 import Time "mo:core/Time";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import Runtime "mo:core/Runtime";
 
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  public type RegisterPayload = {
+  type RegisterPayload = {
     username : Text;
     email : Text;
     password : Text;
   };
 
-  public type LoginPayload = {
+  type LoginPayload = {
     loginIdentifier : Text; // email or username
     password : Text;
   };
 
-  public type Session = {
+  type Session = {
     token : Text;
     accountId : ?Text;
     expiresAt : Int;
@@ -37,7 +38,7 @@ actor {
     badges : [Text];
   };
 
-  public type Credentials = {
+  type Credentials = {
     username : Text;
     email : Text;
     password : Text;
@@ -45,25 +46,32 @@ actor {
     principal : Principal;
   };
 
+  public type RegistrationError = {
+    #notAGuest;
+    #usernameTaken;
+    #emailTaken;
+  };
+
   let userProfiles = Map.empty<Principal, UserProfile>();
   let sessionStore = Map.empty<Text, Session>();
   let credentialsStore = Map.empty<Text, Credentials>();
   let principalToToken = Map.empty<Principal, Text>();
 
-  public shared ({ caller }) func register(payload : RegisterPayload) : async ?Session {
+  public shared ({ caller }) func register(payload : RegisterPayload) : async ?RegistrationError {
     // Only guests (unauthenticated users) can register
-    let currentRole = AccessControl.getUserRole(accessControlState, caller);
-    if (currentRole != #guest) {
-      return null;
+    if (AccessControl.getUserRole(accessControlState, caller) != #guest) {
+      return ?#notAGuest;
     };
 
-    // Check if username or email already exists
+    // Check if username already exists
     switch (credentialsStore.get(payload.username)) {
-      case (?_) { return null };
+      case (?_) { return ?#usernameTaken };
       case null {};
     };
+
+    // Check if email is already taken
     switch (credentialsStore.get(payload.email)) {
-      case (?_) { return null };
+      case (?_) { return ?#emailTaken };
       case null {};
     };
 
@@ -80,6 +88,9 @@ actor {
     credentialsStore.add(payload.username, credentials);
     credentialsStore.add(payload.email, credentials);
 
+    // Assign user role to the newly registered principal
+    AccessControl.assignRole(accessControlState, caller, caller, #user);
+
     // Create session token
     let token = caller.toText().concat("_").concat(Time.now().toText());
     let session : Session = {
@@ -92,8 +103,6 @@ actor {
     sessionStore.add(token, session);
     principalToToken.add(caller, token);
 
-    ignore AccessControl.getUserRole(accessControlState, caller);
-
     // Create initial user profile
     let initialProfile : UserProfile = {
       name = payload.username;
@@ -105,12 +114,12 @@ actor {
     };
     userProfiles.add(caller, initialProfile);
 
-    ?session;
+    null // Success - no error
   };
 
   public shared ({ caller }) func login(payload : LoginPayload) : async ?Session {
     switch (credentialsStore.get(payload.loginIdentifier)) {
-      case (null) { return null };
+      case (null) { null };
       case (?credentials) {
         if (credentials.password != payload.password) {
           return null;
@@ -119,6 +128,11 @@ actor {
         // Verify the caller matches the registered principal
         if (caller != credentials.principal) {
           return null;
+        };
+
+        // Ensure the user has the correct role (in case it was lost)
+        if (AccessControl.getUserRole(accessControlState, caller) == #guest) {
+          AccessControl.assignRole(accessControlState, caller, caller, #user);
         };
 
         // Create new session token
@@ -148,21 +162,21 @@ actor {
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      return null;
+      Runtime.trap("Unauthorized: Only users can view profiles");
     };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      return null;
+      Runtime.trap("Unauthorized: Can only view your own profile");
     };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      return;
+      Runtime.trap("Unauthorized: Only users can save profiles");
     };
     userProfiles.add(caller, profile);
   };

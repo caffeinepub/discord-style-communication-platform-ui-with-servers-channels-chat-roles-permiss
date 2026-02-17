@@ -19,6 +19,9 @@ export interface RegisterPayload {
   'password' : string,
   'email' : string,
 }
+export type RegistrationError = { 'emailTaken' : null } |
+  { 'notAGuest' : null } |
+  { 'usernameTaken' : null };
 export interface Session {
   'token' : string,
   'expiresAt' : bigint,
@@ -44,7 +47,7 @@ export interface _SERVICE {
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'login' : ActorMethod<[LoginPayload], [] | [Session]>,
-  'register' : ActorMethod<[RegisterPayload], [] | [Session]>,
+  'register' : ActorMethod<[RegisterPayload], [] | [RegistrationError]>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'validateSession' : ActorMethod<[string], [] | [Session]>,
 }

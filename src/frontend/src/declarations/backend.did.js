@@ -36,6 +36,11 @@ export const RegisterPayload = IDL.Record({
   'password' : IDL.Text,
   'email' : IDL.Text,
 });
+export const RegistrationError = IDL.Variant({
+  'emailTaken' : IDL.Null,
+  'notAGuest' : IDL.Null,
+  'usernameTaken' : IDL.Null,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -49,7 +54,7 @@ export const idlService = IDL.Service({
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'login' : IDL.Func([LoginPayload], [IDL.Opt(Session)], []),
-  'register' : IDL.Func([RegisterPayload], [IDL.Opt(Session)], []),
+  'register' : IDL.Func([RegisterPayload], [IDL.Opt(RegistrationError)], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'validateSession' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
 });
@@ -85,6 +90,11 @@ export const idlFactory = ({ IDL }) => {
     'password' : IDL.Text,
     'email' : IDL.Text,
   });
+  const RegistrationError = IDL.Variant({
+    'emailTaken' : IDL.Null,
+    'notAGuest' : IDL.Null,
+    'usernameTaken' : IDL.Null,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -98,7 +108,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'login' : IDL.Func([LoginPayload], [IDL.Opt(Session)], []),
-    'register' : IDL.Func([RegisterPayload], [IDL.Opt(Session)], []),
+    'register' : IDL.Func([RegisterPayload], [IDL.Opt(RegistrationError)], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'validateSession' : IDL.Func([IDL.Text], [IDL.Opt(Session)], ['query']),
   });

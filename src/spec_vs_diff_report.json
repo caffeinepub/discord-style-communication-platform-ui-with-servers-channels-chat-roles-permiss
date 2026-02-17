@@ -1,41 +1,40 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T00:15:22.358Z",
-  "summary": "REQ-1 appears implemented by changing backend register() to return null instead of trapping when caller is non-guest. REQ-2 is not evidenced in the diff: the frontend constants and shown code do not include/route to the required friendly ALREADY_REGISTERED message, and there is no visible logic mapping the backend re-registration signal to that message.",
-  "missing_requirements": [
-    {
-      "id": "REQ-2",
-      "requirement": "Update frontend registration error handling so re-registration attempts show the friendly message `This account is already registered. Please sign in instead.` (AUTH_MESSAGES.ALREADY_REGISTERED) and never display the raw backend trap text.",
-      "reason": "The modified auth message constants do not define AUTH_MESSAGES.ALREADY_REGISTERED, and the provided AuthProvider diff portion does not show any logic mapping a null/Unauthorized re-registration signal to that friendly message.",
-      "evidence": [
-        "frontend/src/auth/authMessages.ts",
-        "frontend/src/auth/AuthProvider.tsx"
-      ]
-    }
-  ],
+  "generatedAt": "2026-02-17T00:38:02.221Z",
+  "summary": "Backend registration now returns distinct error variants for not-a-guest, username taken, and email taken; frontend adds centralized auth messages and a mapper to convert backend registration errors into accurate user-facing text, with AuthProvider importing the mapper and LoginScreen displaying AuthProvider-provided error messages.",
+  "missing_requirements": [],
   "hallucinated_features": [
     {
-      "description": "Expanded/changed auth messaging set (e.g., LOGIN_NOT_AVAILABLE, BACKEND_NOT_READY, CONNECTION_TIMEOUT, etc.) unrelated to the re-registration/Unauthorized-trap fix.",
-      "reason": "BuildRequest only asks to ensure already-registered re-signup shows the existing friendly message and to avoid showing the raw trap text; it does not request adding/updating other auth/connection messages.",
+      "description": "Login flow now verifies the calling principal matches the registered principal (potential authentication/security model change).",
+      "reason": "BuildRequest focuses on registration error correctness and explicitly lists changing the authentication/security model as a non-goal; the diff shows added principal-matching enforcement in login.",
       "evidence": [
-        "frontend/src/auth/authMessages.ts"
+        "backend/main.mo (login): `// Verify the caller matches the registered principal` and `if (caller != credentials.principal) { return null; };`"
       ]
     },
     {
-      "description": "Additional AuthProvider session initialization/validation defensive logic (validateSession existence checks, timeouts/connection error handling paths).",
-      "reason": "BuildRequest does not request changes to session restore/validateSession logic; it is scoped to registration re-try error handling and backend register behavior.",
+      "description": "Added/expanded non-registration auth messaging and behavior (e.g., 'Sign In is temporarily unavailable' message and a sign-in availability feature flag).",
+      "reason": "Not requested by REQ-1/REQ-2, which only address registration error disambiguation and mapping to correct messages.",
       "evidence": [
-        "frontend/src/auth/AuthProvider.tsx"
+        "frontend/src/auth/authMessages.ts: `LOGIN_NOT_AVAILABLE` message",
+        "frontend/src/pages/LoginScreen.tsx: `const SIGN_IN_AVAILABLE = true;`"
+      ]
+    },
+    {
+      "description": "Added defensive runtime check/error handling for missing `validateSession` method on the backend actor.",
+      "reason": "Not requested; REQ-2 only requires correct registration error mapping and centralized messages usage.",
+      "evidence": [
+        "frontend/src/auth/AuthProvider.tsx: `if (typeof actor.validateSession !== 'function') { ... }`"
       ]
     }
   ],
-  "confidence": 0.74,
+  "confidence": 0.72,
   "changed_files": [
     "backend/main.mo",
     "frontend-file-summaries.txt",
     "frontend/src/auth/AuthProvider.tsx",
     "frontend/src/auth/authMessages.ts",
+    "frontend/src/pages/LoginScreen.tsx",
     "project_state.json"
   ]
 }

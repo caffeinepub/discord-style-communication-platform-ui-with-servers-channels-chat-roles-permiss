@@ -38,6 +38,7 @@ export default function LoginScreen() {
       await login(signInIdentifier, signInPassword);
       // Success - AuthProvider will handle state transition to authenticated
     } catch (err: any) {
+      // Display the error message from AuthProvider
       setSignInError(err.message || 'Sign in failed');
     } finally {
       setSignInLoading(false);
@@ -76,8 +77,8 @@ export default function LoginScreen() {
       await register(signUpUsername, signUpEmail, signUpPassword);
       // Success - AuthProvider will handle state transition to authenticated
     } catch (err: any) {
-      const errorMsg = err.message || 'Registration failed. Please try again.';
-      setSignUpError(errorMsg);
+      // Display the error message from AuthProvider (already mapped via mapRegistrationError)
+      setSignUpError(err.message || 'Registration failed. Please try again.');
     } finally {
       setSignUpLoading(false);
     }
@@ -251,25 +252,25 @@ export default function LoginScreen() {
               </Tabs>
             </CardContent>
           </Card>
+
+          {/* Footer */}
+          <div className="text-center text-sm text-muted-foreground">
+            <p>
+              Built with ❤️ using{' '}
+              <a
+                href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(
+                  typeof window !== 'undefined' ? window.location.hostname : 'unknown-app'
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground transition-colors"
+              >
+                caffeine.ai
+              </a>
+            </p>
+          </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="py-6 text-center text-sm text-muted-foreground">
-        <p>
-          © {new Date().getFullYear()} · Built with ❤️ using{' '}
-          <a
-            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(
-              typeof window !== 'undefined' ? window.location.hostname : 'unknown-app'
-            )}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            caffeine.ai
-          </a>
-        </p>
-      </footer>
     </div>
   );
 }

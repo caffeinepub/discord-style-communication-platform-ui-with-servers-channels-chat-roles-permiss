@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T00:15:22.362Z",
+  "generatedAt": "2026-02-17T00:38:02.225Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -12,21 +12,24 @@
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Update the backend `register` method to no longer throw/trap with the message `Unauthorized: Already registered users cannot register again` when the caller is not a guest. Instead, handle this case without trapping (e.g., return `null` from `register`) so the frontend can show a normal 'already registered' message.",
+        "summary": "Update the backend registration API to return a specific, non-ambiguous error when registration fails (e.g., distinguish between: caller is not a guest/already registered, username already taken, email already taken) instead of returning `null` for all failure cases.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Update the frontend registration error handling so that when a user who is already registered tries to sign up again, the UI shows the existing friendly message `This account is already registered. Please sign in instead.` (and not the raw backend trap text).",
+        "summary": "Update the frontend registration flow to map backend registration failure reasons to accurate, user-friendly English messages (do not show 'Username or email is already taken' unless the backend explicitly indicates username/email collision).",
         "status": "implemented",
         "plannedFiles": [
+          "frontend/src/auth/authMessages.ts",
           "frontend/src/auth/AuthProvider.tsx",
           "frontend/src/pages/LoginScreen.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/auth/AuthProvider.tsx"
+          "frontend/src/auth/authMessages.ts",
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/pages/LoginScreen.tsx"
         ]
       }
     ]
@@ -39,6 +42,11 @@
     "frontend-implementation-plan.json",
     "frontend/src/auth/AuthProvider.tsx",
     "frontend/src/auth/authMessages.ts",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/pages/LoginScreen.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "New project",
+  "summary": "Project includes a sign-in/registration flow; currently investigating a registration error where unique usernames/emails are incorrectly flagged as already taken.",
   "architectural_notes": [],
   "known_issues": [
-    "Bug: Registration flow returns 'Unauthorized' when an already-registered user attempts to register again."
+    "Registration/sign-up sometimes returns error 'Username or email is already taken. Please try a different one or sign in.' even when the username/email is not actually taken."
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-update-the-frontend-registration-error-handling-so-that-when-a-user-who-is-already-registered-tries-to-sign-up-again-the-ui-shows-the-existing-friendly-message-this-account-is-already-registered-please-sign-in-instead-and-not-the-raw-backend-trap-text",
-      "title": "Update the frontend registration error handling so that when a user who is already registered tries to sign up again, the UI shows the existing friendly message `This account is already registered. Please sign in instead.` (and not the raw backend trap text).",
+      "id": "feature-update-the-frontend-registration-flow-to-map-backend-registration-failure-reasons-to-accurate-user-friendly-english-messages-do-not-show-username-or-email-is-already-taken-unless-the-backend-explicitly-indicates-username-email-collision",
+      "title": "Update the frontend registration flow to map backend registration failure reasons to accurate, user-friendly English messages (do not show 'Username or email is already taken' unless the backend explicitly indicates username/email collision).",
       "reqIds": [
         "REQ-2"
       ],
@@ -20,7 +20,7 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Update the backend `register` method to no longer throw/trap with the message `Unauthorized: Already registered users cannot register again` when the caller is not a guest. Instead, handle this case without trapping (e.g., return `null` from `register`) so the frontend can show a normal 'already registered' message.",
+      "summary": "Update the backend registration API to return a specific, non-ambiguous error when registration fails (e.g., distinguish between: caller is not a guest/already registered, username already taken, email already taken) instead of returning `null` for all failure cases.",
       "reqIds": [
         "REQ-1"
       ],

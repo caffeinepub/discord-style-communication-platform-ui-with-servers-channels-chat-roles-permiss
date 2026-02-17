@@ -1,54 +1,69 @@
 {
   "kind": "build_request",
-  "title": "Remove 'Unauthorized' trap when an already-registered user attempts to register again",
+  "title": "Fix false 'Username or email is already taken' registration error",
   "projectName": "Caffeine Chat",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Update the backend `register` method to no longer throw/trap with the message `Unauthorized: Already registered users cannot register again` when the caller is not a guest. Instead, handle this case without trapping (e.g., return `null` from `register`) so the frontend can show a normal 'already registered' message.",
+      "text": "Update the backend registration API to return a specific, non-ambiguous error when registration fails (e.g., distinguish between: caller is not a guest/already registered, username already taken, email already taken) instead of returning `null` for all failure cases.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "recent-messages-3"
+          "msg-1"
         ],
         "quotes": [
-          "Unauthorized: Already registered users cannot register again\nremove this feature"
+          "it says Username or email is already taken. Please try a different one or sign in. when it isnt already taken"
         ]
       },
       "acceptanceCriteria": [
-        "Calling `register` as a non-guest does not trap with `Unauthorized: Already registered users cannot register again`.",
-        "`register` returns a normal response (`null` or a valid `Session`) and does not crash the canister for this scenario."
+        "When a caller who is not a guest attempts to register, the backend responds with a distinct failure reason that is not conflated with 'username/email taken'.",
+        "When the username exists, the backend responds with a distinct 'username taken' reason.",
+        "When the email exists, the backend responds with a distinct 'email taken' reason.",
+        "The backend does not trap for these expected registration failure cases; it returns a normal response the frontend can interpret."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Update the frontend registration error handling so that when a user who is already registered tries to sign up again, the UI shows the existing friendly message `This account is already registered. Please sign in instead.` (and not the raw backend trap text).",
+      "text": "Update the frontend registration flow to map backend registration failure reasons to accurate, user-friendly English messages (do not show 'Username or email is already taken' unless the backend explicitly indicates username/email collision).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "recent-messages-3"
+          "msg-1"
         ],
         "quotes": [
-          "Unauthorized: Already registered users cannot register again\nremove this feature"
+          "it says Username or email is already taken. Please try a different one or sign in. when it isnt already taken"
         ]
       },
       "acceptanceCriteria": [
-        "When the backend indicates a re-registration attempt by an already-registered user (via `null` return or an error message containing `Unauthorized: Already registered users cannot register again`), the UI displays `AUTH_MESSAGES.ALREADY_REGISTERED`.",
-        "The raw text `Unauthorized: Already registered users cannot register again` is not shown to the user anywhere in the Sign Up flow."
+        "If the backend indicates 'username taken' or 'email taken', the UI shows the existing message `Username or email is already taken. Please try a different one or sign in.` (or a more specific taken message if introduced).",
+        "If the backend indicates the caller is already registered / not a guest, the UI shows a distinct message (e.g., `This account is already registered. Please sign in instead.`) and does not show the taken message.",
+        "No registration error path shows the taken message unless a true collision is reported by the backend.",
+        "All user-facing auth messages remain centralized in `frontend/src/auth/authMessages.ts` and are used consistently by `frontend/src/auth/AuthProvider.tsx` and `frontend/src/pages/LoginScreen.tsx`."
       ]
     }
   ],
   "constraints": [
     "Backend must remain a single Motoko actor in `backend/main.mo`.",
-    "Do not modify any files under `frontend/src/components/ui` or the immutable hook/provider paths listed in SYSTEM_CONTEXT."
+    "Do not edit files in `frontend/src/components/ui` or any paths listed as immutable in SYSTEM_CONTEXT."
   ],
   "nonGoals": [
-    "Adding new authentication providers (only existing auth approach remains).",
-    "Changing the overall login/registration UI layout beyond what is necessary to remove the unwanted error behavior."
+    "Implementing password hashing or changing authentication/security model.",
+    "Adding third-party authentication providers or external databases.",
+    "Adding new product features unrelated to registration error correctness."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

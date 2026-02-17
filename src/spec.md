@@ -1,10 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Prevent the app from crashing or surfacing a raw “Unauthorized” trap when an already-registered user attempts to register again, and show a friendly message instead.
+**Goal:** Fix the incorrect “Username or email is already taken” registration error by returning clear backend failure reasons and showing accurate frontend messages.
 
 **Planned changes:**
-- Update the backend `register` method to stop trapping with `Unauthorized: Already registered users cannot register again` for non-guest callers, and return a normal result (e.g., `null` or a valid `Session`) for this scenario.
-- Update frontend Sign Up error handling to detect this re-registration case (via a `null` return or the specific error text) and display the friendly message `This account is already registered. Please sign in instead.` instead of any raw backend trap text.
+- Update the backend registration API to return distinct, non-ambiguous failure reasons (not a guest/already registered vs username taken vs email taken) instead of returning `null` for all failures.
+- Update the frontend registration flow to map backend failure reasons to correct, user-friendly messages, only showing the “taken” message when an actual username/email collision is reported.
+- Keep all auth-related user-facing messages centralized in `frontend/src/auth/authMessages.ts` and used consistently by `frontend/src/auth/AuthProvider.tsx` and `frontend/src/pages/LoginScreen.tsx`.
 
-**User-visible outcome:** If a user who is already registered tries to sign up again, the app shows a normal “already registered” message and does not display the backend trap text or crash.
+**User-visible outcome:** Registration errors accurately explain the real problem (already registered/not a guest vs username taken vs email taken), and users no longer see the “Username or email is already taken” message unless it’s actually true.

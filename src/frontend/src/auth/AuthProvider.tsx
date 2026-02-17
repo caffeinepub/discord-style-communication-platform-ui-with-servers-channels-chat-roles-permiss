@@ -1,8 +1,8 @@
 import React, { createContext, useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { sessionStorage } from './sessionStorage';
 import { useBackendConnection } from '../hooks/useBackendConnection';
-import { AUTH_MESSAGES } from './authMessages';
-import type { RegisterPayload, LoginPayload, Session } from '../backend';
+import { AUTH_MESSAGES, mapRegistrationError } from './authMessages';
+import type { RegisterPayload, LoginPayload, Session, RegistrationError } from '../backend';
 
 export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated' | 'error';
 
@@ -231,45 +231,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       };
       
-      const response: Session | null = await actor.register(payload);
+      // Backend returns RegistrationError | null
+      // null = success, error object = failure with reason
+      const errorResponse: RegistrationError | null = await actor.register(payload);
       
-      if (!response) {
-        // Backend returned null - username or email already taken
-        const errorMsg = AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;
+      if (errorResponse !== null) {
+        // Registration failed - map the error to a user-friendly message
+        const errorMsg = mapRegistrationError(errorResponse as any);
         setError(errorMsg);
         setAuthStatus('unauthenticated');
         throw new Error(errorMsg);
       }
       
-      // Validate response structure
-      if (!response.token || !response.accountId) {
-        const errorMsg = 'Invalid registration response from backend. Please try again.';
-        setError(errorMsg);
-        setAuthStatus('unauthenticated');
-        throw new Error(errorMsg);
-      }
+      // Registration succeeded - now log in to get a session
+      // The backend creates the user but doesn't return a session from register
+      // We need to call login to get the session token
+      await login(username, password);
       
-      // Convert bigint expiresAt to number for storage
-      const sessionData = {
-        token: response.token,
-        accountId: response.accountId,
-        expiresAt: response.expiresAt as any, // Let sessionStorage handle bigint conversion
-      };
-      
-      sessionStorage.save(sessionData);
-      setSessionToken(sessionData.token);
-      setAccountId(sessionData.accountId);
-      setAuthStatus('authenticated');
-      setError(null);
     } catch (err: any) {
-      // Pass through the error message without modification
-      let errorMessage = err.message || AUTH_MESSAGES.REGISTRATION_FAILED;
+      // If error was already thrown with a message, preserve it
+      // Otherwise use a generic registration failed message
+      const errorMessage = err.message || AUTH_MESSAGES.REGISTRATION_FAILED;
       
       setError(errorMessage);
       setAuthStatus('unauthenticated');
       throw new Error(errorMessage);
     }
-  }, [actor]);
+  }, [actor, login]);
 
   const logout = useCallback(async () => {
     sessionStorage.clear();

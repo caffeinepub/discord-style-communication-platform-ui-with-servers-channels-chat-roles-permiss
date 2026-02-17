@@ -100,10 +100,6 @@ export interface RegisterPayload {
     password: string;
     email: string;
 }
-export interface LoginPayload {
-    password: string;
-    loginIdentifier: string;
-}
 export interface UserProfile {
     customStatus: string;
     aboutMe: string;
@@ -111,6 +107,15 @@ export interface UserProfile {
     badges: Array<string>;
     avatarUrl: string;
     bannerUrl: string;
+}
+export interface LoginPayload {
+    password: string;
+    loginIdentifier: string;
+}
+export enum RegistrationError {
+    emailTaken = "emailTaken",
+    notAGuest = "notAGuest",
+    usernameTaken = "usernameTaken"
 }
 export enum UserRole {
     admin = "admin",
@@ -125,11 +130,11 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     login(payload: LoginPayload): Promise<Session | null>;
-    register(payload: RegisterPayload): Promise<Session | null>;
+    register(payload: RegisterPayload): Promise<RegistrationError | null>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     validateSession(token: string): Promise<Session | null>;
 }
-import type { Session as _Session, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { RegistrationError as _RegistrationError, Session as _Session, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -230,18 +235,18 @@ export class Backend implements backendInterface {
             return from_candid_opt_n6(this._uploadFile, this._downloadFile, result);
         }
     }
-    async register(arg0: RegisterPayload): Promise<Session | null> {
+    async register(arg0: RegisterPayload): Promise<RegistrationError | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.register(arg0);
-                return from_candid_opt_n6(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n10(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.register(arg0);
-            return from_candid_opt_n6(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n10(this._uploadFile, this._downloadFile, result);
         }
     }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
@@ -273,11 +278,17 @@ export class Backend implements backendInterface {
         }
     }
 }
+function from_candid_RegistrationError_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RegistrationError): RegistrationError {
+    return from_candid_variant_n12(_uploadFile, _downloadFile, value);
+}
 function from_candid_Session_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Session): Session {
     return from_candid_record_n8(_uploadFile, _downloadFile, value);
 }
 function from_candid_UserRole_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
     return from_candid_variant_n5(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_RegistrationError]): RegistrationError | null {
+    return value.length === 0 ? null : from_candid_RegistrationError_n11(_uploadFile, _downloadFile, value[0]);
 }
 function from_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];
@@ -305,6 +316,15 @@ function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint
         accountId: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.accountId)),
         email: value.email
     };
+}
+function from_candid_variant_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    emailTaken: null;
+} | {
+    notAGuest: null;
+} | {
+    usernameTaken: null;
+}): RegistrationError {
+    return "emailTaken" in value ? RegistrationError.emailTaken : "notAGuest" in value ? RegistrationError.notAGuest : "usernameTaken" in value ? RegistrationError.usernameTaken : value;
 }
 function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;

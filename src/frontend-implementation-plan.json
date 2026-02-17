@@ -1,25 +1,32 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Caffeine Chat — Friendly handling for re-registration attempts in Sign Up flow",
+  "title": "Fix incorrect registration error messaging (frontend)",
   "requirements": [
     {
       "id": "REQ-2",
-      "summary": "Normalize re-registration traps/null responses into the existing friendly 'already registered' UI message during Sign Up.",
+      "summary": "Map backend registration failure reasons to accurate, centralized, user-friendly messages and avoid showing the taken message unless a real collision is reported.",
       "acceptanceCriteria": [
-        "When the backend indicates a re-registration attempt by an already-registered user (via `null` return or an error message containing `Unauthorized: Already registered users cannot register again`), the UI displays `AUTH_MESSAGES.ALREADY_REGISTERED`.",
-        "The raw text `Unauthorized: Already registered users cannot register again` is not shown to the user anywhere in the Sign Up flow."
+        "If the backend indicates 'username taken' or 'email taken', the UI shows the existing message `Username or email is already taken. Please try a different one or sign in.` (or a more specific taken message if introduced).",
+        "If the backend indicates the caller is already registered / not a guest, the UI shows a distinct message (e.g., `This account is already registered. Please sign in instead.`) and does not show the taken message.",
+        "No registration error path shows the taken message unless a true collision is reported by the backend.",
+        "All user-facing auth messages remain centralized in `frontend/src/auth/authMessages.ts` and are used consistently by `frontend/src/auth/AuthProvider.tsx` and `frontend/src/pages/LoginScreen.tsx`."
       ],
       "file_operations": [
         {
+          "path": "frontend/src/auth/authMessages.ts",
+          "operation": "modify",
+          "description": "Add a distinct centralized message for the 'already registered / not a guest' registration case, and export a small helper that maps backend registration failure reasons (e.g., notAGuest/usernameTaken/emailTaken) to the correct AUTH_MESSAGES entry so AuthProvider and LoginScreen can use a single source of truth."
+        },
+        {
           "path": "frontend/src/auth/AuthProvider.tsx",
           "operation": "modify",
-          "description": "Harden registration error normalization: ensure any thrown error message containing `Unauthorized: Already registered users cannot register again` maps to `AUTH_MESSAGES.ALREADY_REGISTERED`, alongside the existing `null`-response handling. Use the selected `authorization` component’s frontend error-handling guidance to gracefully convert backend traps to user-friendly messages. Verify the component's usage instructions before implementing."
+          "description": "Update the register flow to interpret the backend's registration result as a failure-reason value (not a session) and map it via the centralized authMessages helper: show USERNAME_OR_EMAIL_TAKEN only for usernameTaken/emailTaken, show the new 'already registered' message for notAGuest, and use REGISTRATION_FAILED for unknown errors. Ensure thrown/returned errors use only centralized messages so LoginScreen displays accurate text."
         },
         {
           "path": "frontend/src/pages/LoginScreen.tsx",
           "operation": "modify",
-          "description": "Add a final defensive mapping in the Sign Up catch-handler to replace any received raw backend trap text containing `Unauthorized: Already registered users cannot register again` with `AUTH_MESSAGES.ALREADY_REGISTERED`, ensuring the raw text is never displayed in the UI."
+          "description": "Ensure the registration UI continues to display the AuthProvider-provided registration errors verbatim (so backend reason mapping is respected) and remove/avoid any local fallback that could reintroduce the ambiguous 'taken' message for non-collision cases; keep all backend-auth error text sourced from frontend/src/auth/authMessages.ts via AuthProvider."
         }
       ]
     }

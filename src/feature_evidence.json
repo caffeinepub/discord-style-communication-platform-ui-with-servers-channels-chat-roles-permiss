@@ -2,10 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-frontend-registration-error-handling-so-that-when-a-user-who-is-already-registered-tries-to-sign-up-again-the-ui-shows-the-existing-friendly-message-this-account-is-already-registered-please-sign-in-instead-and-not-the-raw-backend-trap-text",
-      "featureTitle": "Update the frontend registration error handling so that when a user who is already registered tries to sign up again, the UI shows the existing friendly message `This account is already registered. Please sign in instead.` (and not the raw backend trap text).",
+      "featureId": "feature-update-the-frontend-registration-flow-to-map-backend-registration-failure-reasons-to-accurate-user-friendly-english-messages-do-not-show-username-or-email-is-already-taken-unless-the-backend-explicitly-indicates-username-email-collision",
+      "featureTitle": "Update the frontend registration flow to map backend registration failure reasons to accurate, user-friendly English messages (do not show 'Username or email is already taken' unless the backend explicitly indicates username/email collision).",
       "files": [
-        "frontend/src/auth/AuthProvider.tsx"
+        "frontend/src/auth/AuthProvider.tsx",
+        "frontend/src/auth/authMessages.ts",
+        "frontend/src/pages/LoginScreen.tsx"
       ],
       "components": [
         "authorization@4.0.0",

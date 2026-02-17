@@ -18,10 +18,6 @@ export interface RegisterPayload {
     password: string;
     email: string;
 }
-export interface LoginPayload {
-    password: string;
-    loginIdentifier: string;
-}
 export interface UserProfile {
     customStatus: string;
     aboutMe: string;
@@ -29,6 +25,15 @@ export interface UserProfile {
     badges: Array<string>;
     avatarUrl: string;
     bannerUrl: string;
+}
+export interface LoginPayload {
+    password: string;
+    loginIdentifier: string;
+}
+export enum RegistrationError {
+    emailTaken = "emailTaken",
+    notAGuest = "notAGuest",
+    usernameTaken = "usernameTaken"
 }
 export enum UserRole {
     admin = "admin",
@@ -42,7 +47,7 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     login(payload: LoginPayload): Promise<Session | null>;
-    register(payload: RegisterPayload): Promise<Session | null>;
+    register(payload: RegisterPayload): Promise<RegistrationError | null>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     validateSession(token: string): Promise<Session | null>;
 }
