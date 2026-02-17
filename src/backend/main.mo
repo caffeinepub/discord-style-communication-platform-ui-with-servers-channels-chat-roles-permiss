@@ -4,9 +4,9 @@ import Int "mo:core/Int";
 import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import Time "mo:core/Time";
-import Migration "migration";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
 
 (with migration = Migration.run)
 actor {
@@ -19,11 +19,16 @@ actor {
     password : Text;
   };
 
+  public type LoginPayload = {
+    loginIdentifier : Text; // email or username
+    password : Text;
+  };
+
   public type Session = {
     token : Text;
-    accountId : Text;
+    accountId : ?Text;
     expiresAt : Int;
-    email : ?Text;
+    email : Text;
   };
 
   public type UserProfile = {
@@ -35,36 +40,104 @@ actor {
     badges : [Text];
   };
 
-  let userProfiles = Map.empty<Principal, UserProfile>();
+  public type Credentials = {
+    username : Text;
+    email : Text;
+    password : Text;
+    accountId : Text;
+    principal : Principal;
+  };
 
+  let userProfiles = Map.empty<Principal, UserProfile>();
   let sessionStore = Map.empty<Text, Session>();
+  let credentialsStore = Map.empty<Text, Credentials>();
+  let principalToToken = Map.empty<Principal, Text>();
 
   public shared ({ caller }) func register(payload : RegisterPayload) : async ?Session {
+    // Only guests (unauthenticated users) can register
     let currentRole = AccessControl.getUserRole(accessControlState, caller);
-    switch (currentRole) {
-      case (#user) {
-        Runtime.trap("Unauthorized: Already registered as user");
-      };
-      case (#admin) {
-        Runtime.trap("Unauthorized: Already registered as admin");
-      };
-      case (#guest) {
-      };
+    if (currentRole != #guest) {
+      Runtime.trap("Unauthorized: Already registered users cannot register again");
     };
 
-    let token = payload.username.concat("Token");
+    // Check if username or email already exists
+    switch (credentialsStore.get(payload.username)) {
+      case (?_) { return null };
+      case null {};
+    };
+    switch (credentialsStore.get(payload.email)) {
+      case (?_) { return null };
+      case null {};
+    };
+
+    let accountId = payload.username.concat("Account");
+    let credentials : Credentials = {
+      username = payload.username;
+      email = payload.email;
+      password = payload.password;
+      accountId;
+      principal = caller;
+    };
+
+    // Store credentials by both username and email for lookup
+    credentialsStore.add(payload.username, credentials);
+    credentialsStore.add(payload.email, credentials);
+
+    // Create session token
+    let token = caller.toText().concat("_").concat(Time.now().toText());
     let session : Session = {
       token;
-      accountId = payload.username.concat("Account");
+      accountId = ?accountId;
       expiresAt = Time.now() + 86_400_000_000_000;
-      email = ?payload.email;
+      email = payload.email;
     };
 
     sessionStore.add(token, session);
+    principalToToken.add(caller, token);
 
-    AccessControl.assignRole(accessControlState, caller, caller, #user);
+    ignore AccessControl.getUserRole(accessControlState, caller);
+
+    // Create initial user profile
+    let initialProfile : UserProfile = {
+      name = payload.username;
+      aboutMe = "";
+      customStatus = "";
+      avatarUrl = "";
+      bannerUrl = "";
+      badges = [];
+    };
+    userProfiles.add(caller, initialProfile);
 
     ?session;
+  };
+
+  public shared ({ caller }) func login(payload : LoginPayload) : async ?Session {
+    switch (credentialsStore.get(payload.loginIdentifier)) {
+      case (null) { return null };
+      case (?credentials) {
+        if (credentials.password != payload.password) {
+          return null;
+        };
+
+        // Verify the caller matches the registered principal
+        if (caller != credentials.principal) {
+          Runtime.trap("Unauthorized: Principal mismatch");
+        };
+
+        // Create new session token
+        let token = caller.toText().concat("_").concat(Time.now().toText());
+        let session : Session = {
+          token;
+          accountId = ?credentials.accountId;
+          expiresAt = Time.now() + 86_400_000_000_000;
+          email = credentials.email;
+        };
+
+        sessionStore.add(token, session);
+        principalToToken.add(caller, token);
+        ?session;
+      };
+    };
   };
 
   public query ({ caller }) func validateSession(token : Text) : async ?Session {

@@ -1,12 +1,13 @@
 # Specification
 
 ## Summary
-**Goal:** Fix registration and session restoration by returning real session data from the backend, validating stored sessions, and ensuring the frontend persists and reacts to auth state correctly.
+**Goal:** Make sign-in work end-to-end by adding backend login support, persisting registration credentials for later login, and enabling the frontend sign-in flow with session restore on refresh.
 
 **Planned changes:**
-- Implement backend `register(payload) : async ?Session` to create a new user and return a non-null `Session` on success (token, accountId, expiresAt, optional email), with consistent error/null behavior when registration is not allowed.
-- Implement backend `validateSession(token) : async ?Session` to return session data for known, non-expired tokens and null for unknown/expired tokens.
-- Ensure the deployed backend candid/actor interface exposes `register` and `validateSession` exactly as the frontend calls them to avoid runtime/type mismatches.
-- Update frontend auth flow so successful registration persists session data to localStorage and transitions to authenticated state; null/invalid responses show a clear English error and never leave the UI stuck loading; on reload, validate stored sessions and clear invalid ones.
+- Add a backend `login(identifier, password)` endpoint in `backend/main.mo` that authenticates by email or username and returns an optional `Session`, storing/refeshing the session token with a future `expiresAt`.
+- Update backend registration in `backend/main.mo` to persist username/email and password association needed for subsequent login while preserving current duplicate-registration behavior and role assignment.
+- Wire `frontend/src/auth/AuthProvider.tsx` login to call `actor.login`, persist the session via `frontend/src/auth/sessionStorage.ts`, and correctly set authenticated/unauthenticated states with clear English errors.
+- Enable the Sign In UI in `frontend/src/pages/LoginScreen.tsx` so the form is usable and successful login transitions into the authenticated app shell.
+- Ensure session restore works after refresh by validating stored sessions via `validateSession`, authenticating when valid, and clearing/handling expired sessions with an English message.
 
-**User-visible outcome:** Users can sign up successfully and be logged in immediately, and returning users with a valid stored session remain logged in after refresh; invalid/expired sessions prompt re-authentication with clear English errors.
+**User-visible outcome:** Users can sign up, then sign in using email or username and password, stay signed in across page refresh while the session is valid, and see clear English errors for invalid/expired sessions.

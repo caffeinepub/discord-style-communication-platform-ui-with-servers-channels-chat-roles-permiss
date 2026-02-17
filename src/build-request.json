@@ -1,92 +1,108 @@
 {
   "kind": "build_request",
-  "title": "Fix registration: backend must return session data and validate stored sessions",
+  "title": "Fix sign-in by implementing backend login and enabling frontend sign-in flow",
   "projectName": "Caffeine Chat",
-  "priority": "high",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Implement backend `register(payload : RegisterPayload) : async ?Session` to create a new user account for the caller (guest) and return non-null session data (token, accountId, expiresAt, optional email) on success instead of always returning null.",
+      "text": "Implement a backend login endpoint in `backend/main.mo` that authenticates a user using the provided identifier (email or username) and password, and returns a `Session` on success.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "recent-messages-4"
+          "msg-1"
         ],
         "quotes": [
-          "Registration is not yet fully implemented. The backend returned no session data.\nFIX BRO"
+          "I want you to make the sign in system work please"
         ]
       },
       "acceptanceCriteria": [
-        "Calling `actor.register({ username, email, password })` returns `?Session` (non-null) for a valid new registration.",
-        "Returned `Session` contains non-empty `token` and `accountId`, and `expiresAt` is a future timestamp (milliseconds or a clearly documented unit consistent with frontend usage).",
-        "Backend does not trap for a valid guest caller registering a new account.",
-        "If the caller is not allowed to register (e.g., already a user), backend returns null or traps with a clear error message (choose one consistent behavior and document via error message)."
+        "`backend/main.mo` exposes a public shared function `login(identifier : Text, password : Text) : async ?Session` (or equivalent) that returns `?Session` on success and `null` on invalid credentials.",
+        "Login supports using either email or username as the identifier (matching what the frontend label says: \"Email or Username\").",
+        "On successful login, a new (or refreshed) session token is stored in `sessionStore` and includes `token`, `accountId`, and a future `expiresAt` in nanoseconds, consistent with `validateSession` time comparisons."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Implement backend `validateSession(token : Text) : async ?Session` to return non-null session data when the provided token is known and not expired, and return null when the token is unknown/expired.",
+      "text": "Update backend registration in `backend/main.mo` to persist the credentials needed for subsequent login (at minimum: username, email, and password association to the registering principal/account record) so that a user can sign in after signing up.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "recent-messages-4"
+          "msg-1"
         ],
         "quotes": [
-          "The backend returned no session data."
+          "I want you to make the sign in system work please"
         ]
       },
       "acceptanceCriteria": [
-        "Given a session token previously returned by `register`, `validateSession(token)` returns `?Session` (non-null) with the same token/accountId and a non-expired `expiresAt`.",
-        "Given an unknown token, `validateSession(token)` returns null (does not trap).",
-        "Given an expired token, `validateSession(token)` returns null and the session is treated as invalid."
+        "After a successful `register(payload)`, the backend stores sufficient data to allow `login(payload.email, payload.password)` and `login(payload.username, payload.password)` to succeed later.",
+        "If a user is already registered, `register(payload)` continues to return `null` (preserving current frontend behavior that expects null for duplicates).",
+        "Backend continues to assign the `#user` role to the caller upon successful registration (current behavior preserved)."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Ensure the deployed backend candid/actor interface exposes `register` and `validateSession` exactly as the frontend calls them, so the frontend can successfully invoke `actor.register(payload)` and `actor.validateSession(token)` without runtime errors or type mismatches.",
-      "target": "both",
+      "text": "Wire up the frontend AuthProvider login flow in `frontend/src/auth/AuthProvider.tsx` to call the backend `login` method, store the returned session in `frontend/src/auth/sessionStorage.ts`, and transition auth state to authenticated on success.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "recent-messages-4"
+          "msg-1"
         ],
         "quotes": [
-          "Registration is not yet fully implemented. The backend returned no session data."
+          "I want you to make the sign in system work please"
         ]
       },
       "acceptanceCriteria": [
-        "Frontend can call `actor.register(payload)` and receives a response (non-null on success) without 'is not a function' runtime errors.",
-        "Frontend can refresh the page after registering and `AuthProvider` successfully validates the stored session via `actor.validateSession(session.token)` and transitions to authenticated state.",
-        "No changes are made to immutable frontend paths listed in SYSTEM_CONTEXT."
+        "`login(identifier, password)` no longer hard-fails with `AUTH_MESSAGES.LOGIN_NOT_AVAILABLE` and instead attempts `actor.login(identifier, password)` when the actor is ready.",
+        "On successful response, the session is persisted via `sessionStorage.save(...)`, and `authStatus` becomes `authenticated` with `sessionToken` and `accountId` set.",
+        "On login failure (invalid credentials or backend returns null), `authStatus` is `unauthenticated` and a clear English error message is surfaced via the existing `error` state (no infinite loading/stuck state)."
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Update frontend auth handling so that a successful backend registration response always results in a persisted session (localStorage) and an authenticated UI state, and a null/invalid response results in a clear English error message without leaving the app stuck in a loading state.",
+      "text": "Enable the Sign In UI in `frontend/src/pages/LoginScreen.tsx` so users can submit the sign-in form and successfully authenticate once the backend login endpoint is implemented.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "recent-messages-4"
+          "msg-1"
         ],
         "quotes": [
-          "Registration is not yet fully implemented. The backend returned no session data."
+          "I want you to make the sign in system work please"
         ]
       },
       "acceptanceCriteria": [
-        "After successful registration (non-null session), `frontend/src/auth/sessionStorage.ts` contains the saved token/accountId/expiresAt and `authStatus` becomes `authenticated`.",
-        "If backend returns null from `register`, the signup UI displays an English error message and remains usable (no infinite spinner / no broken state).",
-        "On app reload with a stored (non-expired) session, `AuthProvider` validates it and sets authenticated state; if validation returns null, the stored session is cleared and the user is prompted to sign in again."
+        "`SIGN_IN_AVAILABLE` is set so the Sign In form inputs and submit button are enabled.",
+        "Submitting the Sign In form calls `login(signInIdentifier, signInPassword)` and, on success, the app transitions away from `LoginScreen` to the authenticated app shell (as driven by `authStatus` in `frontend/src/App.tsx`).",
+        "If credentials are invalid, the Sign In tab displays an error message (English) and remains on the login screen."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Ensure session restore on page refresh works end-to-end by keeping `validateSession` compatible with stored sessions and ensuring the frontend can re-authenticate from `localStorage` without manual re-login.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I want you to make the sign in system work please"
+        ]
+      },
+      "acceptanceCriteria": [
+        "After a successful sign-in, refreshing the page results in `AuthProvider` calling `validateSession(session.token)` and setting `authStatus` to `authenticated` when the session is still valid.",
+        "Expired or invalid sessions are cleared from `localStorage` and the user is returned to the login screen with an English message from `AUTH_MESSAGES` (e.g., session expired/invalid)."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in `backend/main.mo` (no additional backend services).",
-    "Do not edit any files under `frontend/src/components/ui` or any other immutable paths listed in SYSTEM_CONTEXT.",
-    "Use English for any user-facing text."
+    "Backend must remain a single Motoko actor with all logic in `backend/main.mo` (no additional backend services).",
+    "Do not edit files under `frontend/src/components/ui` or any paths listed as immutable in SYSTEM_CONTEXT.",
+    "All user-facing text must be in English."
   ],
   "nonGoals": [
-    "Implementing a full login endpoint (separate from registration) unless required to fix registration/session restoration.",
-    "Adding third-party authentication providers (only Internet Identity is supported).",
-    "Adding external databases or non-IC storage layers."
+    "Adding third-party authentication providers (only existing app auth flow is in scope).",
+    "Implementing external databases or off-canister storage.",
+    "Implementing real-time communication (WebSockets/chat auth beyond current session model)."
   ],
   "imageRequirements": {
     "required": [],

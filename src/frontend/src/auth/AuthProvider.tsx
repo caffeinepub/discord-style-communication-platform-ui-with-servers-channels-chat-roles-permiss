@@ -1,7 +1,8 @@
-import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { sessionStorage } from './sessionStorage';
 import { useBackendConnection } from '../hooks/useBackendConnection';
-import type { RegisterPayload, Session } from '../backend';
+import { AUTH_MESSAGES } from './authMessages';
+import type { RegisterPayload, LoginPayload, Session } from '../backend';
 
 export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated' | 'error';
 
@@ -70,20 +71,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Session is invalid or expired
             sessionStorage.clearWithReason('Session validation returned null');
             setAuthStatus('unauthenticated');
-            setError('Your session has expired. Please sign in again.');
+            setError(AUTH_MESSAGES.SESSION_EXPIRED);
             return;
           }
           
           // Session is valid, restore auth state
           setSessionToken(validatedSession.token);
-          setAccountId(validatedSession.accountId);
+          setAccountId(validatedSession.accountId || null);
           setAuthStatus('authenticated');
           setError(null);
         } catch (err) {
           console.error('Session validation failed:', err);
           sessionStorage.clearWithReason('Session validation threw error');
           setAuthStatus('unauthenticated');
-          setError('Unable to validate your session. Please sign in again.');
+          setError(AUTH_MESSAGES.SESSION_INVALID);
         }
       } else if (connectionError) {
         // Backend connection failed - clear session and show error
@@ -97,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         sessionStorage.clearWithReason('Backend connection error during initialization');
         setAuthStatus('unauthenticated');
-        setError('Unable to connect to the backend. Please check that the local replica is running and try again.');
+        setError(AUTH_MESSAGES.CONNECTION_ERROR);
       }
     };
 
@@ -121,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           
           setAuthStatus('unauthenticated');
-          setError('Connection timeout. Please check that the local replica is running and refresh the page.');
+          setError(AUTH_MESSAGES.CONNECTION_TIMEOUT);
         }
       }, INITIALIZATION_TIMEOUT_MS);
     }
@@ -138,26 +139,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (identifier: string, password: string) => {
     setError(null);
     
-    if (!actor) {
-      const errorMsg = 'Backend connection not ready';
+    if (!actor || !isReady) {
+      const errorMsg = AUTH_MESSAGES.BACKEND_NOT_READY;
       setError(errorMsg);
+      setAuthStatus('unauthenticated');
+      throw new Error(errorMsg);
+    }
+
+    // Defensive check: ensure login exists
+    if (typeof actor.login !== 'function') {
+      const errorMsg = AUTH_MESSAGES.LOGIN_NOT_AVAILABLE;
+      console.error('Login attempt failed: backend login method not available');
+      setError(errorMsg);
+      setAuthStatus('unauthenticated');
       throw new Error(errorMsg);
     }
 
     try {
-      // TODO: Call backend login endpoint when available
-      // Expected backend signature: login(identifier: Text, password: Text) -> { token: Text; accountId: Text; expiresAt: Nat }
-      // const response = await actor.login(identifier, password);
+      const payload: LoginPayload = {
+        loginIdentifier: identifier,
+        password: password,
+      };
       
-      // Temporary: throw error until backend implements login
-      throw new Error('Login endpoint not yet implemented in backend. Please wait for backend authentication system to be updated.');
+      const response: Session | null = await actor.login(payload);
       
-      // When backend is ready, use this code:
-      /*
+      if (!response) {
+        // Backend returned null - invalid credentials
+        const errorMsg = AUTH_MESSAGES.INVALID_CREDENTIALS;
+        setError(errorMsg);
+        setAuthStatus('unauthenticated');
+        throw new Error(errorMsg);
+      }
+      
+      // Validate response structure
+      if (!response.token) {
+        const errorMsg = 'Invalid login response from backend. Please try again.';
+        setError(errorMsg);
+        setAuthStatus('unauthenticated');
+        throw new Error(errorMsg);
+      }
+      
+      // Convert bigint expiresAt to number for storage
       const sessionData = {
         token: response.token,
-        accountId: response.accountId,
-        expiresAt: Number(response.expiresAt),
+        accountId: response.accountId || '',
+        expiresAt: response.expiresAt as any, // Let sessionStorage handle bigint conversion
       };
       
       sessionStorage.save(sessionData);
@@ -165,21 +191,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAccountId(sessionData.accountId);
       setAuthStatus('authenticated');
       setError(null);
-      */
     } catch (err: any) {
-      const errorMessage = err.message || 'Login failed';
+      // Handle errors gracefully
+      let errorMessage = err.message || AUTH_MESSAGES.LOGIN_FAILED;
+      
+      // Normalize backend trap messages
+      if (errorMessage.includes('Unauthorized') || errorMessage.includes('Principal mismatch')) {
+        errorMessage = AUTH_MESSAGES.INVALID_CREDENTIALS;
+      }
+      
       setError(errorMessage);
-      // Don't set to 'error' state - keep as 'unauthenticated' so form remains usable
       setAuthStatus('unauthenticated');
       throw new Error(errorMessage);
     }
-  }, [actor]);
+  }, [actor, isReady]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setError(null);
     
     if (!actor) {
-      const errorMsg = 'Backend connection not ready';
+      const errorMsg = AUTH_MESSAGES.BACKEND_NOT_READY;
       setError(errorMsg);
       setAuthStatus('unauthenticated');
       throw new Error(errorMsg);
@@ -203,8 +234,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response: Session | null = await actor.register(payload);
       
       if (!response) {
-        // Backend returned null - user already registered or other issue
-        const errorMsg = 'Registration failed. You may already have an account or the username is taken.';
+        // Backend returned null - user already registered
+        const errorMsg = AUTH_MESSAGES.ALREADY_REGISTERED;
         setError(errorMsg);
         setAuthStatus('unauthenticated');
         throw new Error(errorMsg);
@@ -219,7 +250,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       // Convert bigint expiresAt to number for storage
-      // Backend returns nanoseconds, sessionStorage.save will handle conversion
       const sessionData = {
         token: response.token,
         accountId: response.accountId,
@@ -232,32 +262,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthStatus('authenticated');
       setError(null);
     } catch (err: any) {
-      const errorMessage = err.message || 'Registration failed. Please try again.';
+      // Normalize backend trap messages into user-friendly errors
+      let errorMessage = err.message || AUTH_MESSAGES.REGISTRATION_FAILED;
+      
+      // Handle backend trap messages (including misspelling "registed")
+      if (errorMessage.includes('already registed') || errorMessage.includes('already registered')) {
+        errorMessage = AUTH_MESSAGES.ALREADY_REGISTERED;
+      }
+      
       setError(errorMessage);
-      // Keep as 'unauthenticated' instead of 'error' so form remains usable
       setAuthStatus('unauthenticated');
       throw new Error(errorMessage);
     }
   }, [actor]);
 
   const logout = useCallback(async () => {
-    if (actor && sessionToken) {
-      try {
-        // TODO: Call backend logout endpoint when available
-        // Expected backend signature: logout(token: Text) -> ()
-        // await actor.logout(sessionToken);
-      } catch (err) {
-        console.error('Logout error:', err);
-        // Continue with local logout even if backend call fails
-      }
-    }
-
     sessionStorage.clear();
     setSessionToken(null);
     setAccountId(null);
     setAuthStatus('unauthenticated');
     setError(null);
-  }, [actor, sessionToken]);
+  }, []);
 
   const value: AuthContextValue = {
     authStatus,
@@ -269,13 +294,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return React.createElement(AuthContext.Provider, { value }, children);
 }
 
-export function useAuthContext() {
-  const context = React.useContext(AuthContext);
+export function useAuthContext(): AuthContextValue {
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuthContext must be used within AuthProvider');
+    throw new Error('useAuthContext must be used within an AuthProvider');
   }
   return context;
 }
+
+export { AuthContext };

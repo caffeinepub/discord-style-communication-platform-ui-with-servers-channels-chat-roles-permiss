@@ -92,13 +92,17 @@ export class ExternalBlob {
 export interface Session {
     token: string;
     expiresAt: bigint;
-    accountId: string;
-    email?: string;
+    accountId?: string;
+    email: string;
 }
 export interface RegisterPayload {
     username: string;
     password: string;
     email: string;
+}
+export interface LoginPayload {
+    password: string;
+    loginIdentifier: string;
 }
 export interface UserProfile {
     customStatus: string;
@@ -120,6 +124,7 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    login(payload: LoginPayload): Promise<Session | null>;
     register(payload: RegisterPayload): Promise<Session | null>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     validateSession(token: string): Promise<Session | null>;
@@ -211,6 +216,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async login(arg0: LoginPayload): Promise<Session | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.login(arg0);
+                return from_candid_opt_n6(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.login(arg0);
+            return from_candid_opt_n6(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async register(arg0: RegisterPayload): Promise<Session | null> {
         if (this.processError) {
             try {
@@ -272,19 +291,19 @@ function from_candid_opt_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     token: string;
     expiresAt: bigint;
-    accountId: string;
-    email: [] | [string];
+    accountId: [] | [string];
+    email: string;
 }): {
     token: string;
     expiresAt: bigint;
-    accountId: string;
-    email?: string;
+    accountId?: string;
+    email: string;
 } {
     return {
         token: value.token,
         expiresAt: value.expiresAt,
-        accountId: value.accountId,
-        email: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.email))
+        accountId: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.accountId)),
+        email: value.email
     };
 }
 function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

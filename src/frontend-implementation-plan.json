@@ -1,52 +1,72 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Caffeine Chat — Frontend session persistence and validation hardening",
+  "title": "Caffeine Chat — Enable working frontend sign-in and session restore",
   "requirements": [
     {
       "id": "REQ-3",
-      "summary": "Harden frontend actor invocation to ensure `register` and `validateSession` mismatches fail gracefully (no runtime 'is not a function' errors) and allow session restoration to proceed safely.",
+      "summary": "Implement AuthProvider login flow to call backend login, persist session, and set authenticated state.",
       "acceptanceCriteria": [
-        "Frontend can call `actor.register(payload)` and receives a response (non-null on success) without 'is not a function' runtime errors.",
-        "Frontend can refresh the page after registering and `AuthProvider` successfully validates the stored session via `actor.validateSession(session.token)` and transitions to authenticated state.",
-        "No changes are made to immutable frontend paths listed in SYSTEM_CONTEXT."
+        "`login(identifier, password)` no longer hard-fails with `AUTH_MESSAGES.LOGIN_NOT_AVAILABLE` and instead attempts `actor.login(identifier, password)` when the actor is ready.",
+        "On successful response, the session is persisted via `sessionStorage.save(...)`, and `authStatus` becomes `authenticated` with `sessionToken` and `accountId` set.",
+        "On login failure (invalid credentials or backend returns null), `authStatus` is `unauthenticated` and a clear English error message is surfaced via the existing `error` state (no infinite loading/stuck state)."
       ],
       "file_operations": [
         {
           "path": "frontend/src/auth/AuthProvider.tsx",
           "operation": "modify",
-          "description": "Before invoking backend functions, add defensive runtime checks that `register` and `validateSession` exist and are callable on the actor; if missing/mismatched, clear any stored session (for validation flow), set `authStatus` to `unauthenticated`, and surface a clear English error message instead of throwing a TypeError."
+          "description": "Replace the placeholder login implementation with a real login flow that calls the backend actor login capability (per `frontend/src/backend.d.ts`, using the `LoginPayload` shape), persists a successful session via `sessionStorage.save(...)`, sets `authStatus` to `authenticated`, and normalizes null/failed logins into a clear English `error` while ensuring `authStatus` returns to `unauthenticated` without throwing the app into a stuck/loading state."
         },
         {
-          "path": "frontend/src/hooks/useSafeActor.ts",
+          "path": "frontend/src/auth/authMessages.ts",
           "operation": "modify",
-          "description": "Ensure the actor initialization path returns an object compatible with the expected `backendInterface` shape used by the app; if initialization yields an actor lacking required auth functions, keep connection state consistent (error or unauthenticated) so `AuthProvider` can render a usable sign-in/sign-up UI instead of crashing."
+          "description": "Update/add English auth message constants to support the new login failure modes (e.g., invalid credentials, backend not ready) while keeping messages user-friendly and consistent across Sign In and session restore."
+        },
+        {
+          "path": "frontend/src/auth/sessionStorage.ts",
+          "operation": "modify",
+          "description": "Ensure the session persistence utility safely supports the session data returned by backend login/validateSession (including converting bigint nanosecond `expiresAt` to milliseconds) and clearly rejects/clears malformed session objects so AuthProvider can surface a friendly English error."
         }
       ]
     },
     {
       "id": "REQ-4",
-      "summary": "Update frontend registration + session restoration flows so successful registration persists a session and authenticates the UI, while null/invalid responses show clear English errors without leaving the app stuck loading.",
+      "summary": "Enable the LoginScreen Sign In form to submit and authenticate users via AuthProvider.",
       "acceptanceCriteria": [
-        "After successful registration (non-null session), `frontend/src/auth/sessionStorage.ts` contains the saved token/accountId/expiresAt and `authStatus` becomes `authenticated`.",
-        "If backend returns null from `register`, the signup UI displays an English error message and remains usable (no infinite spinner / no broken state).",
-        "On app reload with a stored (non-expired) session, `AuthProvider` validates it and sets authenticated state; if validation returns null, the stored session is cleared and the user is prompted to sign in again."
+        "`SIGN_IN_AVAILABLE` is set so the Sign In form inputs and submit button are enabled.",
+        "Submitting the Sign In form calls `login(signInIdentifier, signInPassword)` and, on success, the app transitions away from `LoginScreen` to the authenticated app shell (as driven by `authStatus` in `frontend/src/App.tsx`).",
+        "If credentials are invalid, the Sign In tab displays an error message (English) and remains on the login screen."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/LoginScreen.tsx",
+          "operation": "modify",
+          "description": "Enable Sign In by setting `SIGN_IN_AVAILABLE` to true and ensure the Sign In submit handler calls `login(signInIdentifier, signInPassword)`; keep the user on the screen and show a clear English error message on failure while letting `authStatus`-driven routing in `frontend/src/App.tsx` transition to the authenticated shell on success."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Ensure session restore on refresh works by validating stored sessions and clearing invalid/expired ones with clear messaging.",
+      "acceptanceCriteria": [
+        "After a successful sign-in, refreshing the page results in `AuthProvider` calling `validateSession(session.token)` and setting `authStatus` to `authenticated` when the session is still valid.",
+        "Expired or invalid sessions are cleared from `localStorage` and the user is returned to the login screen with an English message from `AUTH_MESSAGES` (e.g., session expired/invalid)."
       ],
       "file_operations": [
         {
           "path": "frontend/src/auth/AuthProvider.tsx",
           "operation": "modify",
-          "description": "Adjust registration and error handling so: (1) a non-null registration response always saves session data to `sessionStorage` and sets `authStatus` to `authenticated`; (2) a null response produces a clear English error and returns the app to `unauthenticated` (not a sticky `error` state); (3) failures during session validation/registration reliably clear loading states and do not leave the UI stuck in `initializing`."
+          "description": "Harden the initialization/restore path to reliably load a stored session, call the backend `validateSession(session.token)` when the actor is ready, set `authStatus` to `authenticated` on success, and on invalid/expired responses clear localStorage via `sessionStorage.clearWithReason(...)` and surface an English `AUTH_MESSAGES` error while returning to `unauthenticated`."
         },
         {
           "path": "frontend/src/auth/sessionStorage.ts",
           "operation": "modify",
-          "description": "Strengthen session persistence/validation to reliably store and load token/accountId/expiresAt (and tolerate backend-provided numeric representations), ensure expiration checks remain consistent with `AuthProvider` usage, and keep behavior deterministic when stored data is malformed (clear and return null)."
+          "description": "Confirm session expiration checks align with the backend-provided `expiresAt` semantics by consistently storing milliseconds (converted from backend nanoseconds) and clearing expired sessions so a page refresh correctly results in a login screen and an English session-expired/invalid message."
         },
         {
-          "path": "frontend/src/pages/LoginScreen.tsx",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Ensure sign-up error presentation remains clear and usable when registration returns null/invalid: keep the form interactive after failures, surface the thrown English message from `AuthProvider.register`, and avoid any UI state that could appear as an infinite spinner or dead form."
+          "description": "Ensure the unauthenticated rendering path cleanly returns users to `LoginScreen` when AuthProvider clears an invalid/expired session (no UI dead-ends), while keeping all user-facing text in English and avoiding changes to immutable UI component paths."
         }
       ]
     }

@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
+// Feature flag: Sign In is now available
+const SIGN_IN_AVAILABLE = true;
+
 export default function LoginScreen() {
   const { login, register, error: authError } = useAuth();
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signup');
@@ -33,6 +36,7 @@ export default function LoginScreen() {
 
     try {
       await login(signInIdentifier, signInPassword);
+      // Success - AuthProvider will handle state transition to authenticated
     } catch (err: any) {
       setSignInError(err.message || 'Sign in failed');
     } finally {
@@ -72,8 +76,8 @@ export default function LoginScreen() {
       await register(signUpUsername, signUpEmail, signUpPassword);
       // Success - AuthProvider will handle state transition to authenticated
     } catch (err: any) {
-      // Error is already set in AuthProvider, but also set local error for immediate feedback
-      setSignUpError(err.message || 'Registration failed. Please try again.');
+      const errorMsg = err.message || 'Registration failed. Please try again.';
+      setSignUpError(errorMsg);
     } finally {
       setSignUpLoading(false);
     }
@@ -111,63 +115,78 @@ export default function LoginScreen() {
             </CardHeader>
             <CardContent>
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signin' | 'signup')}>
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="signin">Sign In</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="signin" disabled={!SIGN_IN_AVAILABLE}>
+                    Sign In
+                  </TabsTrigger>
                   <TabsTrigger value="signup">Sign Up</TabsTrigger>
                 </TabsList>
 
                 {/* Sign In Tab */}
-                <TabsContent value="signin" className="space-y-4">
-                  {signInError && (
-                    <Alert variant="destructive">
+                <TabsContent value="signin" className="space-y-4 mt-4">
+                  {!SIGN_IN_AVAILABLE ? (
+                    <Alert>
                       <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{signInError}</AlertDescription>
+                      <AlertDescription>
+                        Sign In is temporarily unavailable. Please use Sign Up to create a new account.
+                      </AlertDescription>
                     </Alert>
+                  ) : (
+                    <form onSubmit={handleSignIn} className="space-y-4">
+                      {signInError && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertDescription>{signInError}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="signin-identifier">Email or Username</Label>
+                        <Input
+                          id="signin-identifier"
+                          type="text"
+                          placeholder="Enter your email or username"
+                          value={signInIdentifier}
+                          onChange={(e) => setSignInIdentifier(e.target.value)}
+                          disabled={signInLoading || !SIGN_IN_AVAILABLE}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="signin-password">Password</Label>
+                        <Input
+                          id="signin-password"
+                          type="password"
+                          placeholder="Enter your password"
+                          value={signInPassword}
+                          onChange={(e) => setSignInPassword(e.target.value)}
+                          disabled={signInLoading || !SIGN_IN_AVAILABLE}
+                          required
+                        />
+                      </div>
+
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={signInLoading || !SIGN_IN_AVAILABLE}
+                      >
+                        {signInLoading ? 'Signing in...' : 'Sign In'}
+                      </Button>
+                    </form>
                   )}
-
-                  <form onSubmit={handleSignIn} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signin-identifier">Email or Username</Label>
-                      <Input
-                        id="signin-identifier"
-                        type="text"
-                        placeholder="Enter your email or username"
-                        value={signInIdentifier}
-                        onChange={(e) => setSignInIdentifier(e.target.value)}
-                        disabled={signInLoading}
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="signin-password">Password</Label>
-                      <Input
-                        id="signin-password"
-                        type="password"
-                        placeholder="Enter your password"
-                        value={signInPassword}
-                        onChange={(e) => setSignInPassword(e.target.value)}
-                        disabled={signInLoading}
-                        required
-                      />
-                    </div>
-
-                    <Button type="submit" className="w-full" disabled={signInLoading}>
-                      {signInLoading ? 'Signing in...' : 'Sign In'}
-                    </Button>
-                  </form>
                 </TabsContent>
 
                 {/* Sign Up Tab */}
-                <TabsContent value="signup" className="space-y-4">
-                  {signUpError && (
-                    <Alert variant="destructive">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{signUpError}</AlertDescription>
-                    </Alert>
-                  )}
-
+                <TabsContent value="signup" className="space-y-4 mt-4">
                   <form onSubmit={handleSignUp} className="space-y-4">
+                    {signUpError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{signUpError}</AlertDescription>
+                      </Alert>
+                    )}
+
                     <div className="space-y-2">
                       <Label htmlFor="signup-username">Username</Label>
                       <Input
@@ -220,32 +239,37 @@ export default function LoginScreen() {
                       />
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={signUpLoading}>
-                      {signUpLoading ? 'Creating account...' : 'Create Account'}
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={signUpLoading}
+                    >
+                      {signUpLoading ? 'Creating account...' : 'Sign Up'}
                     </Button>
                   </form>
                 </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
-
-          {/* Footer */}
-          <div className="text-center text-sm text-muted-foreground">
-            <p>
-              Built with ❤️ using{' '}
-              <a
-                href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                caffeine.ai
-              </a>
-            </p>
-            <p className="mt-1">© {new Date().getFullYear()} All rights reserved</p>
-          </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="py-6 text-center text-sm text-muted-foreground">
+        <p>
+          © {new Date().getFullYear()} · Built with ❤️ using{' '}
+          <a
+            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(
+              typeof window !== 'undefined' ? window.location.hostname : 'unknown-app'
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            caffeine.ai
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }

@@ -1,55 +1,67 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-16T23:35:08.142Z",
+  "generatedAt": "2026-02-17T00:06:49.436Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
-    "implemented": 2,
+    "total": 5,
+    "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Implement backend `register(payload : RegisterPayload) : async ?Session` to create a new user account for the caller (guest) and return non-null session data (token, accountId, expiresAt, optional email) on success instead of always returning null.",
+        "summary": "Implement a backend login endpoint in `backend/main.mo` that authenticates a user using the provided identifier (email or username) and password, and returns a `Session` on success.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Implement backend `validateSession(token : Text) : async ?Session` to return non-null session data when the provided token is known and not expired, and return null when the token is unknown/expired.",
+        "summary": "Update backend registration in `backend/main.mo` to persist the credentials needed for subsequent login (at minimum: username, email, and password association to the registering principal/account record) so that a user can sign in after signing up.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Ensure the deployed backend candid/actor interface exposes `register` and `validateSession` exactly as the frontend calls them, so the frontend can successfully invoke `actor.register(payload)` and `actor.validateSession(token)` without runtime errors or type mismatches.",
+        "summary": "Wire up the frontend AuthProvider login flow in `frontend/src/auth/AuthProvider.tsx` to call the backend `login` method, store the returned session in `frontend/src/auth/sessionStorage.ts`, and transition auth state to authenticated on success.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/auth/AuthProvider.tsx",
-          "frontend/src/hooks/useSafeActor.ts"
+          "frontend/src/auth/authMessages.ts",
+          "frontend/src/auth/sessionStorage.ts"
         ],
         "matchedFiles": [
           "frontend/src/auth/AuthProvider.tsx",
-          "frontend/src/hooks/useSafeActor.ts"
+          "frontend/src/auth/authMessages.ts",
+          "frontend/src/auth/sessionStorage.ts"
         ]
       },
       {
         "id": "REQ-4",
-        "summary": "Update frontend auth handling so that a successful backend registration response always results in a persisted session (localStorage) and an authenticated UI state, and a null/invalid response results in a clear English error message without leaving the app stuck in a loading state.",
+        "summary": "Enable the Sign In UI in `frontend/src/pages/LoginScreen.tsx` so users can submit the sign-in form and successfully authenticate once the backend login endpoint is implemented.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/LoginScreen.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/LoginScreen.tsx"
+        ]
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Ensure session restore on page refresh works end-to-end by keeping `validateSession` compatible with stored sessions and ensuring the frontend can re-authenticate from `localStorage` without manual re-login.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/auth/AuthProvider.tsx",
           "frontend/src/auth/sessionStorage.ts",
-          "frontend/src/pages/LoginScreen.tsx"
+          "frontend/src/App.tsx"
         ],
         "matchedFiles": [
           "frontend/src/auth/AuthProvider.tsx",
-          "frontend/src/auth/sessionStorage.ts",
-          "frontend/src/pages/LoginScreen.tsx"
+          "frontend/src/auth/sessionStorage.ts"
         ]
       }
     ]
@@ -62,21 +74,12 @@
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/auth/AuthProvider.tsx",
+    "frontend/src/auth/authMessages.ts",
     "frontend/src/auth/sessionStorage.ts",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
-    "frontend/src/components/chat/ChatComposer.tsx",
-    "frontend/src/components/friends/FriendsHomeView.tsx",
-    "frontend/src/components/profile/RoleAssignmentDialog.tsx",
-    "frontend/src/components/profile/UserProfileOverlay.tsx",
-    "frontend/src/components/settings/ServerSettings/components/RoleMemberAssignmentPanel.tsx",
-    "frontend/src/components/settings/ServerSettings/pages/RoleMemberAssignmentPanel.tsx",
-    "frontend/src/components/settings/ServerSettings/pages/RolesPage.tsx",
-    "frontend/src/components/voice/VoiceView.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/hooks/useSafeActor.ts",
     "frontend/src/pages/LoginScreen.tsx",
     "project_state.json",
     "scratch/component-selection.json",

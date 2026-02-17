@@ -10,13 +10,17 @@ export type Option<T> = Some<T> | None;
 export interface Session {
     token: string;
     expiresAt: bigint;
-    accountId: string;
-    email?: string;
+    accountId?: string;
+    email: string;
 }
 export interface RegisterPayload {
     username: string;
     password: string;
     email: string;
+}
+export interface LoginPayload {
+    password: string;
+    loginIdentifier: string;
 }
 export interface UserProfile {
     customStatus: string;
@@ -37,6 +41,7 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
+    login(payload: LoginPayload): Promise<Session | null>;
     register(payload: RegisterPayload): Promise<Session | null>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     validateSession(token: string): Promise<Session | null>;

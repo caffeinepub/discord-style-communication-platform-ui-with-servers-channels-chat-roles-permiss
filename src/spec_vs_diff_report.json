@@ -1,98 +1,59 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-16T23:35:08.138Z",
-  "summary": "Backend now defines `RegisterPayload`, `Session`, implements `register` returning a non-null `?Session` for guests, and adds `validateSession` that returns null for unknown/expired tokens. Frontend adds session restoration/validation logic and improves backend-connection defensiveness, but the diff does not clearly show that successful registration persists the returned session to localStorage, nor that the generated candid/TS interface was updated to expose the methods exactly as the frontend imports/uses them. Many unrelated UI/features were also modified.",
+  "generatedAt": "2026-02-17T00:06:49.432Z",
+  "summary": "Diff implements backend credential storage and a backend login function, enables the Sign In UI, and adds frontend session persistence/restore logic with English auth messages. However, the backend login API shape does not match the required signature, and backend logic is split into an additional Motoko file despite the constraint that all backend logic remain in backend/main.mo.",
   "missing_requirements": [
     {
-      "id": "REQ-3",
-      "requirement": "Ensure the deployed backend candid/actor interface exposes `register` and `validateSession` exactly as the frontend calls them, so the frontend can successfully invoke `actor.register(payload)` and `actor.validateSession(token)` without runtime errors or type mismatches.",
-      "reason": "The diff shows backend methods added in `backend/main.mo`, and frontend code calling them, but there is no evidence in the diff summary of updating the generated frontend backend interface/candid bindings (e.g., `frontend/src/backend` or candid/declarations) to guarantee type/function availability at runtime. The frontend even adds defensive checks for missing methods, suggesting the interface mismatch may still be possible.",
+      "id": "REQ-1",
+      "requirement": "Expose a backend login endpoint with signature `public shared func login(identifier : Text, password : Text) : async ?Session` (or equivalent) that takes identifier and password as separate arguments.",
+      "reason": "The diff shows `login` implemented as `public shared ({ caller }) func login(payload : LoginPayload) : async ?Session` with a payload record (`loginIdentifier`, `password`), not separate parameters.",
       "evidence": [
-        "backend/main.mo",
-        "frontend/src/auth/AuthProvider.tsx",
-        "frontend/src/hooks/useSafeActor.ts",
-        "frontend/src/hooks/useQueries.ts (uses `(actor as any)` for some methods)"
+        "backend/main.mo"
       ]
     },
     {
-      "id": "REQ-4",
-      "requirement": "Update frontend auth handling so that a successful backend registration response always results in a persisted session (localStorage) and an authenticated UI state, and a null/invalid response results in a clear English error message without leaving the app stuck in a loading state.",
-      "reason": "The diff clearly shows session restoration and validation-on-reload behavior plus English error messages in `AuthProvider`, and session persistence utilities in `sessionStorage.ts`, but the diff summary does not include the `AuthProvider.register(...)` implementation that would save the non-null session response to `sessionStorage` and set `authStatus` to `authenticated` immediately after signup.",
+      "id": "REQ-2",
+      "requirement": "Backend continues to assign the `#user` role to the caller upon successful registration (current behavior preserved).",
+      "reason": "The diff shows `register` checks the current role and later calls `ignore AccessControl.getUserRole(...)`, but does not show any explicit role assignment to `#user`. Because the file is truncated, this may exist later, but it is not evidenced in the visible changes.",
       "evidence": [
-        "frontend/src/auth/AuthProvider.tsx (truncated; register handler not shown)",
-        "frontend/src/auth/sessionStorage.ts",
-        "frontend/src/pages/LoginScreen.tsx (calls `register(...)` and expects AuthProvider to transition state)"
+        "backend/main.mo (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "AuthProvider login flow calls `actor.login(identifier, password)` (when actor is ready), persists the returned session via `sessionStorage.save(...)`, and sets `authStatus` to authenticated; on failure sets `authStatus` unauthenticated with a clear English error.",
+      "reason": "The AuthProvider diff is truncated and only clearly shows session-restore/validateSession behavior. The actual `login(identifier, password)` implementation and its interaction with `actor.login(...)` and `sessionStorage.save(...)` is not visible in the provided diff summary, so it cannot be verified from evidence.",
+      "evidence": [
+        "frontend/src/auth/AuthProvider.tsx (truncated)"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Added a backend migration module and introduced a new actor stable layout (OldActor/NewActor) unrelated to registration/session validation requirements.",
-      "reason": "BuildRequest constraints require a single Motoko actor in `backend/main.mo` and only asked to fix registration/session restoration; adding `backend/migration.mo` and wiring `(with migration = Migration.run)` is not requested by REQ-1..REQ-4.",
+      "description": "Introduced a separate backend Motoko migration module and actor migration wiring (`backend/migration.mo`, `(with migration = Migration.run)`), splitting backend logic outside `backend/main.mo`.",
+      "reason": "BuildRequest constraints explicitly require keeping backend as a single Motoko actor with all logic in `backend/main.mo`. Adding a new backend module file constitutes additional backend logic outside that file and was not requested as part of the sign-in fix.",
       "evidence": [
         "backend/migration.mo",
         "backend/main.mo"
       ]
     },
     {
-      "description": "Implemented/expanded user profile endpoints and related frontend profile/role-management UI changes.",
-      "reason": "BuildRequest is focused on registration returning session data and validating stored sessions; profile endpoints and role assignment dialogs/panels are not requested.",
+      "description": "Backend login enforces that the caller principal must match the principal stored at registration and traps on mismatch (`Runtime.trap(\"Unauthorized: Principal mismatch\")`).",
+      "reason": "The BuildRequest only specified credential authentication by identifier+password and returning `null` on invalid credentials; principal-mismatch trapping behavior is an extra constraint/behavior not requested.",
       "evidence": [
-        "backend/main.mo (getCallerUserProfile/getUserProfile/saveCallerUserProfile)",
-        "frontend/src/components/profile/RoleAssignmentDialog.tsx",
-        "frontend/src/components/profile/UserProfileOverlay.tsx",
-        "frontend/src/components/settings/ServerSettings/components/RoleMemberAssignmentPanel.tsx",
-        "frontend/src/components/settings/ServerSettings/pages/RoleMemberAssignmentPanel.tsx",
-        "frontend/src/components/settings/ServerSettings/pages/RolesPage.tsx"
-      ]
-    },
-    {
-      "description": "Modified chat composer UI to add backend readiness guarding/tooltips/spinner behavior.",
-      "reason": "Not part of the requested registration/session restoration fix.",
-      "evidence": [
-        "frontend/src/components/chat/ChatComposer.tsx"
-      ]
-    },
-    {
-      "description": "Modified friends UI behavior (sending friend request as direct username string, toast errors).",
-      "reason": "Not requested by REQ-1..REQ-4.",
-      "evidence": [
-        "frontend/src/components/friends/FriendsHomeView.tsx"
-      ]
-    },
-    {
-      "description": "Modified voice channel UI/connection handling and participant rendering.",
-      "reason": "Not requested by the BuildRequest.",
-      "evidence": [
-        "frontend/src/components/voice/VoiceView.tsx"
-      ]
-    },
-    {
-      "description": "Introduced a new `useSafeActor` hook with additional actor initialization behavior (including optional access-control initialization via secret URL parameter).",
-      "reason": "While some defensiveness around actor method availability relates tangentially to REQ-3, the specific access-control initialization via secret parameter and broader actor state management is not requested in the BuildRequest.",
-      "evidence": [
-        "frontend/src/hooks/useSafeActor.ts"
+        "backend/main.mo"
       ]
     }
   ],
-  "confidence": 0.68,
+  "confidence": 0.74,
   "changed_files": [
     "backend/main.mo",
     "backend/migration.mo",
     "frontend-file-summaries.txt",
     "frontend/src/auth/AuthProvider.tsx",
+    "frontend/src/auth/authMessages.ts",
     "frontend/src/auth/sessionStorage.ts",
-    "frontend/src/components/chat/ChatComposer.tsx",
-    "frontend/src/components/friends/FriendsHomeView.tsx",
-    "frontend/src/components/profile/RoleAssignmentDialog.tsx",
-    "frontend/src/components/profile/UserProfileOverlay.tsx",
-    "frontend/src/components/settings/ServerSettings/components/RoleMemberAssignmentPanel.tsx",
-    "frontend/src/components/settings/ServerSettings/pages/RoleMemberAssignmentPanel.tsx",
-    "frontend/src/components/settings/ServerSettings/pages/RolesPage.tsx",
-    "frontend/src/components/voice/VoiceView.tsx",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/hooks/useSafeActor.ts",
     "frontend/src/pages/LoginScreen.tsx",
     "project_state.json"
   ]

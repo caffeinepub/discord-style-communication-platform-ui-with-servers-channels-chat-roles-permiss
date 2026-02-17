@@ -4,23 +4,31 @@
   "summary": "New project",
   "architectural_notes": [],
   "known_issues": [
-    "Registration not fully implemented; backend returns no session data after registration"
+    "Sign-in/login flow is currently not working."
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-ensure-the-deployed-backend-candid-actor-interface-exposes-register-and-validatesession-exactly-as-the-frontend-calls-them-so-the-frontend-can-successfully-invoke-actor-register-payload-and-actor-validatesession-token-without-runtime-errors-or-type-mismatches",
-      "title": "Ensure the deployed backend candid/actor interface exposes `register` and `validateSession` exactly as the frontend calls them, so the frontend can successfully invoke `actor.register(payload)` and `actor.validateSession(token)` without runtime errors or type mismatches.",
+      "id": "feature-wire-up-the-frontend-authprovider-login-flow-in-frontend-src-auth-authprovider-tsx-to-call-the-backend-login-method-store-the-returned-session-in-frontend-src-auth-sessionstorage-ts-and-transition-auth-state-to-authenticated-on-success",
+      "title": "Wire up the frontend AuthProvider login flow in `frontend/src/auth/AuthProvider.tsx` to call the backend `login` method, store the returned session in `frontend/src/auth/sessionStorage.ts`, and transition auth state to authenticated on success.",
       "reqIds": [
         "REQ-3"
       ],
       "version": 1
     },
     {
-      "id": "feature-update-frontend-auth-handling-so-that-a-successful-backend-registration-response-always-results-in-a-persisted-session-localstorage-and-an-authenticated-ui-state-and-a-null-invalid-response-results-in-a-clear-english-error-message-without-leaving-the-app-stuck-in-a-loading-state",
-      "title": "Update frontend auth handling so that a successful backend registration response always results in a persisted session (localStorage) and an authenticated UI state, and a null/invalid response results in a clear English error message without leaving the app stuck in a loading state.",
+      "id": "feature-enable-the-sign-in-ui-in-frontend-src-pages-loginscreen-tsx-so-users-can-submit-the-sign-in-form-and-successfully-authenticate-once-the-backend-login-endpoint-is-implemented",
+      "title": "Enable the Sign In UI in `frontend/src/pages/LoginScreen.tsx` so users can submit the sign-in form and successfully authenticate once the backend login endpoint is implemented.",
       "reqIds": [
         "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-session-restore-on-page-refresh-works-end-to-end-by-keeping-validatesession-compatible-with-stored-sessions-and-ensuring-the-frontend-can-re-authenticate-from-localstorage-without-manual-re-login",
+      "title": "Ensure session restore on page refresh works end-to-end by keeping `validateSession` compatible with stored sessions and ensuring the frontend can re-authenticate from `localStorage` without manual re-login.",
+      "reqIds": [
+        "REQ-5"
       ],
       "version": 1
     }
@@ -28,13 +36,13 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Implement/finish user registration flow including returning session data from backend",
+      "summary": "Make the sign-in/login system work (fix broken sign-in flow)",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Implement backend `register(payload : RegisterPayload) : async ?Session` to create a new user account for the caller (guest) and return non-null session data (token, accountId, expiresAt, optional email) on success instead of always returning null.",
+      "summary": "Implement a backend login endpoint in `backend/main.mo` that authenticates a user using the provided identifier (email or username) and password, and returns a `Session` on success.",
       "reqIds": [
         "REQ-1"
       ],
@@ -42,7 +50,7 @@
     },
     {
       "id": "AR-3",
-      "summary": "Implement backend `validateSession(token : Text) : async ?Session` to return non-null session data when the provided token is known and not expired, and return null when the token is unknown/expired.",
+      "summary": "Update backend registration in `backend/main.mo` to persist the credentials needed for subsequent login (at minimum: username, email, and password association to the registering principal/account record) so that a user can sign in after signing up.",
       "reqIds": [
         "REQ-2"
       ],

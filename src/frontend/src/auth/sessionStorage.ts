@@ -42,6 +42,12 @@ export const sessionStorage = {
         expiresAt: expiresAtMs,
       };
       
+      console.log('Saving session:', {
+        token: normalizedData.token.substring(0, 20) + '...',
+        accountId: normalizedData.accountId,
+        expiresAt: new Date(normalizedData.expiresAt).toISOString(),
+      });
+      
       localStorage.setItem(SESSION_KEY, JSON.stringify(normalizedData));
     } catch (error) {
       console.error('Failed to save session:', error);
@@ -69,6 +75,12 @@ export const sessionStorage = {
         return null;
       }
 
+      console.log('Loaded session:', {
+        token: data.token.substring(0, 20) + '...',
+        accountId: data.accountId,
+        expiresAt: new Date(data.expiresAt).toISOString(),
+      });
+
       return data;
     } catch (error) {
       console.error('Failed to load session:', error);
@@ -80,6 +92,7 @@ export const sessionStorage = {
   clear(): void {
     try {
       localStorage.removeItem(SESSION_KEY);
+      console.log('Session cleared');
     } catch (error) {
       console.error('Failed to clear session:', error);
     }

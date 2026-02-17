@@ -10,6 +10,10 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface LoginPayload {
+  'password' : string,
+  'loginIdentifier' : string,
+}
 export interface RegisterPayload {
   'username' : string,
   'password' : string,
@@ -18,8 +22,8 @@ export interface RegisterPayload {
 export interface Session {
   'token' : string,
   'expiresAt' : bigint,
-  'accountId' : string,
-  'email' : [] | [string],
+  'accountId' : [] | [string],
+  'email' : string,
 }
 export interface UserProfile {
   'customStatus' : string,
@@ -39,6 +43,7 @@ export interface _SERVICE {
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'login' : ActorMethod<[LoginPayload], [] | [Session]>,
   'register' : ActorMethod<[RegisterPayload], [] | [Session]>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'validateSession' : ActorMethod<[string], [] | [Session]>,
