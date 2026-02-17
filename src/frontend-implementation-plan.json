@@ -1,72 +1,25 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Caffeine Chat — Enable working frontend sign-in and session restore",
+  "title": "Caffeine Chat — Friendly handling for re-registration attempts in Sign Up flow",
   "requirements": [
     {
-      "id": "REQ-3",
-      "summary": "Implement AuthProvider login flow to call backend login, persist session, and set authenticated state.",
+      "id": "REQ-2",
+      "summary": "Normalize re-registration traps/null responses into the existing friendly 'already registered' UI message during Sign Up.",
       "acceptanceCriteria": [
-        "`login(identifier, password)` no longer hard-fails with `AUTH_MESSAGES.LOGIN_NOT_AVAILABLE` and instead attempts `actor.login(identifier, password)` when the actor is ready.",
-        "On successful response, the session is persisted via `sessionStorage.save(...)`, and `authStatus` becomes `authenticated` with `sessionToken` and `accountId` set.",
-        "On login failure (invalid credentials or backend returns null), `authStatus` is `unauthenticated` and a clear English error message is surfaced via the existing `error` state (no infinite loading/stuck state)."
+        "When the backend indicates a re-registration attempt by an already-registered user (via `null` return or an error message containing `Unauthorized: Already registered users cannot register again`), the UI displays `AUTH_MESSAGES.ALREADY_REGISTERED`.",
+        "The raw text `Unauthorized: Already registered users cannot register again` is not shown to the user anywhere in the Sign Up flow."
       ],
       "file_operations": [
         {
           "path": "frontend/src/auth/AuthProvider.tsx",
           "operation": "modify",
-          "description": "Replace the placeholder login implementation with a real login flow that calls the backend actor login capability (per `frontend/src/backend.d.ts`, using the `LoginPayload` shape), persists a successful session via `sessionStorage.save(...)`, sets `authStatus` to `authenticated`, and normalizes null/failed logins into a clear English `error` while ensuring `authStatus` returns to `unauthenticated` without throwing the app into a stuck/loading state."
+          "description": "Harden registration error normalization: ensure any thrown error message containing `Unauthorized: Already registered users cannot register again` maps to `AUTH_MESSAGES.ALREADY_REGISTERED`, alongside the existing `null`-response handling. Use the selected `authorization` component’s frontend error-handling guidance to gracefully convert backend traps to user-friendly messages. Verify the component's usage instructions before implementing."
         },
-        {
-          "path": "frontend/src/auth/authMessages.ts",
-          "operation": "modify",
-          "description": "Update/add English auth message constants to support the new login failure modes (e.g., invalid credentials, backend not ready) while keeping messages user-friendly and consistent across Sign In and session restore."
-        },
-        {
-          "path": "frontend/src/auth/sessionStorage.ts",
-          "operation": "modify",
-          "description": "Ensure the session persistence utility safely supports the session data returned by backend login/validateSession (including converting bigint nanosecond `expiresAt` to milliseconds) and clearly rejects/clears malformed session objects so AuthProvider can surface a friendly English error."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Enable the LoginScreen Sign In form to submit and authenticate users via AuthProvider.",
-      "acceptanceCriteria": [
-        "`SIGN_IN_AVAILABLE` is set so the Sign In form inputs and submit button are enabled.",
-        "Submitting the Sign In form calls `login(signInIdentifier, signInPassword)` and, on success, the app transitions away from `LoginScreen` to the authenticated app shell (as driven by `authStatus` in `frontend/src/App.tsx`).",
-        "If credentials are invalid, the Sign In tab displays an error message (English) and remains on the login screen."
-      ],
-      "file_operations": [
         {
           "path": "frontend/src/pages/LoginScreen.tsx",
           "operation": "modify",
-          "description": "Enable Sign In by setting `SIGN_IN_AVAILABLE` to true and ensure the Sign In submit handler calls `login(signInIdentifier, signInPassword)`; keep the user on the screen and show a clear English error message on failure while letting `authStatus`-driven routing in `frontend/src/App.tsx` transition to the authenticated shell on success."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "Ensure session restore on refresh works by validating stored sessions and clearing invalid/expired ones with clear messaging.",
-      "acceptanceCriteria": [
-        "After a successful sign-in, refreshing the page results in `AuthProvider` calling `validateSession(session.token)` and setting `authStatus` to `authenticated` when the session is still valid.",
-        "Expired or invalid sessions are cleared from `localStorage` and the user is returned to the login screen with an English message from `AUTH_MESSAGES` (e.g., session expired/invalid)."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/auth/AuthProvider.tsx",
-          "operation": "modify",
-          "description": "Harden the initialization/restore path to reliably load a stored session, call the backend `validateSession(session.token)` when the actor is ready, set `authStatus` to `authenticated` on success, and on invalid/expired responses clear localStorage via `sessionStorage.clearWithReason(...)` and surface an English `AUTH_MESSAGES` error while returning to `unauthenticated`."
-        },
-        {
-          "path": "frontend/src/auth/sessionStorage.ts",
-          "operation": "modify",
-          "description": "Confirm session expiration checks align with the backend-provided `expiresAt` semantics by consistently storing milliseconds (converted from backend nanoseconds) and clearing expired sessions so a page refresh correctly results in a login screen and an English session-expired/invalid message."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Ensure the unauthenticated rendering path cleanly returns users to `LoginScreen` when AuthProvider clears an invalid/expired session (no UI dead-ends), while keeping all user-facing text in English and avoiding changes to immutable UI component paths."
+          "description": "Add a final defensive mapping in the Sign Up catch-handler to replace any received raw backend trap text containing `Unauthorized: Already registered users cannot register again` with `AUTH_MESSAGES.ALREADY_REGISTERED`, ensuring the raw text is never displayed in the UI."
         }
       ]
     }

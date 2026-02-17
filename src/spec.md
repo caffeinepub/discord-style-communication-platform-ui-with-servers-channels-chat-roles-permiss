@@ -1,13 +1,10 @@
 # Specification
 
 ## Summary
-**Goal:** Make sign-in work end-to-end by adding backend login support, persisting registration credentials for later login, and enabling the frontend sign-in flow with session restore on refresh.
+**Goal:** Prevent the app from crashing or surfacing a raw “Unauthorized” trap when an already-registered user attempts to register again, and show a friendly message instead.
 
 **Planned changes:**
-- Add a backend `login(identifier, password)` endpoint in `backend/main.mo` that authenticates by email or username and returns an optional `Session`, storing/refeshing the session token with a future `expiresAt`.
-- Update backend registration in `backend/main.mo` to persist username/email and password association needed for subsequent login while preserving current duplicate-registration behavior and role assignment.
-- Wire `frontend/src/auth/AuthProvider.tsx` login to call `actor.login`, persist the session via `frontend/src/auth/sessionStorage.ts`, and correctly set authenticated/unauthenticated states with clear English errors.
-- Enable the Sign In UI in `frontend/src/pages/LoginScreen.tsx` so the form is usable and successful login transitions into the authenticated app shell.
-- Ensure session restore works after refresh by validating stored sessions via `validateSession`, authenticating when valid, and clearing/handling expired sessions with an English message.
+- Update the backend `register` method to stop trapping with `Unauthorized: Already registered users cannot register again` for non-guest callers, and return a normal result (e.g., `null` or a valid `Session`) for this scenario.
+- Update frontend Sign Up error handling to detect this re-registration case (via a `null` return or the specific error text) and display the friendly message `This account is already registered. Please sign in instead.` instead of any raw backend trap text.
 
-**User-visible outcome:** Users can sign up, then sign in using email or username and password, stay signed in across page refresh while the session is valid, and see clear English errors for invalid/expired sessions.
+**User-visible outcome:** If a user who is already registered tries to sign up again, the app shows a normal “already registered” message and does not display the backend trap text or crash.

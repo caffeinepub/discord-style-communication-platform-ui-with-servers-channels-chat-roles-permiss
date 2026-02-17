@@ -234,8 +234,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response: Session | null = await actor.register(payload);
       
       if (!response) {
-        // Backend returned null - user already registered
-        const errorMsg = AUTH_MESSAGES.ALREADY_REGISTERED;
+        // Backend returned null - username or email already taken
+        const errorMsg = AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;
         setError(errorMsg);
         setAuthStatus('unauthenticated');
         throw new Error(errorMsg);
@@ -262,13 +262,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthStatus('authenticated');
       setError(null);
     } catch (err: any) {
-      // Normalize backend trap messages into user-friendly errors
+      // Pass through the error message without modification
       let errorMessage = err.message || AUTH_MESSAGES.REGISTRATION_FAILED;
-      
-      // Handle backend trap messages (including misspelling "registed")
-      if (errorMessage.includes('already registed') || errorMessage.includes('already registered')) {
-        errorMessage = AUTH_MESSAGES.ALREADY_REGISTERED;
-      }
       
       setError(errorMessage);
       setAuthStatus('unauthenticated');

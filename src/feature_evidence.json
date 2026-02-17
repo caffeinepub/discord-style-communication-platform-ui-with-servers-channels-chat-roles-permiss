@@ -2,12 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-wire-up-the-frontend-authprovider-login-flow-in-frontend-src-auth-authprovider-tsx-to-call-the-backend-login-method-store-the-returned-session-in-frontend-src-auth-sessionstorage-ts-and-transition-auth-state-to-authenticated-on-success",
-      "featureTitle": "Wire up the frontend AuthProvider login flow in `frontend/src/auth/AuthProvider.tsx` to call the backend `login` method, store the returned session in `frontend/src/auth/sessionStorage.ts`, and transition auth state to authenticated on success.",
+      "featureId": "feature-update-the-frontend-registration-error-handling-so-that-when-a-user-who-is-already-registered-tries-to-sign-up-again-the-ui-shows-the-existing-friendly-message-this-account-is-already-registered-please-sign-in-instead-and-not-the-raw-backend-trap-text",
+      "featureTitle": "Update the frontend registration error handling so that when a user who is already registered tries to sign up again, the UI shows the existing friendly message `This account is already registered. Please sign in instead.` (and not the raw backend trap text).",
       "files": [
-        "frontend/src/auth/AuthProvider.tsx",
-        "frontend/src/auth/authMessages.ts",
-        "frontend/src/auth/sessionStorage.ts"
+        "frontend/src/auth/AuthProvider.tsx"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,46 +16,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-3"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-enable-the-sign-in-ui-in-frontend-src-pages-loginscreen-tsx-so-users-can-submit-the-sign-in-form-and-successfully-authenticate-once-the-backend-login-endpoint-is-implemented",
-      "featureTitle": "Enable the Sign In UI in `frontend/src/pages/LoginScreen.tsx` so users can submit the sign-in form and successfully authenticate once the backend login endpoint is implemented.",
-      "files": [
-        "frontend/src/pages/LoginScreen.tsx"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-4"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-ensure-session-restore-on-page-refresh-works-end-to-end-by-keeping-validatesession-compatible-with-stored-sessions-and-ensuring-the-frontend-can-re-authenticate-from-localstorage-without-manual-re-login",
-      "featureTitle": "Ensure session restore on page refresh works end-to-end by keeping `validateSession` compatible with stored sessions and ensuring the frontend can re-authenticate from `localStorage` without manual re-login.",
-      "files": [
-        "frontend/src/auth/AuthProvider.tsx",
-        "frontend/src/auth/sessionStorage.ts"
-      ],
-      "components": [
-        "authorization@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-5"
+        "REQ-2"
       ],
       "confidence": "high"
     }

@@ -1,60 +1,41 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T00:06:49.432Z",
-  "summary": "Diff implements backend credential storage and a backend login function, enables the Sign In UI, and adds frontend session persistence/restore logic with English auth messages. However, the backend login API shape does not match the required signature, and backend logic is split into an additional Motoko file despite the constraint that all backend logic remain in backend/main.mo.",
+  "generatedAt": "2026-02-17T00:15:22.358Z",
+  "summary": "REQ-1 appears implemented by changing backend register() to return null instead of trapping when caller is non-guest. REQ-2 is not evidenced in the diff: the frontend constants and shown code do not include/route to the required friendly ALREADY_REGISTERED message, and there is no visible logic mapping the backend re-registration signal to that message.",
   "missing_requirements": [
     {
-      "id": "REQ-1",
-      "requirement": "Expose a backend login endpoint with signature `public shared func login(identifier : Text, password : Text) : async ?Session` (or equivalent) that takes identifier and password as separate arguments.",
-      "reason": "The diff shows `login` implemented as `public shared ({ caller }) func login(payload : LoginPayload) : async ?Session` with a payload record (`loginIdentifier`, `password`), not separate parameters.",
-      "evidence": [
-        "backend/main.mo"
-      ]
-    },
-    {
       "id": "REQ-2",
-      "requirement": "Backend continues to assign the `#user` role to the caller upon successful registration (current behavior preserved).",
-      "reason": "The diff shows `register` checks the current role and later calls `ignore AccessControl.getUserRole(...)`, but does not show any explicit role assignment to `#user`. Because the file is truncated, this may exist later, but it is not evidenced in the visible changes.",
+      "requirement": "Update frontend registration error handling so re-registration attempts show the friendly message `This account is already registered. Please sign in instead.` (AUTH_MESSAGES.ALREADY_REGISTERED) and never display the raw backend trap text.",
+      "reason": "The modified auth message constants do not define AUTH_MESSAGES.ALREADY_REGISTERED, and the provided AuthProvider diff portion does not show any logic mapping a null/Unauthorized re-registration signal to that friendly message.",
       "evidence": [
-        "backend/main.mo (truncated)"
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "requirement": "AuthProvider login flow calls `actor.login(identifier, password)` (when actor is ready), persists the returned session via `sessionStorage.save(...)`, and sets `authStatus` to authenticated; on failure sets `authStatus` unauthenticated with a clear English error.",
-      "reason": "The AuthProvider diff is truncated and only clearly shows session-restore/validateSession behavior. The actual `login(identifier, password)` implementation and its interaction with `actor.login(...)` and `sessionStorage.save(...)` is not visible in the provided diff summary, so it cannot be verified from evidence.",
-      "evidence": [
-        "frontend/src/auth/AuthProvider.tsx (truncated)"
+        "frontend/src/auth/authMessages.ts",
+        "frontend/src/auth/AuthProvider.tsx"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Introduced a separate backend Motoko migration module and actor migration wiring (`backend/migration.mo`, `(with migration = Migration.run)`), splitting backend logic outside `backend/main.mo`.",
-      "reason": "BuildRequest constraints explicitly require keeping backend as a single Motoko actor with all logic in `backend/main.mo`. Adding a new backend module file constitutes additional backend logic outside that file and was not requested as part of the sign-in fix.",
+      "description": "Expanded/changed auth messaging set (e.g., LOGIN_NOT_AVAILABLE, BACKEND_NOT_READY, CONNECTION_TIMEOUT, etc.) unrelated to the re-registration/Unauthorized-trap fix.",
+      "reason": "BuildRequest only asks to ensure already-registered re-signup shows the existing friendly message and to avoid showing the raw trap text; it does not request adding/updating other auth/connection messages.",
       "evidence": [
-        "backend/migration.mo",
-        "backend/main.mo"
+        "frontend/src/auth/authMessages.ts"
       ]
     },
     {
-      "description": "Backend login enforces that the caller principal must match the principal stored at registration and traps on mismatch (`Runtime.trap(\"Unauthorized: Principal mismatch\")`).",
-      "reason": "The BuildRequest only specified credential authentication by identifier+password and returning `null` on invalid credentials; principal-mismatch trapping behavior is an extra constraint/behavior not requested.",
+      "description": "Additional AuthProvider session initialization/validation defensive logic (validateSession existence checks, timeouts/connection error handling paths).",
+      "reason": "BuildRequest does not request changes to session restore/validateSession logic; it is scoped to registration re-try error handling and backend register behavior.",
       "evidence": [
-        "backend/main.mo"
+        "frontend/src/auth/AuthProvider.tsx"
       ]
     }
   ],
   "confidence": 0.74,
   "changed_files": [
     "backend/main.mo",
-    "backend/migration.mo",
     "frontend-file-summaries.txt",
     "frontend/src/auth/AuthProvider.tsx",
     "frontend/src/auth/authMessages.ts",
-    "frontend/src/auth/sessionStorage.ts",
-    "frontend/src/pages/LoginScreen.tsx",
     "project_state.json"
   ]
 }

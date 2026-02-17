@@ -1,14 +1,11 @@
 import Map "mo:core/Map";
 import Text "mo:core/Text";
 import Int "mo:core/Int";
-import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import Time "mo:core/Time";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
 
-(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -57,7 +54,7 @@ actor {
     // Only guests (unauthenticated users) can register
     let currentRole = AccessControl.getUserRole(accessControlState, caller);
     if (currentRole != #guest) {
-      Runtime.trap("Unauthorized: Already registered users cannot register again");
+      return null;
     };
 
     // Check if username or email already exists
@@ -121,7 +118,7 @@ actor {
 
         // Verify the caller matches the registered principal
         if (caller != credentials.principal) {
-          Runtime.trap("Unauthorized: Principal mismatch");
+          return null;
         };
 
         // Create new session token
@@ -151,21 +148,21 @@ actor {
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
+      return null;
     };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
     if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
+      return null;
     };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+      return;
     };
     userProfiles.add(caller, profile);
   };

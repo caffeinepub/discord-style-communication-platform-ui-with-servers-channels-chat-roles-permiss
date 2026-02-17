@@ -7,7 +7,7 @@ export const AUTH_MESSAGES = {
   LOGIN_NOT_AVAILABLE: 'Sign In is temporarily unavailable. The backend login system is being updated. Please use Sign Up to create a new account.',
   
   // Registration errors
-  ALREADY_REGISTERED: 'This account is already registered. Please sign in instead.',
+  USERNAME_OR_EMAIL_TAKEN: 'Username or email is already taken. Please try a different one or sign in.',
   REGISTRATION_FAILED: 'Registration failed. Please try again.',
   
   // Session errors

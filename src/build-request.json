@@ -1,121 +1,54 @@
 {
   "kind": "build_request",
-  "title": "Fix sign-in by implementing backend login and enabling frontend sign-in flow",
+  "title": "Remove 'Unauthorized' trap when an already-registered user attempts to register again",
   "projectName": "Caffeine Chat",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Implement a backend login endpoint in `backend/main.mo` that authenticates a user using the provided identifier (email or username) and password, and returns a `Session` on success.",
+      "text": "Update the backend `register` method to no longer throw/trap with the message `Unauthorized: Already registered users cannot register again` when the caller is not a guest. Instead, handle this case without trapping (e.g., return `null` from `register`) so the frontend can show a normal 'already registered' message.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "recent-messages-3"
         ],
         "quotes": [
-          "I want you to make the sign in system work please"
+          "Unauthorized: Already registered users cannot register again\nremove this feature"
         ]
       },
       "acceptanceCriteria": [
-        "`backend/main.mo` exposes a public shared function `login(identifier : Text, password : Text) : async ?Session` (or equivalent) that returns `?Session` on success and `null` on invalid credentials.",
-        "Login supports using either email or username as the identifier (matching what the frontend label says: \"Email or Username\").",
-        "On successful login, a new (or refreshed) session token is stored in `sessionStore` and includes `token`, `accountId`, and a future `expiresAt` in nanoseconds, consistent with `validateSession` time comparisons."
+        "Calling `register` as a non-guest does not trap with `Unauthorized: Already registered users cannot register again`.",
+        "`register` returns a normal response (`null` or a valid `Session`) and does not crash the canister for this scenario."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Update backend registration in `backend/main.mo` to persist the credentials needed for subsequent login (at minimum: username, email, and password association to the registering principal/account record) so that a user can sign in after signing up.",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "I want you to make the sign in system work please"
-        ]
-      },
-      "acceptanceCriteria": [
-        "After a successful `register(payload)`, the backend stores sufficient data to allow `login(payload.email, payload.password)` and `login(payload.username, payload.password)` to succeed later.",
-        "If a user is already registered, `register(payload)` continues to return `null` (preserving current frontend behavior that expects null for duplicates).",
-        "Backend continues to assign the `#user` role to the caller upon successful registration (current behavior preserved)."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Wire up the frontend AuthProvider login flow in `frontend/src/auth/AuthProvider.tsx` to call the backend `login` method, store the returned session in `frontend/src/auth/sessionStorage.ts`, and transition auth state to authenticated on success.",
+      "text": "Update the frontend registration error handling so that when a user who is already registered tries to sign up again, the UI shows the existing friendly message `This account is already registered. Please sign in instead.` (and not the raw backend trap text).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "recent-messages-3"
         ],
         "quotes": [
-          "I want you to make the sign in system work please"
+          "Unauthorized: Already registered users cannot register again\nremove this feature"
         ]
       },
       "acceptanceCriteria": [
-        "`login(identifier, password)` no longer hard-fails with `AUTH_MESSAGES.LOGIN_NOT_AVAILABLE` and instead attempts `actor.login(identifier, password)` when the actor is ready.",
-        "On successful response, the session is persisted via `sessionStorage.save(...)`, and `authStatus` becomes `authenticated` with `sessionToken` and `accountId` set.",
-        "On login failure (invalid credentials or backend returns null), `authStatus` is `unauthenticated` and a clear English error message is surfaced via the existing `error` state (no infinite loading/stuck state)."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Enable the Sign In UI in `frontend/src/pages/LoginScreen.tsx` so users can submit the sign-in form and successfully authenticate once the backend login endpoint is implemented.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "I want you to make the sign in system work please"
-        ]
-      },
-      "acceptanceCriteria": [
-        "`SIGN_IN_AVAILABLE` is set so the Sign In form inputs and submit button are enabled.",
-        "Submitting the Sign In form calls `login(signInIdentifier, signInPassword)` and, on success, the app transitions away from `LoginScreen` to the authenticated app shell (as driven by `authStatus` in `frontend/src/App.tsx`).",
-        "If credentials are invalid, the Sign In tab displays an error message (English) and remains on the login screen."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Ensure session restore on page refresh works end-to-end by keeping `validateSession` compatible with stored sessions and ensuring the frontend can re-authenticate from `localStorage` without manual re-login.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "I want you to make the sign in system work please"
-        ]
-      },
-      "acceptanceCriteria": [
-        "After a successful sign-in, refreshing the page results in `AuthProvider` calling `validateSession(session.token)` and setting `authStatus` to `authenticated` when the session is still valid.",
-        "Expired or invalid sessions are cleared from `localStorage` and the user is returned to the login screen with an English message from `AUTH_MESSAGES` (e.g., session expired/invalid)."
+        "When the backend indicates a re-registration attempt by an already-registered user (via `null` return or an error message containing `Unauthorized: Already registered users cannot register again`), the UI displays `AUTH_MESSAGES.ALREADY_REGISTERED`.",
+        "The raw text `Unauthorized: Already registered users cannot register again` is not shown to the user anywhere in the Sign Up flow."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor with all logic in `backend/main.mo` (no additional backend services).",
-    "Do not edit files under `frontend/src/components/ui` or any paths listed as immutable in SYSTEM_CONTEXT.",
-    "All user-facing text must be in English."
+    "Backend must remain a single Motoko actor in `backend/main.mo`.",
+    "Do not modify any files under `frontend/src/components/ui` or the immutable hook/provider paths listed in SYSTEM_CONTEXT."
   ],
   "nonGoals": [
-    "Adding third-party authentication providers (only existing app auth flow is in scope).",
-    "Implementing external databases or off-canister storage.",
-    "Implementing real-time communication (WebSockets/chat auth beyond current session model)."
+    "Adding new authentication providers (only existing auth approach remains).",
+    "Changing the overall login/registration UI layout beyond what is necessary to remove the unwanted error behavior."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }
