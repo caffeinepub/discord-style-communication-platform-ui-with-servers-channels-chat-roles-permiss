@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T01:16:31.487Z",
+  "generatedAt": "2026-02-17T03:08:43.879Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -12,32 +12,33 @@
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Update the backend registration logic so that a user is only blocked from registering when the caller principal already has stored credentials (i.e., has actually registered before), rather than blocking purely based on the caller’s current AccessControl role being non-guest.",
+        "summary": "Fix backend registration persistence so that creating an account actually stores credentials, session tokens, and the initial user profile in canister state (i.e., all Map/collection updates performed during register/login/saveCallerUserProfile must be truly mutating/persisted, not discarded).",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Add a backend index for credentials by principal and keep it in sync on registration so the backend can reliably determine whether the caller principal has previously registered.",
+        "summary": "Make backend registration/login input normalization and uniqueness checks consistent and robust: sanitize (trim + lowercase) username/email/loginIdentifier before checking and storing, and ensure uniqueness checks and lookups always use the sanitized values.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "If the backend state schema is changed to add a principal-indexed credentials store, implement a conditional upgrade migration that backfills the principal index from existing stored credentials.",
+        "summary": "Fix backend session creation/ownership bookkeeping so that validateSession accepts the token produced by a successful login for the same caller until it expires (no false invalidation due to token ownership mismatches).",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-4",
-        "summary": "Update frontend registration error messaging to avoid telling users an account exists when the error is actually caused by being signed in / not being a guest. Use clear English user-facing text that matches the real cause and remediation steps.",
+        "summary": "Improve frontend error reporting for the registration flow so that when backend registration fails, the UI shows the specific mapped/allowlisted error message (e.g., already registered, username/email taken) rather than the generic 'Registration failed. Please try again.' whenever possible.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/auth/authMessages.ts",
-          "frontend/src/auth/AuthProvider.tsx"
+          "frontend/src/auth/AuthProvider.tsx",
+          "frontend/src/pages/LoginScreen.tsx"
         ],
         "matchedFiles": [
           "frontend/src/auth/authMessages.ts"

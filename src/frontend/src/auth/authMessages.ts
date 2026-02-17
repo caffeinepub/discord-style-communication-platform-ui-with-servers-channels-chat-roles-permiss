@@ -27,70 +27,94 @@ export const AUTH_MESSAGES = {
 const ALLOWED_AUTH_MESSAGES = new Set<string>(Object.values(AUTH_MESSAGES));
 
 /**
- * Sanitizes an error message to ensure only allowlisted auth messages are displayed
+ * Sanitizes an error message with flow-aware fallback
+ * Returns an allowlisted message appropriate to the error flow
  */
-export function sanitizeAuthMessage(message: string): string {
+export function sanitizeAuthMessageForFlow(
+  message: string,
+  flow: 'signin' | 'signup' | 'connection'
+): string {
   // If the message is in our allowlist, return it as-is
   if (ALLOWED_AUTH_MESSAGES.has(message)) {
     return message;
   }
   
-  // For any unexpected/raw error, return generic registration failed message
-  return AUTH_MESSAGES.REGISTRATION_FAILED;
+  // Return flow-appropriate fallback for non-allowlisted messages
+  switch (flow) {
+    case 'signin':
+      return AUTH_MESSAGES.LOGIN_FAILED;
+    case 'signup':
+      return AUTH_MESSAGES.REGISTRATION_FAILED;
+    case 'connection':
+      return AUTH_MESSAGES.CONNECTION_ERROR;
+    default:
+      return AUTH_MESSAGES.REGISTRATION_FAILED;
+  }
 }
 
 /**
- * Categorizes auth errors by flow type
+ * Categorizes an error message into its appropriate flow
  */
-export function getErrorFlow(message: string): 'signin' | 'signup' | 'session' | 'connection' | 'unknown' {
-  if (message === AUTH_MESSAGES.INVALID_CREDENTIALS || message === AUTH_MESSAGES.LOGIN_FAILED || message === AUTH_MESSAGES.LOGIN_NOT_AVAILABLE) {
+export function categorizeErrorFlow(message: string): 'signin' | 'signup' | 'connection' {
+  // Check for sign-in related keywords
+  if (
+    message.includes('Sign in') ||
+    message.includes('login') ||
+    message.includes('credentials') ||
+    message === AUTH_MESSAGES.INVALID_CREDENTIALS ||
+    message === AUTH_MESSAGES.LOGIN_FAILED ||
+    message === AUTH_MESSAGES.LOGIN_NOT_AVAILABLE
+  ) {
     return 'signin';
   }
-  if (message === AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN || message === AUTH_MESSAGES.ALREADY_REGISTERED || message === AUTH_MESSAGES.REGISTRATION_FAILED) {
-    return 'signup';
-  }
-  if (message === AUTH_MESSAGES.SESSION_EXPIRED || message === AUTH_MESSAGES.SESSION_INVALID) {
-    return 'session';
-  }
-  if (message === AUTH_MESSAGES.BACKEND_NOT_READY || message === AUTH_MESSAGES.CONNECTION_ERROR || message === AUTH_MESSAGES.CONNECTION_TIMEOUT) {
+  
+  // Check for connection related keywords
+  if (
+    message.includes('connection') ||
+    message.includes('backend') ||
+    message.includes('timeout') ||
+    message === AUTH_MESSAGES.BACKEND_NOT_READY ||
+    message === AUTH_MESSAGES.CONNECTION_ERROR ||
+    message === AUTH_MESSAGES.CONNECTION_TIMEOUT
+  ) {
     return 'connection';
   }
-  return 'unknown';
+  
+  // Default to signup
+  return 'signup';
 }
 
 /**
- * Maps backend registration error variants to user-facing messages
- * Handles both enum string values and legacy object shapes
+ * Maps backend RegistrationError variants to user-friendly messages
+ * The backend returns string enum values: "emailTaken", "usernameTaken", "alreadyRegistered"
  */
 export function mapRegistrationError(error: any): string {
-  // Handle null/undefined
   if (!error) {
     return AUTH_MESSAGES.REGISTRATION_FAILED;
   }
   
-  // Handle enum string values (current backend interface)
+  // Handle string enum values from backend
   if (typeof error === 'string') {
     switch (error) {
+      case 'emailTaken':
+      case 'usernameTaken':
+        return AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;
       case 'alreadyRegistered':
         return AUTH_MESSAGES.ALREADY_REGISTERED;
-      case 'usernameTaken':
-      case 'emailTaken':
-        return AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;
       default:
         return AUTH_MESSAGES.REGISTRATION_FAILED;
     }
   }
   
-  // Handle object-shaped variants (legacy or alternative format)
+  // Handle object-style error (legacy support)
   if (typeof error === 'object') {
+    if ('emailTaken' in error || 'usernameTaken' in error) {
+      return AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;
+    }
     if ('alreadyRegistered' in error) {
       return AUTH_MESSAGES.ALREADY_REGISTERED;
     }
-    if ('usernameTaken' in error || 'emailTaken' in error) {
-      return AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;
-    }
   }
   
-  // Fallback for unknown error structure
   return AUTH_MESSAGES.REGISTRATION_FAILED;
 }

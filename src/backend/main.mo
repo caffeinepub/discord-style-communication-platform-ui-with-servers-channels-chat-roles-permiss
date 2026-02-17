@@ -29,6 +29,7 @@ actor {
     accountId : ?Text;
     expiresAt : Int;
     email : Text;
+    principal : Principal;
   };
 
   public type UserProfile = {
@@ -56,12 +57,21 @@ actor {
 
   let userProfiles = Map.empty<Principal, UserProfile>();
   let sessionStore = Map.empty<Text, Session>();
-  let principalToToken = Map.empty<Principal, Text>();
   let credentialsByUsername = Map.empty<Text, Credentials>();
   let credentialsByEmail = Map.empty<Text, Credentials>();
   let credentialsByPrincipal = Map.empty<Principal, Credentials>();
 
+  /// Converts everything to lowercase and trims spaces.
+  func sanitizeText(input : Text) : Text {
+    let lower = input.toLower();
+    let trimmedBegin = lower.trimStart(#char(' '));
+    trimmedBegin.trimEnd(#char(' '));
+  };
+
   public shared ({ caller }) func register(payload : RegisterPayload) : async ?RegistrationError {
+    let sanitizedUsername = sanitizeText(payload.username);
+    let sanitizedEmail = sanitizeText(payload.email);
+
     // Check if the caller principal has stored credentials (not just a role check)
     if (credentialsByPrincipal.containsKey(caller)) {
       // Caller principal is already registered
@@ -69,27 +79,27 @@ actor {
     };
 
     // Check uniqueness by username
-    if (credentialsByUsername.containsKey(payload.username)) {
+    if (credentialsByUsername.containsKey(sanitizedUsername)) {
       return ?#usernameTaken;
     };
 
-    // Check uniqueness by email
-    if (credentialsByEmail.containsKey(payload.email)) {
+    // Check uniqueness by email (case-insensitive)
+    if (credentialsByEmail.containsKey(sanitizedEmail)) {
       return ?#emailTaken;
     };
 
     let accountId = payload.username.concat("Account");
     let credentials : Credentials = {
-      username = payload.username;
-      email = payload.email;
+      username = sanitizedUsername;
+      email = sanitizedEmail;
       password = payload.password;
       accountId;
       principal = caller;
     };
 
     // Store credentials by username and email separately
-    credentialsByUsername.add(payload.username, credentials);
-    credentialsByEmail.add(payload.email, credentials);
+    credentialsByUsername.add(sanitizedUsername, credentials);
+    credentialsByEmail.add(sanitizedEmail, credentials);
 
     // Store credentials indexed by principal
     credentialsByPrincipal.add(caller, credentials);
@@ -97,21 +107,9 @@ actor {
     // Assign user role to the newly registered principal
     AccessControl.assignRole(accessControlState, caller, caller, #user);
 
-    // Create session token
-    let token = caller.toText().concat("_").concat(Time.now().toText());
-    let session : Session = {
-      token;
-      accountId = ?accountId;
-      expiresAt = Time.now() + 86_400_000_000_000;
-      email = payload.email;
-    };
-
-    sessionStore.add(token, session);
-    principalToToken.add(caller, token);
-
     // Create initial user profile
     let initialProfile : UserProfile = {
-      name = payload.username;
+      name = sanitizedUsername;
       aboutMe = "";
       customStatus = "";
       avatarUrl = "";
@@ -120,14 +118,16 @@ actor {
     };
     userProfiles.add(caller, initialProfile);
 
-    null // Success - no error
+    null; // Success - no error.
   };
 
   public shared ({ caller }) func login(payload : LoginPayload) : async ?Session {
+    let sanitizedIdentifier = sanitizeText(payload.loginIdentifier);
+
     // Try to find credentials by username, then by email
-    let credentialsOpt = switch (credentialsByUsername.get(payload.loginIdentifier)) {
+    let credentialsOpt = switch (credentialsByUsername.get(sanitizedIdentifier)) {
       case (?creds) { ?creds };
-      case (null) { credentialsByEmail.get(payload.loginIdentifier) };
+      case (null) { credentialsByEmail.get(sanitizedIdentifier) };
     };
 
     switch (credentialsOpt) {
@@ -137,14 +137,9 @@ actor {
           return null;
         };
 
-        // Verify the caller matches the registered principal
+        // Verify the caller matches the stored principal for these credentials
         if (caller != credentials.principal) {
           return null;
-        };
-
-        // Ensure the user has the correct role (in case it was lost)
-        if (AccessControl.getUserRole(accessControlState, caller) == #guest) {
-          AccessControl.assignRole(accessControlState, caller, caller, #user);
         };
 
         // Create new session token
@@ -154,31 +149,24 @@ actor {
           accountId = ?credentials.accountId;
           expiresAt = Time.now() + 86_400_000_000_000;
           email = credentials.email;
+          principal = caller; // Store the owner of the session
         };
 
         sessionStore.add(token, session);
-        principalToToken.add(caller, token);
         ?session;
       };
     };
   };
 
   public query ({ caller }) func validateSession(token : Text) : async ?Session {
-    // Verify that the caller owns this token
-    switch (principalToToken.get(caller)) {
+    switch (sessionStore.get(token)) {
       case (null) { null };
-      case (?callerToken) {
-        if (callerToken != token) {
-          // Caller doesn't own this token
+      case (?session) {
+        if (caller != session.principal) {
+          // Only the original session owner can validate this session
           return null;
         };
-
-        switch (sessionStore.get(token)) {
-          case (null) { null };
-          case (?session) {
-            if (Time.now() > session.expiresAt) { null } else { ?session };
-          };
-        };
+        if (Time.now() > session.expiresAt) { null } else { ?session };
       };
     };
   };

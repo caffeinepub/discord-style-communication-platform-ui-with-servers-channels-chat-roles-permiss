@@ -4,13 +4,13 @@
   "summary": "New project",
   "architectural_notes": [],
   "known_issues": [
-    "Registration flow incorrectly reports \"This account is already registered\" for emails/users that are not actually registered (false-positive duplicate account error)."
+    "User reports registration flow failing with message: \"Registration failed. Please try again.\""
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-update-frontend-registration-error-messaging-to-avoid-telling-users-an-account-exists-when-the-error-is-actually-caused-by-being-signed-in-not-being-a-guest-use-clear-english-user-facing-text-that-matches-the-real-cause-and-remediation-steps",
-      "title": "Update frontend registration error messaging to avoid telling users an account exists when the error is actually caused by being signed in / not being a guest. Use clear English user-facing text that matches the real cause and remediation steps.",
+      "id": "feature-improve-frontend-error-reporting-for-the-registration-flow-so-that-when-backend-registration-fails-the-ui-shows-the-specific-mapped-allowlisted-error-message-e-g-already-registered-username-email-taken-rather-than-the-generic-registration-failed-please-try-again-whenever-possible",
+      "title": "Improve frontend error reporting for the registration flow so that when backend registration fails, the UI shows the specific mapped/allowlisted error message (e.g., already registered, username/email taken) rather than the generic 'Registration failed. Please try again.' whenever possible.",
       "reqIds": [
         "REQ-4"
       ],
@@ -20,7 +20,7 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Update the backend registration logic so that a user is only blocked from registering when the caller principal already has stored credentials (i.e., has actually registered before), rather than blocking purely based on the caller’s current AccessControl role being non-guest.",
+      "summary": "Fix backend registration persistence so that creating an account actually stores credentials, session tokens, and the initial user profile in canister state (i.e., all Map/collection updates performed during register/login/saveCallerUserProfile must be truly mutating/persisted, not discarded).",
       "reqIds": [
         "REQ-1"
       ],
@@ -28,7 +28,7 @@
     },
     {
       "id": "AR-2",
-      "summary": "Add a backend index for credentials by principal and keep it in sync on registration so the backend can reliably determine whether the caller principal has previously registered.",
+      "summary": "Make backend registration/login input normalization and uniqueness checks consistent and robust: sanitize (trim + lowercase) username/email/loginIdentifier before checking and storing, and ensure uniqueness checks and lookups always use the sanitized values.",
       "reqIds": [
         "REQ-2"
       ],
@@ -36,7 +36,7 @@
     },
     {
       "id": "AR-3",
-      "summary": "If the backend state schema is changed to add a principal-indexed credentials store, implement a conditional upgrade migration that backfills the principal index from existing stored credentials.",
+      "summary": "Fix backend session creation/ownership bookkeeping so that validateSession accepts the token produced by a successful login for the same caller until it expires (no false invalidation due to token ownership mismatches).",
       "reqIds": [
         "REQ-3"
       ],

@@ -26,6 +26,7 @@ export const LoginPayload = IDL.Record({
   'loginIdentifier' : IDL.Text,
 });
 export const Session = IDL.Record({
+  'principal' : IDL.Principal,
   'token' : IDL.Text,
   'expiresAt' : IDL.Int,
   'accountId' : IDL.Opt(IDL.Text),
@@ -80,6 +81,7 @@ export const idlFactory = ({ IDL }) => {
     'loginIdentifier' : IDL.Text,
   });
   const Session = IDL.Record({
+    'principal' : IDL.Principal,
     'token' : IDL.Text,
     'expiresAt' : IDL.Int,
     'accountId' : IDL.Opt(IDL.Text),

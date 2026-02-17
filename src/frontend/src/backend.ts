@@ -90,6 +90,7 @@ export class ExternalBlob {
     }
 }
 export interface Session {
+    principal: Principal;
     token: string;
     expiresAt: bigint;
     accountId?: string;
@@ -300,17 +301,20 @@ function from_candid_opt_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
     return value.length === 0 ? null : value[0];
 }
 function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    principal: Principal;
     token: string;
     expiresAt: bigint;
     accountId: [] | [string];
     email: string;
 }): {
+    principal: Principal;
     token: string;
     expiresAt: bigint;
     accountId?: string;
     email: string;
 } {
     return {
+        principal: value.principal,
         token: value.token,
         expiresAt: value.expiresAt,
         accountId: record_opt_to_undefined(from_candid_opt_n9(_uploadFile, _downloadFile, value.accountId)),

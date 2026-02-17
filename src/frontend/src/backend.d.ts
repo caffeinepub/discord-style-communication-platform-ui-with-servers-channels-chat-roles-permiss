@@ -8,6 +8,7 @@ export interface None {
 }
 export type Option<T> = Some<T> | None;
 export interface Session {
+    principal: Principal;
     token: string;
     expiresAt: bigint;
     accountId?: string;

@@ -1,101 +1,95 @@
 {
   "kind": "build_request",
-  "title": "Fix false-positive “already registered” error during sign up",
+  "title": "Fix failing user registration and session creation",
   "projectName": "Caffeine Chat",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Update the backend registration logic so that a user is only blocked from registering when the caller principal already has stored credentials (i.e., has actually registered before), rather than blocking purely based on the caller’s current AccessControl role being non-guest.",
+      "text": "Fix backend registration persistence so that creating an account actually stores credentials, session tokens, and the initial user profile in canister state (i.e., all Map/collection updates performed during register/login/saveCallerUserProfile must be truly mutating/persisted, not discarded).",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "recent-messages-5"
         ],
         "quotes": [
-          "now its saying This account is already registered. Please sign in instead. even though there is no account registered for that."
+          "Registration failed. Please try again. please just fix it"
         ]
       },
       "acceptanceCriteria": [
-        "When a principal that has no stored credentials attempts to register, the backend does not return the notAGuest error.",
-        "When a principal that already has stored credentials attempts to register again, the backend returns a deterministic error indicating the account is already registered (existing notAGuest or a more specific variant).",
-        "Username and email uniqueness checks still work and return the correct error variants when taken."
+        "Creating a new account with a never-before-used Internet Identity succeeds (backend register returns null) and the user is able to proceed to an authenticated state without seeing 'Registration failed. Please try again.'",
+        "Immediately after successful registration, a login using the same Internet Identity + the chosen username/email + password returns a non-null Session with a non-empty token",
+        "After registration, calling getCallerUserProfile succeeds for the same caller and returns a non-null profile with name set to the sanitized username",
+        "After a canister upgrade/redeploy during development, registration still works (no runtime traps due to collection/mutation issues)"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add a backend index for credentials by principal and keep it in sync on registration so the backend can reliably determine whether the caller principal has previously registered.",
+      "text": "Make backend registration/login input normalization and uniqueness checks consistent and robust: sanitize (trim + lowercase) username/email/loginIdentifier before checking and storing, and ensure uniqueness checks and lookups always use the sanitized values.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "recent-messages-5"
         ],
         "quotes": [
-          "now its saying This account is already registered. Please sign in instead. even though there is no account registered for that."
+          "Registration failed. Please try again. please just fix it"
         ]
       },
       "acceptanceCriteria": [
-        "After a successful registration, the backend can look up the caller principal and find their credentials via the principal index.",
-        "The principal index remains consistent with the username- and email-indexed credential stores for newly created registrations."
+        "Registering with an email that differs only by case or surrounding spaces is rejected with the email-taken error variant",
+        "Registering with a username that differs only by case or surrounding spaces is rejected with the username-taken error variant",
+        "Logging in with email/username that differs only by case or surrounding spaces still succeeds (when the correct password + Internet Identity are used)"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "If the backend state schema is changed to add a principal-indexed credentials store, implement a conditional upgrade migration that backfills the principal index from existing stored credentials.",
+      "text": "Fix backend session creation/ownership bookkeeping so that validateSession accepts the token produced by a successful login for the same caller until it expires (no false invalidation due to token ownership mismatches).",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "recent-messages-5"
         ],
         "quotes": [
-          "now its saying This account is already registered. Please sign in instead. even though there is no account registered for that."
+          "Registration failed. Please try again. please just fix it"
         ]
       },
       "acceptanceCriteria": [
-        "Upgrading an existing deployment that already has registered users results in the principal index being populated for those users.",
-        "Upgrading a fresh deployment (no prior credentials) does not trap and results in an empty principal index."
+        "After login returns a Session, calling validateSession(session.token) as the same caller returns that same session (non-null)",
+        "validateSession returns null for expired sessions and for tokens not owned by the caller",
+        "A newly registered user can complete the current frontend flow: register -> post-registration login -> session saved -> session validates on refresh"
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Update frontend registration error messaging to avoid telling users an account exists when the error is actually caused by being signed in / not being a guest. Use clear English user-facing text that matches the real cause and remediation steps.",
+      "text": "Improve frontend error reporting for the registration flow so that when backend registration fails, the UI shows the specific mapped/allowlisted error message (e.g., already registered, username/email taken) rather than the generic 'Registration failed. Please try again.' whenever possible.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "recent-messages-5"
         ],
         "quotes": [
-          "now its saying This account is already registered. Please sign in instead. even though there is no account registered for that."
+          "Registration failed. Please try again. please just fix it"
         ]
       },
       "acceptanceCriteria": [
-        "If the backend returns the notAGuest registration error, the UI shows an English message that indicates the user is already signed in (or otherwise not eligible to register) and what to do next.",
-        "No user-facing text claims an account is registered unless the backend condition truly reflects an existing registration for that principal."
+        "If the backend returns #alreadyRegistered, the Sign Up tab shows the exact allowlisted message from AUTH_MESSAGES.ALREADY_REGISTERED",
+        "If the backend returns #usernameTaken or #emailTaken, the Sign Up tab shows the exact allowlisted message from AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN",
+        "If the backend is not ready/unreachable, the UI shows the existing allowlisted connection message(s) rather than a generic registration failure"
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor with all logic in backend/main.mo.",
-    "Only create/modify backend/migration.mo if needed for a state upgrade (conditional migration policy).",
-    "Do not edit any files under frontend/src/components/ui or any path listed in frontend.immutablePaths."
+    "Keep all backend logic in the existing single Motoko actor (backend/main.mo); do not introduce additional backend services.",
+    "Use English for all user-facing text.",
+    "Do not edit files under frontend/src/components/ui or any other immutable paths listed in SYSTEM_CONTEXT."
   ],
   "nonGoals": [
-    "Implementing password reset, account recovery, or email verification.",
-    "Adding third-party authentication beyond Internet Identity.",
-    "Adding an external database or off-chain storage."
+    "Adding third-party authentication providers (only Internet Identity is in scope).",
+    "Adding an external database or migrating to a different backend technology.",
+    "Redesigning unrelated parts of the chat/server/channel features."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }

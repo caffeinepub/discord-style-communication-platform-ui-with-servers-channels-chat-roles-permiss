@@ -1,12 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the false-positive “already registered” error during sign up by ensuring registration is blocked only when the caller principal truly has existing stored credentials, and improve the related frontend error message.
+**Goal:** Fix registration and login so accounts persist correctly, sessions validate reliably, and the UI shows specific registration errors instead of a generic failure.
 
 **Planned changes:**
-- Update backend registration checks to determine “already registered” based on whether the caller principal has stored credentials, not on the caller’s current AccessControl role being non-guest.
-- Add and maintain a backend index of credentials keyed by principal to reliably detect prior registrations, keeping it consistent with existing username/email credential indexes.
-- If adding the new principal-indexed store changes backend state, implement a conditional upgrade migration that backfills the principal index from existing credentials (and safely no-ops on fresh deployments).
-- Update frontend registration error messaging so the “not a guest / already signed in” condition shows accurate, clear instructions and does not imply an account exists unless it truly does.
+- Fix backend persistence during register/login/saveCallerUserProfile so all state mutations (credentials, session tokens, initial user profile) are actually stored in canister state and survive development upgrades.
+- Normalize (trim + lowercase) username/email/loginIdentifier consistently for storage, lookups, and uniqueness checks; ensure register rejects case/whitespace variants and login accepts them.
+- Correct backend session ownership/bookkeeping so validateSession accepts the token returned by login for the same caller until expiration and rejects expired or non-owned tokens.
+- Improve frontend registration error mapping to display allowlisted, specific messages for already-registered, username/email taken, and connectivity/unavailable backend cases.
 
-**User-visible outcome:** Users who have not registered can sign up without seeing an incorrect “already registered” message, and users who are already signed in or already registered see an accurate, actionable registration error message.
+**User-visible outcome:** Users can successfully sign up and immediately log in, remain authenticated after refresh with a valid session, and see clear, specific error messages when registration cannot proceed.

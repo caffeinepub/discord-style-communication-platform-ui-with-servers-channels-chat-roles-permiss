@@ -2,36 +2,32 @@ import Map "mo:core/Map";
 import Principal "mo:core/Principal";
 
 module {
-  type Credentials = {
-    username : Text;
+  type OldSession = {
+    token : Text;
+    accountId : ?Text;
+    expiresAt : Int;
     email : Text;
-    password : Text;
-    accountId : Text;
-    principal : Principal;
   };
 
   type OldActor = {
-    credentialsByUsername : Map.Map<Text, Credentials>;
-    credentialsByEmail : Map.Map<Text, Credentials>;
+    sessionStore : Map.Map<Text, OldSession>;
+    principalToToken : Map.Map<Principal, Text>;
+  };
+
+  type NewSession = {
+    token : Text;
+    accountId : ?Text;
+    expiresAt : Int;
+    email : Text;
+    principal : Principal;
   };
 
   type NewActor = {
-    credentialsByUsername : Map.Map<Text, Credentials>;
-    credentialsByEmail : Map.Map<Text, Credentials>;
-    credentialsByPrincipal : Map.Map<Principal, Credentials>;
+    sessionStore : Map.Map<Text, NewSession>;
   };
 
   public func run(old : OldActor) : NewActor {
-    let credentialsByPrincipal = Map.empty<Principal, Credentials>();
-
-    // Populate the new principal index from credentialsByUsername
-    for ((_, credentials) in old.credentialsByUsername.entries()) {
-      credentialsByPrincipal.add(credentials.principal, credentials);
-    };
-
-    {
-      old with
-      credentialsByPrincipal
-    };
+    let newSessionStore = Map.empty<Text, NewSession>();
+    { sessionStore = newSessionStore };
   };
 };

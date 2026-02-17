@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { sessionStorage } from './sessionStorage';
 import { useBackendConnection } from '../hooks/useBackendConnection';
-import { AUTH_MESSAGES, mapRegistrationError, sanitizeAuthMessage } from './authMessages';
+import { AUTH_MESSAGES, mapRegistrationError, sanitizeAuthMessageForFlow } from './authMessages';
 import type { RegisterPayload, LoginPayload, Session, RegistrationError } from '../backend';
 
 export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated' | 'error';
@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { actor, isReady, isError: connectionError, state: connectionState } = useBackendConnection();
+  const { actor, isReady, isError: connectionError } = useBackendConnection();
   const initializationAttempted = useRef(false);
   const initializationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('Backend actor missing validateSession method');
             sessionStorage.clearWithReason('Backend actor incompatible - missing validateSession');
             setAuthStatus('unauthenticated');
-            setError('Backend connection error. Please refresh the page.');
+            setError(sanitizeAuthMessageForFlow('Backend connection error', 'connection'));
             return;
           }
 
@@ -173,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Validate response structure
       if (!response.token) {
-        const errorMsg = 'Invalid login response from backend. Please try again.';
+        const errorMsg = sanitizeAuthMessageForFlow('Invalid login response from backend', 'signin');
         setError(errorMsg);
         setAuthStatus('unauthenticated');
         throw new Error(errorMsg);
@@ -182,13 +182,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Convert bigint expiresAt to number for storage
       const sessionData = {
         token: response.token,
-        accountId: response.accountId || '',
+        accountId: response.accountId, // Pass through as-is (optional)
         expiresAt: response.expiresAt as any, // Let sessionStorage handle bigint conversion
       };
       
       sessionStorage.save(sessionData);
       setSessionToken(sessionData.token);
-      setAccountId(sessionData.accountId);
+      setAccountId(sessionData.accountId || null);
       setAuthStatus('authenticated');
       setError(null);
     } catch (err: any) {
@@ -200,8 +200,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         errorMessage = AUTH_MESSAGES.INVALID_CREDENTIALS;
       }
       
-      // Sanitize to ensure only allowlisted messages
-      errorMessage = sanitizeAuthMessage(errorMessage);
+      // Sanitize to ensure only allowlisted messages (sign-in flow)
+      errorMessage = sanitizeAuthMessageForFlow(errorMessage, 'signin');
       
       setError(errorMessage);
       setAuthStatus('unauthenticated');
@@ -212,27 +212,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(async (username: string, email: string, password: string) => {
     setError(null);
     
-    if (!actor) {
+    // Check backend readiness before attempting registration
+    if (!actor || !isReady) {
       const errorMsg = AUTH_MESSAGES.BACKEND_NOT_READY;
+      console.error('Registration attempt failed: backend not ready', { 
+        step: 'backend_ready_check',
+        actor: !!actor, 
+        isReady 
+      });
+      setError(errorMsg);
+      setAuthStatus('unauthenticated');
+      throw new Error(errorMsg);
+    }
+
+    // Defensive check: ensure register exists
+    if (typeof actor.register !== 'function') {
+      const errorMsg = AUTH_MESSAGES.REGISTRATION_FAILED;
+      console.error('Registration attempt failed: backend register method not available', {
+        step: 'register_method_check'
+      });
       setError(errorMsg);
       setAuthStatus('unauthenticated');
       throw new Error(errorMsg);
     }
 
     try {
-      // Defensive check: ensure register exists
-      if (typeof actor.register !== 'function') {
-        const errorMsg = AUTH_MESSAGES.REGISTRATION_FAILED;
-        setError(errorMsg);
-        setAuthStatus('unauthenticated');
-        throw new Error(errorMsg);
-      }
-
       const payload: RegisterPayload = {
         username,
         email,
         password,
       };
+      
+      console.log('Attempting registration...', { 
+        step: 'register_call', 
+        username, 
+        email,
+        actorReady: !!actor,
+        isReady
+      });
       
       // Backend returns RegistrationError | null
       // null = success, error object = failure with reason
@@ -241,30 +258,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (errorResponse !== null) {
         // Registration failed - map the error to a user-friendly message
         const errorMsg = mapRegistrationError(errorResponse);
+        console.error('Registration failed:', { 
+          step: 'register_call', 
+          error: errorResponse, 
+          mappedMessage: errorMsg 
+        });
         setError(errorMsg);
         setAuthStatus('unauthenticated');
         throw new Error(errorMsg);
       }
       
+      console.log('Registration succeeded, attempting post-registration login...', { 
+        step: 'post_register_login_start',
+        actorReady: !!actor,
+        isReady
+      });
+      
       // Registration succeeded - now log in to get a session
-      // The backend creates the user but doesn't return a session from register
-      // We need to call login to get the session token
-      await login(username, password);
+      try {
+        // Call login - this will handle session creation and state updates
+        await login(username, password);
+        console.log('Post-registration login succeeded', { 
+          step: 'post_register_login_success' 
+        });
+        // Login succeeded - state is now authenticated, no need to set error
+      } catch (loginErr: any) {
+        // Post-registration login failed - this is a sign-in error, not a registration error
+        console.error('Post-registration login failed:', { 
+          step: 'post_register_login_error', 
+          error: loginErr.message || loginErr 
+        });
+        
+        // Sanitize the error for sign-in flow (not registration flow)
+        const errorMsg = sanitizeAuthMessageForFlow(
+          loginErr.message || AUTH_MESSAGES.LOGIN_FAILED, 
+          'signin'
+        );
+        setError(errorMsg);
+        setAuthStatus('unauthenticated');
+        throw new Error(errorMsg);
+      }
       
     } catch (err: any) {
-      // Sanitize error message to ensure only allowlisted messages reach the UI
-      let errorMessage = err.message || AUTH_MESSAGES.REGISTRATION_FAILED;
+      // Determine if this is a registration error or a login error
+      const errorMessage = err.message || AUTH_MESSAGES.REGISTRATION_FAILED;
       
-      // Strip any multi-line content or unexpected text
-      // Only keep the first line if it's an allowlisted message
-      const firstLine = errorMessage.split('\n')[0].trim();
-      errorMessage = sanitizeAuthMessage(firstLine);
+      // If the error is already an allowlisted message, use it as-is
+      // Otherwise, categorize based on the error content
+      let flow: 'signin' | 'signup' = 'signup';
       
-      setError(errorMessage);
-      setAuthStatus('unauthenticated');
-      throw new Error(errorMessage);
+      // Check if this is a sign-in related error
+      if (
+        errorMessage.includes('Sign in') ||
+        errorMessage.includes('login') ||
+        errorMessage === AUTH_MESSAGES.INVALID_CREDENTIALS ||
+        errorMessage === AUTH_MESSAGES.LOGIN_FAILED
+      ) {
+        flow = 'signin';
+      }
+      
+      // Sanitize for the appropriate flow
+      const sanitizedMessage = sanitizeAuthMessageForFlow(errorMessage, flow);
+      
+      // Only set error if it's not already set (avoid overwriting more specific errors)
+      if (!error) {
+        setError(sanitizedMessage);
+      }
+      
+      // Ensure we're in unauthenticated state
+      if (authStatus !== 'unauthenticated') {
+        setAuthStatus('unauthenticated');
+      }
+      
+      throw new Error(sanitizedMessage);
     }
-  }, [actor, login]);
+  }, [actor, isReady, login, error, authStatus]);
 
   const logout = useCallback(async () => {
     sessionStorage.clear();

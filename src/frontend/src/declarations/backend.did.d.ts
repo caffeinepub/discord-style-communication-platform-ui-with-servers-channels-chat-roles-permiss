@@ -23,6 +23,7 @@ export type RegistrationError = { 'emailTaken' : null } |
   { 'alreadyRegistered' : null } |
   { 'usernameTaken' : null };
 export interface Session {
+  'principal' : Principal,
   'token' : string,
   'expiresAt' : bigint,
   'accountId' : [] | [string],

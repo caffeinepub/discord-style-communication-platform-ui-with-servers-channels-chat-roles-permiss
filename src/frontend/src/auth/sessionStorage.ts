@@ -2,7 +2,7 @@
 
 interface SessionData {
   token: string;
-  accountId: string;
+  accountId?: string; // Optional to match backend Session type
   expiresAt: number; // milliseconds since epoch
 }
 
@@ -11,9 +11,9 @@ const SESSION_KEY = 'app_session';
 export const sessionStorage = {
   save(data: SessionData): void {
     try {
-      // Validate data before saving
-      if (!data.token || !data.accountId) {
-        console.error('Invalid session data:', data);
+      // Validate data before saving - only token is required
+      if (!data.token) {
+        console.error('Invalid session data: missing token', data);
         return;
       }
       
@@ -36,15 +36,19 @@ export const sessionStorage = {
         return;
       }
       
-      const normalizedData = {
+      const normalizedData: SessionData = {
         token: data.token,
-        accountId: data.accountId,
         expiresAt: expiresAtMs,
       };
       
+      // Only include accountId if it's provided and non-empty
+      if (data.accountId) {
+        normalizedData.accountId = data.accountId;
+      }
+      
       console.log('Saving session:', {
         token: normalizedData.token.substring(0, 20) + '...',
-        accountId: normalizedData.accountId,
+        accountId: normalizedData.accountId || '(none)',
         expiresAt: new Date(normalizedData.expiresAt).toISOString(),
       });
       
@@ -61,9 +65,9 @@ export const sessionStorage = {
 
       const data: SessionData = JSON.parse(stored);
       
-      // Validate parsed data structure
-      if (!data.token || !data.accountId) {
-        console.error('Invalid stored session data, clearing');
+      // Validate parsed data structure - only token is required
+      if (!data.token) {
+        console.error('Invalid stored session data: missing token, clearing');
         this.clear();
         return null;
       }
@@ -77,7 +81,7 @@ export const sessionStorage = {
 
       console.log('Loaded session:', {
         token: data.token.substring(0, 20) + '...',
-        accountId: data.accountId,
+        accountId: data.accountId || '(none)',
         expiresAt: new Date(data.expiresAt).toISOString(),
       });
 

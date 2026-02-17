@@ -1,28 +1,44 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T01:16:31.484Z",
-  "summary": "Backend registration now checks a new credentials-by-principal index and returns an #alreadyRegistered variant when the caller principal already has credentials; a migration module backfills that index from existing credentials. Frontend adds new auth messaging/mapping utilities, but the specific REQ-4 requirement about handling the backend’s notAGuest error is not evidenced in the diff.",
+  "generatedAt": "2026-02-17T03:08:43.876Z",
+  "summary": "Backend registration normalization is partially addressed (sanitize + consistent lookups). However, the diff does not convincingly implement persistent/mutating state updates for registration/session/profile, and session ownership validation changes (REQ-3) are not evidenced due to truncation. Frontend adds allowlisted message mapping utilities, likely supporting improved registration error reporting, but the actual UI wiring is only indirectly evidenced via a file summary.",
   "missing_requirements": [
     {
-      "id": "REQ-4",
-      "requirement": "If the backend returns the notAGuest registration error, the UI shows an English message that indicates the user is already signed in (or otherwise not eligible to register) and what to do next; and no user-facing text claims an account is registered unless the backend condition truly reflects an existing registration for that principal.",
-      "reason": "The diff shows frontend mapping for an \"alreadyRegistered\" backend error, but there is no evidence of handling/messaging for a \"notAGuest\" registration error variant as explicitly required.",
+      "id": "REQ-1",
+      "requirement": "Fix backend registration persistence so that creating an account actually stores credentials, session tokens, and the initial user profile in canister state (i.e., all Map/collection updates performed during register/login/saveCallerUserProfile must be truly mutating/persisted, not discarded).",
+      "reason": "In backend/main.mo, the collections are defined as `let ... = Map.empty(...)` and updates are done via `.add(...)` calls without any visible reassignment to a `var` or other persistence mechanism. With many Motoko Map APIs being functional/immutable, this pattern is consistent with non-persisted updates; the diff does not show the corrected persistent mutation approach. Also, session token storage and any saveCallerUserProfile changes are not shown.",
       "evidence": [
-        "frontend/src/auth/authMessages.ts"
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "Fix backend session creation/ownership bookkeeping so that validateSession accepts the token produced by a successful login for the same caller until it expires (no false invalidation due to token ownership mismatches).",
+      "reason": "The login implementation is truncated before showing how sessions/tokens are created/stored and whether ownership binding is enforced correctly. No validateSession implementation/changes are visible in the provided diff summary.",
+      "evidence": [
+        "backend/main.mo"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Allowlisted auth message sanitization (sanitizeAuthMessage), error-flow categorization (getErrorFlow), and generic login/session/connection message constants beyond the registration messaging change.",
-      "reason": "BuildRequest REQ-4 is limited to updating registration error messaging to avoid misleading \"account exists\" text for notAGuest scenarios; the added allowlisting/sanitization and broader auth-flow categorization are not requested.",
+      "description": "Added a backend migration module that appears to discard/empty the session store during migration.",
+      "reason": "The BuildRequest asks to avoid runtime traps on upgrade and keep logic in the single actor, but does not request introducing a separate migration module nor does it request resetting session state; the migration shown returns an empty sessionStore regardless of prior contents.",
+      "evidence": [
+        "backend/migration.mo",
+        "backend/main.mo"
+      ]
+    },
+    {
+      "description": "Introduced extensive frontend auth message allowlisting utilities (flow categorization and generic sanitization) beyond specifically mapping registration errors to allowlisted messages.",
+      "reason": "REQ-4 specifically targets registration-flow error reporting (alreadyRegistered/usernameTaken/emailTaken/backend-not-ready). The added utilities cover broader sign-in/connection flow categorization and generic sanitization behavior not explicitly requested.",
       "evidence": [
         "frontend/src/auth/authMessages.ts"
       ]
     }
   ],
-  "confidence": 0.64,
+  "confidence": 0.62,
   "changed_files": [
     "backend/main.mo",
     "backend/migration.mo",
