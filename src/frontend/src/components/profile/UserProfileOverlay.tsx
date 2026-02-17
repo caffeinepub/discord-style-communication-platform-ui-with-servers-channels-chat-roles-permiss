@@ -1,222 +1,158 @@
-import { useState } from 'react';
-import { useNavigation } from '@/state/navigation';
-import { useGetUserProfile, useGetUsernameForUser, useGetServerMembers, useGetRoles, useIsCallerAdmin, useGetServer } from '@/hooks/useQueries';
-import { useInternetIdentity } from '@/hooks/useInternetIdentity';
-import { Principal } from '@dfinity/principal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Settings } from 'lucide-react';
-import { sanitizeRoleColor } from '@/utils/roleColor';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNavigation } from '../../state/navigation';
+import { useGetUsernameForUser, useGetUserProfileByUsername, useGetRoles, useIsCallerAdmin } from '../../hooks/useQueries';
+import { useState } from 'react';
 import RoleAssignmentDialog from './RoleAssignmentDialog';
-import type { Role } from '@/types/backend-extended';
+import { sanitizeRoleColor } from '../../utils/roleColor';
+import type { Principal } from '@dfinity/principal';
 
-export default function UserProfileOverlay() {
-  const { selectedMemberId, selectedServerId, setSelectedMemberId } = useNavigation();
-  const { identity } = useInternetIdentity();
+interface UserProfileOverlayProps {
+  userId: Principal;
+  serverId?: bigint | null;
+}
+
+export default function UserProfileOverlay({ userId, serverId }: UserProfileOverlayProps) {
+  const { setSelectedMemberId } = useNavigation();
+  const { data: username } = useGetUsernameForUser(userId);
+  const { data: profile, isLoading: profileLoading } = useGetUserProfileByUsername(username || null);
+  const { data: roles = [] } = useGetRoles(serverId || null);
+  const { data: isAdmin = false } = useIsCallerAdmin();
   const [showRoleDialog, setShowRoleDialog] = useState(false);
-
-  const userId = selectedMemberId ? Principal.fromText(selectedMemberId) : null;
-  const { data: profile, isLoading: profileLoading } = useGetUserProfile(userId);
-  const { data: username, isLoading: usernameLoading } = useGetUsernameForUser(userId);
-  
-  // Server context data
-  const { data: server } = useGetServer(selectedServerId);
-  const { data: members = [] } = useGetServerMembers(selectedServerId);
-  const { data: roles = [] } = useGetRoles(selectedServerId);
-  const { data: isCallerAdmin = false } = useIsCallerAdmin();
-
-  const isOpen = !!selectedMemberId;
 
   const handleClose = () => {
     setSelectedMemberId(null);
-    setShowRoleDialog(false);
   };
 
-  // Generate consistent avatar and banner
-  const avatarIndex = selectedMemberId
-    ? (parseInt(selectedMemberId.slice(-2), 16) % 6) + 1
-    : 1;
+  const avatarIndex = username ? (username.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 6) + 1 : 1;
   const defaultAvatar = `/assets/generated/avatar-default-0${avatarIndex}.dim_256x256.png`;
   const defaultBanner = '/assets/generated/profile-banner-default.dim_1200x400.png';
 
-  const avatarUrl = profile?.avatarUrl || defaultAvatar;
-  const bannerUrl = profile?.bannerUrl || defaultBanner;
-  const displayName = profile?.name || 'User';
-  const aboutMe = profile?.aboutMe || '';
-  const customStatus = profile?.customStatus || '';
-  const badges = profile?.badges || [];
+  // Get user's roles in this server (if serverId is provided)
+  const userRoles = serverId ? roles.filter(role => {
+    // This would need backend support to get user's roles
+    // For now, return empty array
+    return false;
+  }) : [];
 
-  const isLoading = profileLoading || usernameLoading;
+  const canManageRoles = isAdmin && serverId;
 
-  // Get member's roles in this server
-  const member = members.find(m => m.userId.toString() === selectedMemberId);
-  const memberRoleIds = member?.roles || [];
-  const memberRoles: Role[] = memberRoleIds
-    .map(roleId => roles.find(r => r.id === roleId))
-    .filter((r): r is Role => r !== undefined);
+  return (
+    <>
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50" onClick={handleClose} />
+      <div className="fixed inset-y-0 right-0 w-full max-w-md bg-background border-l border-border z-50 flex flex-col">
+        <div className="relative h-32 bg-gradient-to-br from-primary/20 to-primary/5">
+          <img
+            src={profile?.bannerUrl || defaultBanner}
+            alt="Profile banner"
+            className="w-full h-full object-cover"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 bg-background/80 hover:bg-background"
+            onClick={handleClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
 
-  // Check if current user can manage roles
-  const isServerOwner = server && identity ? server.owner.toString() === identity.getPrincipal().toString() : false;
-  const canManageRoles = selectedServerId !== null && (isCallerAdmin || isServerOwner);
-  const isViewingSelf = identity && selectedMemberId === identity.getPrincipal().toString();
-
-  const content = (
-    <div className="flex flex-col">
-      {/* Banner */}
-      <div className="relative w-full h-32 bg-gradient-to-br from-primary/20 to-accent/20 overflow-hidden">
-        <img
-          src={bannerUrl}
-          alt="Profile banner"
-          className="w-full h-full object-cover"
-        />
-      </div>
-
-      {/* Profile Content */}
-      <div className="px-4 pb-4">
-        {/* Avatar overlapping banner */}
-        <div className="relative -mt-12 mb-4">
-          <Avatar className="h-20 w-20 border-4 border-background">
-            <AvatarImage src={avatarUrl} />
-            <AvatarFallback className="text-2xl">{displayName.charAt(0).toUpperCase()}</AvatarFallback>
+        <div className="px-6 -mt-12 relative z-10">
+          <Avatar className="h-24 w-24 border-4 border-background">
+            <AvatarImage src={profile?.avatarUrl || defaultAvatar} />
+            <AvatarFallback className="text-2xl">
+              {profile?.name?.charAt(0) || username?.charAt(0).toUpperCase() || '?'}
+            </AvatarFallback>
           </Avatar>
         </div>
 
-        {/* Display Name */}
-        <div className="mb-4">
-          <h2 className="text-xl font-bold">{displayName}</h2>
-          {username && (
-            <p className="text-sm text-muted-foreground">@{username}</p>
-          )}
-          {!username && !usernameLoading && (
-            <p className="text-sm text-muted-foreground italic">No username set</p>
-          )}
-        </div>
-
-        {/* User ID */}
-        {selectedMemberId && (
-          <div className="mb-4">
-            <h3 className="text-xs font-semibold mb-1 uppercase text-muted-foreground">User ID</h3>
-            <p className="text-xs font-mono text-muted-foreground break-all">
-              {selectedMemberId}
-            </p>
-          </div>
-        )}
-
-        {/* Roles Section (only in server context) */}
-        {selectedServerId !== null && memberRoles.length > 0 && (
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold uppercase text-muted-foreground">Roles</h3>
-              {canManageRoles && !isViewingSelf && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowRoleDialog(true)}
-                  className="h-6 px-2"
-                >
-                  <Settings className="h-3 w-3" />
-                </Button>
-              )}
+        <ScrollArea className="flex-1">
+          <div className="px-6 py-4 space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold">{profile?.name || username || 'Unknown User'}</h2>
+              <p className="text-sm text-muted-foreground">@{username || 'unknown'}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {memberRoles.map((role) => {
-                const roleColor = sanitizeRoleColor(role.color);
-                return (
-                  <Badge
-                    key={role.id.toString()}
-                    variant="secondary"
-                    className="flex items-center gap-1.5"
-                  >
-                    {roleColor && (
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: roleColor }}
-                      />
-                    )}
-                    <span>{role.name}</span>
-                  </Badge>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
-        {/* Role Management Button (when no roles but can manage) */}
-        {selectedServerId !== null && memberRoles.length === 0 && canManageRoles && !isViewingSelf && (
-          <div className="mb-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowRoleDialog(true)}
-              className="w-full"
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Manage Roles
-            </Button>
-          </div>
-        )}
+            {profile?.customStatus && (
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Status</h3>
+                <p className="text-sm">{profile.customStatus}</p>
+              </div>
+            )}
 
-        {/* Custom Status */}
-        {customStatus && (
-          <div className="mb-4 p-3 bg-accent/30 rounded-lg">
-            <p className="text-sm">{customStatus}</p>
-          </div>
-        )}
+            {profile?.aboutMe && (
+              <div>
+                <h3 className="text-sm font-semibold mb-2">About Me</h3>
+                <p className="text-sm whitespace-pre-wrap">{profile.aboutMe}</p>
+              </div>
+            )}
 
-        {/* About Me */}
-        {aboutMe && (
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold mb-2 uppercase text-muted-foreground">About Me</h3>
-            <p className="text-sm whitespace-pre-wrap">{aboutMe}</p>
-          </div>
-        )}
+            {serverId && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold">Server Roles</h3>
+                  {canManageRoles && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowRoleDialog(true)}
+                    >
+                      Manage Roles
+                    </Button>
+                  )}
+                </div>
+                {userRoles.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {userRoles.map((role) => {
+                      const roleColor = sanitizeRoleColor(role.color);
+                      return (
+                        <Badge
+                          key={role.id.toString()}
+                          variant="secondary"
+                          style={roleColor ? {
+                            backgroundColor: roleColor,
+                            color: 'white',
+                          } : undefined}
+                        >
+                          {role.name}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No roles assigned</p>
+                )}
+              </div>
+            )}
 
-        {/* Badges */}
-        {badges.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold mb-2 uppercase text-muted-foreground">Badges</h3>
-            <div className="flex flex-wrap gap-2">
-              {badges.map((badge, index) => (
-                <Badge key={index} variant="secondary">
-                  {badge}
-                </Badge>
-              ))}
-            </div>
+            {profile?.badges && profile.badges.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Badges</h3>
+                <div className="flex flex-wrap gap-2">
+                  {profile.badges.map((badge, index) => (
+                    <Badge key={index} variant="outline">
+                      {badge}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="text-center py-8">
-            <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-sm text-muted-foreground mt-2">Loading profile...</p>
-          </div>
-        )}
+        </ScrollArea>
       </div>
 
-      {/* Role Assignment Dialog */}
-      {selectedServerId !== null && userId && canManageRoles && !isViewingSelf && (
+      {serverId && (
         <RoleAssignmentDialog
           open={showRoleDialog}
           onOpenChange={setShowRoleDialog}
-          serverId={selectedServerId}
+          serverId={serverId}
           userId={userId}
-          currentRoleIds={memberRoleIds}
+          currentRoleIds={userRoles.map(r => r.id)}
         />
       )}
-    </div>
-  );
-
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-md p-0 gap-0">
-        <DialogHeader className="sr-only">
-          <DialogTitle>User Profile</DialogTitle>
-        </DialogHeader>
-        {content}
-      </DialogContent>
-    </Dialog>
+    </>
   );
 }

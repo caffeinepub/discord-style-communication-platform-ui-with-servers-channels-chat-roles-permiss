@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useBackendConnection } from './useBackendConnection';
-import type { UserProfile } from '../backend';
+import type { UserProfile, CreateServerPayload, Server as BackendServer } from '../backend';
 import type { 
   Server, 
   ChannelCategory, 
@@ -50,7 +50,7 @@ export function useGetCallerUserProfile() {
     queryKey: ['currentUserProfile'],
     queryFn: async () => {
       if (!actor) throw new Error('Backend connection not ready');
-      return actor.getCallerUserProfile();
+      return (actor as any).getCallerUserProfile();
     },
     enabled: isReady && !!actor,
     retry: false,
@@ -63,16 +63,29 @@ export function useGetCallerUserProfile() {
   };
 }
 
-export function useGetUserProfile(userId: Principal | null) {
+export function useGetUserProfile(username: string | null) {
   const { actor, isReady } = useBackendConnection();
 
   return useQuery<UserProfile | null>({
-    queryKey: ['userProfile', userId?.toString()],
+    queryKey: ['userProfile', username],
     queryFn: async () => {
-      if (!actor || !userId) return null;
-      return actor.getUserProfile(userId);
+      if (!actor || !username) return null;
+      return actor.getUserProfile(username);
     },
-    enabled: isReady && !!actor && !!userId,
+    enabled: isReady && !!actor && !!username,
+  });
+}
+
+export function useGetUserProfileByUsername(username: string | null) {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<UserProfile | null>({
+    queryKey: ['userProfile', username],
+    queryFn: async () => {
+      if (!actor || !username) return null;
+      return actor.getUserProfile(username);
+    },
+    enabled: isReady && !!actor && !!username,
   });
 }
 
@@ -83,7 +96,7 @@ export function useSaveCallerUserProfile() {
   return useMutation({
     mutationFn: async (profile: UserProfile) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return actor.saveCallerUserProfile(profile);
+      return (actor as any).saveCallerUserProfile(profile);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
@@ -103,7 +116,7 @@ export function useGetCallerUsername() {
     queryKey: ['currentUsername'],
     queryFn: async () => {
       if (!actor) throw new Error('Backend connection not ready');
-      return (actor as any).getCallerUsername();
+      return actor.getCallerUsername();
     },
     enabled: isReady && !!actor,
   });
@@ -116,7 +129,7 @@ export function useGetUsernameForUser(userId: Principal | null) {
     queryKey: ['username', userId?.toString()],
     queryFn: async () => {
       if (!actor || !userId) return null;
-      return (actor as any).getUsernameForUser(userId);
+      return actor.getUsernameForUser(userId);
     },
     enabled: isReady && !!actor && !!userId,
   });
@@ -174,11 +187,11 @@ export function useIsCallerAdmin() {
 export function useGetAllServers() {
   const { actor, isReady } = useBackendConnection();
 
-  return useQuery<Server[]>({
+  return useQuery<BackendServer[]>({
     queryKey: ['servers'],
     queryFn: async () => {
       if (!actor) return [];
-      return (actor as any).getAllServers();
+      return actor.getAllServers();
     },
     enabled: isReady && !!actor,
   });
@@ -187,11 +200,11 @@ export function useGetAllServers() {
 export function useDiscoverServers() {
   const { actor, isReady } = useBackendConnection();
 
-  return useQuery<Server[]>({
+  return useQuery<BackendServer[]>({
     queryKey: ['discoverServers'],
     queryFn: async () => {
       if (!actor) return [];
-      return (actor as any).getAllServers();
+      return actor.getAllServers();
     },
     enabled: isReady && !!actor,
   });
@@ -217,7 +230,16 @@ export function useCreateServer() {
   return useMutation({
     mutationFn: async ({ name, description }: { name: string; description: string }) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).createServer(name, description);
+      
+      const payload: CreateServerPayload = {
+        name: name,
+        description: description,
+        isPublic: false,
+        iconURL: '',
+        bannerURL: '',
+      };
+      
+      return actor.createServer(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['servers'] });
@@ -413,17 +435,16 @@ export function useUpdateCategoryChannelOrdering() {
       if (context?.previousOrdering !== undefined) {
         queryClient.setQueryData(['categoryChannelOrdering', context.serverId.toString()], context.previousOrdering);
       }
-      toast.error(`Failed to update channel ordering: ${getFriendlyErrorMessage(error)}`);
+      toast.error(`Failed to update ordering: ${getFriendlyErrorMessage(error)}`);
     },
-    onSuccess: (_, variables) => {
-      // Invalidate to ensure we have the latest data from the backend
+    onSettled: (_, __, variables) => {
+      // Always refetch after error or success to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['categoryChannelOrdering', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
     },
   });
 }
 
-// Channel Management
+// Category Queries
 export function useGetCategories(serverId: bigint | null) {
   const { actor, isReady } = useBackendConnection();
 
@@ -437,19 +458,17 @@ export function useGetCategories(serverId: bigint | null) {
   });
 }
 
-export function useAddCategoryToServer() {
+export function useCreateCategory() {
   const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ serverId, categoryName }: { serverId: bigint; categoryName: string }) => {
+    mutationFn: async ({ serverId, name }: { serverId: bigint; name: string }) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).addCategoryToServer(serverId, categoryName);
+      return (actor as any).createCategory(serverId, name);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['categoryChannelOrdering', variables.serverId.toString()] });
       toast.success('Category created successfully');
     },
     onError: (error: Error) => {
@@ -458,27 +477,56 @@ export function useAddCategoryToServer() {
   });
 }
 
-export function useAddTextChannel() {
+export function useRenameCategory() {
   const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      serverId,
-      categoryId,
-      channelName,
-    }: {
-      serverId: bigint;
-      categoryId: bigint;
-      channelName: string;
-    }) => {
+    mutationFn: async ({ serverId, categoryId, newName }: { serverId: bigint; categoryId: bigint; newName: string }) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).addTextChannel(serverId, categoryId, channelName);
+      return (actor as any).renameCategory(serverId, categoryId, newName);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['categoryChannelOrdering', variables.serverId.toString()] });
+      toast.success('Category renamed successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to rename category: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+export function useDeleteCategory() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, categoryId }: { serverId: bigint; categoryId: bigint }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return (actor as any).deleteCategory(serverId, categoryId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
+      toast.success('Category deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete category: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+// Channel Queries
+export function useAddTextChannelToCategory() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, categoryId, name }: { serverId: bigint; categoryId: bigint; name: string }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return (actor as any).addTextChannelToCategory(serverId, categoryId, name);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
       toast.success('Text channel created successfully');
     },
     onError: (error: Error) => {
@@ -487,27 +535,17 @@ export function useAddTextChannel() {
   });
 }
 
-export function useAddVoiceChannel() {
+export function useAddVoiceChannelToCategory() {
   const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      serverId,
-      categoryId,
-      channelName,
-    }: {
-      serverId: bigint;
-      categoryId: bigint;
-      channelName: string;
-    }) => {
+    mutationFn: async ({ serverId, categoryId, name }: { serverId: bigint; categoryId: bigint; name: string }) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).addVoiceChannel(serverId, categoryId, channelName);
+      return (actor as any).addVoiceChannelToCategory(serverId, categoryId, name);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['categoryChannelOrdering', variables.serverId.toString()] });
       toast.success('Voice channel created successfully');
     },
     onError: (error: Error) => {
@@ -516,40 +554,93 @@ export function useAddVoiceChannel() {
   });
 }
 
-export function useMoveChannelToCategory() {
+export function useRenameTextChannel() {
   const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      serverId,
-      sourceCategoryId,
-      targetCategoryId,
-      channelId,
-      isTextChannel,
-      position,
-    }: {
-      serverId: bigint;
-      sourceCategoryId: bigint;
-      targetCategoryId: bigint;
-      channelId: bigint;
-      isTextChannel: boolean;
-      position: bigint;
-    }) => {
+    mutationFn: async ({ serverId, channelId, newName }: { serverId: bigint; channelId: bigint; newName: string }) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).moveChannelToCategory(
-        serverId,
-        sourceCategoryId,
-        targetCategoryId,
-        channelId,
-        isTextChannel,
-        position
-      );
+      return (actor as any).renameTextChannel(serverId, channelId, newName);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['categoryChannelOrdering', variables.serverId.toString()] });
+      toast.success('Channel renamed successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to rename channel: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+export function useRenameVoiceChannel() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, channelId, newName }: { serverId: bigint; channelId: bigint; newName: string }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return (actor as any).renameVoiceChannel(serverId, channelId, newName);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
+      toast.success('Channel renamed successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to rename channel: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+export function useDeleteTextChannel() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, channelId }: { serverId: bigint; channelId: bigint }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return (actor as any).deleteTextChannel(serverId, channelId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
+      toast.success('Channel deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete channel: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+export function useDeleteVoiceChannel() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, channelId }: { serverId: bigint; channelId: bigint }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return (actor as any).deleteVoiceChannel(serverId, channelId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
+      toast.success('Channel deleted successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete channel: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+export function useMoveTextChannel() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, channelId, newCategoryId }: { serverId: bigint; channelId: bigint; newCategoryId: bigint }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return (actor as any).moveTextChannel(serverId, channelId, newCategoryId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
       toast.success('Channel moved successfully');
     },
     onError: (error: Error) => {
@@ -558,7 +649,26 @@ export function useMoveChannelToCategory() {
   });
 }
 
-// Role Management
+export function useMoveVoiceChannel() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, channelId, newCategoryId }: { serverId: bigint; channelId: bigint; newCategoryId: bigint }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return (actor as any).moveVoiceChannel(serverId, channelId, newCategoryId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['categories', variables.serverId.toString()] });
+      toast.success('Channel moved successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to move channel: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+// Role Queries
 export function useGetRoles(serverId: bigint | null) {
   const { actor, isReady } = useBackendConnection();
 
@@ -577,23 +687,12 @@ export function useAddRoleToServer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      serverId,
-      roleName,
-      color,
-      permissions,
-    }: {
-      serverId: bigint;
-      roleName: string;
-      color: string;
-      permissions: Permission[];
-    }) => {
+    mutationFn: async ({ serverId, name, color, permissions }: { serverId: bigint; name: string; color: string; permissions: Permission[] }) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).addRoleToServer(serverId, roleName, color, permissions);
+      return (actor as any).addRoleToServer(serverId, name, color, permissions);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['roles', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
       toast.success('Role created successfully');
     },
     onError: (error: Error) => {
@@ -602,56 +701,18 @@ export function useAddRoleToServer() {
   });
 }
 
-export function useSetRolePermissions() {
+export function useAssignRoleToMember() {
   const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      serverId,
-      roleId,
-      permissions,
-    }: {
-      serverId: bigint;
-      roleId: bigint;
-      permissions: Permission[];
-    }) => {
+    mutationFn: async ({ serverId, userId, roleId }: { serverId: bigint; userId: Principal; roleId: bigint }) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).setRolePermissions(serverId, roleId, permissions);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['roles', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['server', variables.serverId.toString()] });
-      toast.success('Role permissions updated successfully');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to update role permissions: ${getFriendlyErrorMessage(error)}`);
-    },
-  });
-}
-
-export function useAssignRoleToUser() {
-  const { actor, isReady } = useBackendConnection();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      serverId,
-      userId,
-      roleId,
-    }: {
-      serverId: bigint;
-      userId: Principal;
-      roleId: bigint;
-    }) => {
-      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).assignRoleToUser(serverId, userId, roleId);
+      return (actor as any).assignRoleToMember(serverId, userId, roleId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['serverMembers', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['serverMembersWithUsernames', variables.serverId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['membersWithRoles', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['userRoles', variables.serverId.toString(), variables.userId.toString()] });
       toast.success('Role assigned successfully');
     },
     onError: (error: Error) => {
@@ -660,28 +721,18 @@ export function useAssignRoleToUser() {
   });
 }
 
-export function useRemoveRoleFromUser() {
+export function useRemoveRoleFromMember() {
   const { actor, isReady } = useBackendConnection();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      serverId,
-      userId,
-      roleId,
-    }: {
-      serverId: bigint;
-      userId: Principal;
-      roleId: bigint;
-    }) => {
+    mutationFn: async ({ serverId, userId, roleId }: { serverId: bigint; userId: Principal; roleId: bigint }) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).removeRoleFromUser(serverId, userId, roleId);
+      return (actor as any).removeRoleFromMember(serverId, userId, roleId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['serverMembers', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['serverMembersWithUsernames', variables.serverId.toString()] });
       queryClient.invalidateQueries({ queryKey: ['membersWithRoles', variables.serverId.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['userRoles', variables.serverId.toString(), variables.userId.toString()] });
       toast.success('Role removed successfully');
     },
     onError: (error: Error) => {
@@ -690,20 +741,20 @@ export function useRemoveRoleFromUser() {
   });
 }
 
-export function useGetUserRoles(serverId: bigint | null, userId: Principal | null) {
+export function useGetMemberRoles(serverId: bigint | null, userId: Principal | null) {
   const { actor, isReady } = useBackendConnection();
 
   return useQuery<bigint[]>({
-    queryKey: ['userRoles', serverId?.toString(), userId?.toString()],
+    queryKey: ['memberRoles', serverId?.toString(), userId?.toString()],
     queryFn: async () => {
       if (!actor || serverId === null || userId === null) return [];
-      return (actor as any).getUserRoles(serverId, userId);
+      return (actor as any).getMemberRoles(serverId, userId);
     },
     enabled: isReady && !!actor && serverId !== null && userId !== null,
   });
 }
 
-// Server Members
+// Server Member Queries
 export function useGetServerMembers(serverId: bigint | null) {
   const { actor, isReady } = useBackendConnection();
 
@@ -736,119 +787,18 @@ export function useGetMembersWithRoles(serverId: bigint | null) {
   return useQuery<GetMembersWithRolesResponse>({
     queryKey: ['membersWithRoles', serverId?.toString()],
     queryFn: async () => {
-      if (!actor || serverId === null) {
-        return { members: [], roles: [] };
-      }
+      if (!actor || serverId === null) return { members: [] };
       return (actor as any).getMembersWithRoles(serverId);
     },
     enabled: isReady && !!actor && serverId !== null,
   });
 }
 
-// Messages
-export function useGetTextChannelMessages(serverId: bigint | null, channelId: bigint | null) {
-  const { actor, isReady } = useBackendConnection();
-
-  return useQuery<TextChannelMessage[]>({
-    queryKey: ['textChannelMessages', serverId?.toString(), channelId?.toString()],
-    queryFn: async () => {
-      if (!actor || serverId === null || channelId === null) return [];
-      return (actor as any).getTextChannelMessages(serverId, channelId);
-    },
-    enabled: isReady && !!actor && serverId !== null && channelId !== null,
-  });
-}
-
-export function useSendTextChannelMessage() {
-  const { actor, isReady } = useBackendConnection();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      serverId,
-      channelId,
-      content,
-    }: {
-      serverId: bigint;
-      channelId: bigint;
-      content: string;
-    }) => {
-      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).sendTextChannelMessage(serverId, channelId, content);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['textChannelMessages', variables.serverId.toString(), variables.channelId.toString()],
-      });
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to send message: ${getFriendlyErrorMessage(error)}`);
-    },
-  });
-}
-
-// Voice Channel Presence
-export function useGetVoiceChannelPresences(serverId: bigint | null, channelId: bigint | null) {
-  const { actor, isReady } = useBackendConnection();
-
-  return useQuery<VoiceChannelPresence[]>({
-    queryKey: ['voiceChannelPresences', serverId?.toString(), channelId?.toString()],
-    queryFn: async () => {
-      if (!actor || serverId === null || channelId === null) return [];
-      return (actor as any).getVoiceChannelPresences(serverId, channelId);
-    },
-    enabled: isReady && !!actor && serverId !== null && channelId !== null,
-    refetchInterval: 5000, // Poll every 5 seconds for voice presence updates
-  });
-}
-
-export function useJoinVoiceChannel() {
-  const { actor, isReady } = useBackendConnection();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ serverId, channelId }: { serverId: bigint; channelId: bigint }) => {
-      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).joinVoiceChannel(serverId, channelId);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['voiceChannelPresences', variables.serverId.toString(), variables.channelId.toString()],
-      });
-      toast.success('Joined voice channel');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to join voice channel: ${getFriendlyErrorMessage(error)}`);
-    },
-  });
-}
-
-export function useLeaveVoiceChannel() {
-  const { actor, isReady } = useBackendConnection();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ serverId, channelId }: { serverId: bigint; channelId: bigint }) => {
-      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).leaveVoiceChannel(serverId, channelId);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ['voiceChannelPresences', variables.serverId.toString(), variables.channelId.toString()],
-      });
-      toast.success('Left voice channel');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to leave voice channel: ${getFriendlyErrorMessage(error)}`);
-    },
-  });
-}
-
-// Friends
+// Friend Queries
 export function useGetFriends() {
   const { actor, isReady } = useBackendConnection();
 
-  return useQuery<Principal[]>({
+  return useQuery<string[]>({
     queryKey: ['friends'],
     queryFn: async () => {
       if (!actor) return [];
@@ -895,13 +845,13 @@ export function useAcceptFriendRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (userId: Principal) => {
+    mutationFn: async (username: string) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).acceptFriendRequest(userId);
+      return (actor as any).acceptFriendRequest(username);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
       queryClient.invalidateQueries({ queryKey: ['friends'] });
+      queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
       toast.success('Friend request accepted');
     },
     onError: (error: Error) => {
@@ -915,9 +865,9 @@ export function useRejectFriendRequest() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (userId: Principal) => {
+    mutationFn: async (username: string) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).rejectFriendRequest(userId);
+      return (actor as any).rejectFriendRequest(username);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
@@ -934,9 +884,9 @@ export function useRemoveFriend() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (userId: Principal) => {
+    mutationFn: async (username: string) => {
       if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).removeFriend(userId);
+      return (actor as any).removeFriend(username);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['friends'] });
@@ -948,70 +898,17 @@ export function useRemoveFriend() {
   });
 }
 
-// Blocked Users
-export function useGetBlockedUsers() {
-  const { actor, isReady } = useBackendConnection();
-
-  return useQuery<Principal[]>({
-    queryKey: ['blockedUsers'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return (actor as any).getBlockedUsers();
-    },
-    enabled: isReady && !!actor,
-  });
-}
-
-export function useBlockUser() {
-  const { actor, isReady } = useBackendConnection();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (userId: Principal) => {
-      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).blockUser(userId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
-      queryClient.invalidateQueries({ queryKey: ['friends'] });
-      toast.success('User blocked');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to block user: ${getFriendlyErrorMessage(error)}`);
-    },
-  });
-}
-
-export function useUnblockUser() {
-  const { actor, isReady } = useBackendConnection();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (userId: Principal) => {
-      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
-      return (actor as any).unblockUser(userId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
-      toast.success('User unblocked');
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to unblock user: ${getFriendlyErrorMessage(error)}`);
-    },
-  });
-}
-
-// User Status
-export function useGetUserStatus(userId: Principal | null) {
+// User Status Queries
+export function useGetUserStatus(username: string | null) {
   const { actor, isReady } = useBackendConnection();
 
   return useQuery<UserStatus>({
-    queryKey: ['userStatus', userId?.toString()],
+    queryKey: ['userStatus', username],
     queryFn: async () => {
-      if (!actor || !userId) return { __kind__: 'Offline' };
-      return (actor as any).getUserStatus(userId);
+      if (!actor || !username) return { __kind__: 'offline' };
+      return (actor as any).getUserStatus(username);
     },
-    enabled: isReady && !!actor && !!userId,
+    enabled: isReady && !!actor && !!username,
   });
 }
 
@@ -1026,7 +923,6 @@ export function useSetUserStatus() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userStatus'] });
-      toast.success('Status updated');
     },
     onError: (error: Error) => {
       toast.error(`Failed to update status: ${getFriendlyErrorMessage(error)}`);
@@ -1034,7 +930,97 @@ export function useSetUserStatus() {
   });
 }
 
-// Audit Log
+// Text Channel Message Queries
+export function useGetTextChannelMessages(serverId: bigint | null, channelId: bigint | null) {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<TextChannelMessage[]>({
+    queryKey: ['textChannelMessages', serverId?.toString(), channelId?.toString()],
+    queryFn: async () => {
+      if (!actor || serverId === null || channelId === null) return [];
+      return (actor as any).getTextChannelMessages(serverId, channelId);
+    },
+    enabled: isReady && !!actor && serverId !== null && channelId !== null,
+  });
+}
+
+export function useSendTextChannelMessage() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, channelId, content }: { serverId: bigint; channelId: bigint; content: string }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return (actor as any).sendTextChannelMessage(serverId, channelId, content);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['textChannelMessages', variables.serverId.toString(), variables.channelId.toString()] 
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to send message: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+// Voice Channel Presence Queries
+export function useGetVoiceChannelPresences(serverId: bigint | null, channelId: bigint | null) {
+  const { actor, isReady } = useBackendConnection();
+
+  return useQuery<VoiceChannelPresence[]>({
+    queryKey: ['voiceChannelPresences', serverId?.toString(), channelId?.toString()],
+    queryFn: async () => {
+      if (!actor || serverId === null || channelId === null) return [];
+      return (actor as any).getVoiceChannelPresences(serverId, channelId);
+    },
+    enabled: isReady && !!actor && serverId !== null && channelId !== null,
+  });
+}
+
+export function useJoinVoiceChannel() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, channelId }: { serverId: bigint; channelId: bigint }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return (actor as any).joinVoiceChannel(serverId, channelId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['voiceChannelPresences', variables.serverId.toString(), variables.channelId.toString()] 
+      });
+      toast.success('Joined voice channel');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to join voice channel: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+export function useLeaveVoiceChannel() {
+  const { actor, isReady } = useBackendConnection();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ serverId, channelId }: { serverId: bigint; channelId: bigint }) => {
+      if (!isReady || !actor) throw new Error('Backend is not ready yet. Please wait or press Retry.');
+      return (actor as any).leaveVoiceChannel(serverId, channelId);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: ['voiceChannelPresences', variables.serverId.toString(), variables.channelId.toString()] 
+      });
+      toast.success('Left voice channel');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to leave voice channel: ${getFriendlyErrorMessage(error)}`);
+    },
+  });
+}
+
+// Audit Log Queries
 export function useGetAuditLog(serverId: bigint | null) {
   const { actor, isReady } = useBackendConnection();
 

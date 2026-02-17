@@ -15,7 +15,7 @@ export default function DesktopShell() {
       <div className="flex-1 flex flex-col min-w-0">
         <MainContent />
       </div>
-      {showMemberList && <MemberListPanel />}
+      {showMemberList && selectedServerId && <MemberListPanel serverId={selectedServerId} />}
     </div>
   );
 }

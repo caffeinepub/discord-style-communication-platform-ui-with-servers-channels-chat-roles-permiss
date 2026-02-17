@@ -17,14 +17,14 @@ export default function ServerRail() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { disabled: backendDisabled, reason: backendReason } = useBackendActionGuard();
 
-  const orderedServers = [...servers].sort((a, b) => {
-    const aIndex = ordering.findIndex((id) => id === a.id);
-    const bIndex = ordering.findIndex((id) => id === b.id);
+  const orderedServers = Array.isArray(servers) ? [...servers].sort((a, b) => {
+    const aIndex = ordering.findIndex((id) => id === (a.id as any));
+    const bIndex = ordering.findIndex((id) => id === (b.id as any));
     if (aIndex === -1 && bIndex === -1) return 0;
     if (aIndex === -1) return 1;
     if (bIndex === -1) return -1;
     return aIndex - bIndex;
-  });
+  }) : [];
 
   return (
     <>
@@ -51,17 +51,17 @@ export default function ServerRail() {
         <ScrollArea className="flex-1 w-full">
           <div className="flex flex-col items-center gap-2 px-3">
             {orderedServers.map((server) => (
-              <Tooltip key={server.id.toString()}>
+              <Tooltip key={server.id}>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => selectServer(server.id)}
+                    onClick={() => selectServer(server.id as any)}
                     className={cn(
                       'relative h-12 w-12 rounded-2xl transition-all hover:rounded-xl group',
-                      selectedServerId === server.id && 'rounded-xl'
+                      selectedServerId === (server.id as any) && 'rounded-xl'
                     )}
                   >
-                    <ServerIcon server={server} />
-                    {selectedServerId === server.id && (
+                    <ServerIcon server={server as any} />
+                    {selectedServerId === (server.id as any) && (
                       <div className="absolute left-0 top-1/2 -translate-x-3 -translate-y-1/2 h-10 w-1 bg-foreground rounded-r" />
                     )}
                   </button>

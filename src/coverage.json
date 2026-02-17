@@ -1,40 +1,66 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T04:23:42.229Z",
+  "generatedAt": "2026-02-17T06:17:19.267Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 0,
+    "total": 3,
+    "implemented": 1,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Update backend registration so that every newly registered account is automatically assigned the default \"user\" role without requiring the caller to be an admin, ensuring sign-up no longer fails with \"Unauthorized: Only admins can assign user roles\".",
+        "summary": "Implement server creation and listing in the Motoko backend so the frontend \"Create Server\" flow works end-to-end.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Ensure the backend \"register\" method never traps due to role assignment during sign-up; if role assignment fails for any reason, the method must return RegistrationResult.#error with an appropriate RegistrationError instead of trapping.",
+        "summary": "Add/align any additional backend server endpoints that the existing UI immediately depends on after server creation (server ordering and basic membership), to prevent follow-on failures after a successful create.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Ensure the frontend Create Server dialog provides a clear error when server creation fails and does not silently do nothing.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/servers/CreateServerDialog.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/servers/CreateServerDialog.tsx"
+        ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
+    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
+    "frontend/src/components/channels/CreateCategoryDialog.tsx",
+    "frontend/src/components/channels/CreateChannelDialog.tsx",
+    "frontend/src/components/discovery/DiscoveryView.tsx",
+    "frontend/src/components/discovery/ServerPreviewCard.tsx",
+    "frontend/src/components/nav/ServerRail.tsx",
+    "frontend/src/components/profile/RoleAssignmentDialog.tsx",
+    "frontend/src/components/servers/CreateServerDialog.tsx",
+    "frontend/src/components/settings/ServerSettings/components/CreateChannelInSettingsDialog.tsx",
+    "frontend/src/components/settings/ServerSettings/pages/ChannelsPage.tsx",
+    "frontend/src/components/settings/ServerSettings/pages/RolesPage.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useQueries.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

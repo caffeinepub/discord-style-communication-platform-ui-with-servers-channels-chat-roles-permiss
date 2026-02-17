@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,15 +20,14 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Hash, Volume2, AlertCircle } from 'lucide-react';
-import { useAddTextChannel, useAddVoiceChannel } from '../../../../hooks/useQueries';
-import type { ChannelCategory } from '../../../../types/backend-extended';
+import { useAddTextChannelToCategory, useAddVoiceChannelToCategory, useGetCategories } from '@/hooks/useQueries';
+import { useBackendActionGuard } from '@/hooks/useBackendActionGuard';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface CreateChannelInSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   serverId: bigint;
-  categories: ChannelCategory[];
-  defaultCategoryId?: bigint | null;
 }
 
 type ChannelType = 'text' | 'voice';
@@ -37,30 +36,21 @@ export default function CreateChannelInSettingsDialog({
   open,
   onOpenChange,
   serverId,
-  categories,
-  defaultCategoryId,
 }: CreateChannelInSettingsDialogProps) {
   const [channelName, setChannelName] = useState('');
   const [channelType, setChannelType] = useState<ChannelType>('text');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
-  const addTextChannel = useAddTextChannel();
-  const addVoiceChannel = useAddVoiceChannel();
+  const { data: categories = [] } = useGetCategories(serverId);
+  const addTextChannel = useAddTextChannelToCategory();
+  const addVoiceChannel = useAddVoiceChannelToCategory();
+  const { disabled: backendDisabled, reason: backendReason } = useBackendActionGuard();
 
   const isPending = addTextChannel.isPending || addVoiceChannel.isPending;
   const currentMutation = channelType === 'text' ? addTextChannel : addVoiceChannel;
 
-  // Set default category when dialog opens or defaultCategoryId changes
-  useEffect(() => {
-    if (open && defaultCategoryId) {
-      setSelectedCategoryId(defaultCategoryId.toString());
-    } else if (open && categories.length > 0 && !selectedCategoryId) {
-      setSelectedCategoryId(categories[0].id.toString());
-    }
-  }, [open, defaultCategoryId, categories, selectedCategoryId]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!channelName.trim() || !selectedCategoryId) return;
+    if (!channelName.trim() || !selectedCategoryId || backendDisabled) return;
 
     try {
       const categoryId = BigInt(selectedCategoryId);
@@ -68,13 +58,13 @@ export default function CreateChannelInSettingsDialog({
         await addTextChannel.mutateAsync({
           serverId,
           categoryId,
-          channelName: channelName.trim(),
+          name: channelName.trim(),
         });
       } else {
         await addVoiceChannel.mutateAsync({
           serverId,
           categoryId,
-          channelName: channelName.trim(),
+          name: channelName.trim(),
         });
       }
       // Only close and reset on success
@@ -100,6 +90,8 @@ export default function CreateChannelInSettingsDialog({
     onOpenChange(newOpen);
   };
 
+  const isSubmitDisabled = !channelName.trim() || !selectedCategoryId || isPending || backendDisabled;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -107,7 +99,7 @@ export default function CreateChannelInSettingsDialog({
           <DialogHeader>
             <DialogTitle>Create Channel</DialogTitle>
             <DialogDescription>
-              Add a new text or voice channel to your server.
+              Add a new text or voice channel to a category.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -125,14 +117,14 @@ export default function CreateChannelInSettingsDialog({
                 value={channelType}
                 onValueChange={(value) => setChannelType(value as ChannelType)}
                 className="grid grid-cols-2 gap-4"
-                disabled={isPending}
+                disabled={backendDisabled || isPending}
               >
                 <div>
                   <RadioGroupItem
                     value="text"
                     id="text"
                     className="peer sr-only"
-                    disabled={isPending}
+                    disabled={backendDisabled || isPending}
                   />
                   <Label
                     htmlFor="text"
@@ -147,7 +139,7 @@ export default function CreateChannelInSettingsDialog({
                     value="voice"
                     id="voice"
                     className="peer sr-only"
-                    disabled={isPending}
+                    disabled={backendDisabled || isPending}
                   />
                   <Label
                     htmlFor="voice"
@@ -165,7 +157,7 @@ export default function CreateChannelInSettingsDialog({
               <Select
                 value={selectedCategoryId}
                 onValueChange={setSelectedCategoryId}
-                disabled={categories.length === 0 || isPending}
+                disabled={backendDisabled || isPending}
               >
                 <SelectTrigger id="category">
                   <SelectValue placeholder="Select a category" />
@@ -178,11 +170,6 @@ export default function CreateChannelInSettingsDialog({
                   ))}
                 </SelectContent>
               </Select>
-              {categories.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Create a category first before adding channels
-                </p>
-              )}
             </div>
 
             <div className="grid gap-2">
@@ -194,7 +181,7 @@ export default function CreateChannelInSettingsDialog({
                 placeholder={channelType === 'text' ? 'e.g., general-chat' : 'e.g., voice-lounge'}
                 maxLength={50}
                 autoFocus
-                disabled={isPending}
+                disabled={backendDisabled || isPending}
               />
             </div>
           </div>
@@ -207,12 +194,20 @@ export default function CreateChannelInSettingsDialog({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={!channelName.trim() || !selectedCategoryId || isPending || categories.length === 0}
-            >
-              {isPending ? 'Creating...' : 'Create Channel'}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}>
+                  <Button type="submit" disabled={isSubmitDisabled}>
+                    {isPending ? 'Creating...' : 'Create Channel'}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {backendDisabled && backendReason && (
+                <TooltipContent>
+                  <p>{backendReason}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
           </DialogFooter>
         </form>
       </DialogContent>

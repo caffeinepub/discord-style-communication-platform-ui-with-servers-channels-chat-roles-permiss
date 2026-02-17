@@ -10,9 +10,12 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface LoginPayload {
-  'password' : string,
-  'loginIdentifier' : string,
+export interface CreateServerPayload {
+  'name' : string,
+  'description' : string,
+  'bannerURL' : string,
+  'isPublic' : boolean,
+  'iconURL' : string,
 }
 export interface RegisterPayload {
   'username' : string,
@@ -20,15 +23,19 @@ export interface RegisterPayload {
   'email' : string,
 }
 export type RegistrationError = { 'emailTaken' : null } |
+  { 'roleAssignmentFailed' : null } |
   { 'alreadyRegistered' : null } |
   { 'unknown' : null } |
   { 'usernameTaken' : null };
 export type RegistrationResult = { 'error' : RegistrationError } |
   { 'success' : null };
-export interface Session {
-  'token' : string,
-  'expiresAt' : bigint,
-  'email' : string,
+export interface Server {
+  'id' : string,
+  'name' : string,
+  'description' : string,
+  'bannerURL' : string,
+  'isPublic' : boolean,
+  'iconURL' : string,
 }
 export interface UserProfile {
   'customStatus' : string,
@@ -44,13 +51,16 @@ export type UserRole = { 'admin' : null } |
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'createServer' : ActorMethod<[CreateServerPayload], undefined>,
+  'getAllServers' : ActorMethod<[], Array<Server>>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getCallerUsername' : ActorMethod<[], [] | [string]>,
+  'getServerById' : ActorMethod<[string], [] | [Server]>,
+  'getUserProfile' : ActorMethod<[string], [] | [UserProfile]>,
+  'getUsernameForUser' : ActorMethod<[Principal], [] | [string]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'login' : ActorMethod<[LoginPayload], [] | [Session]>,
+  'isMemberOfServer' : ActorMethod<[string], boolean>,
   'register' : ActorMethod<[RegisterPayload], RegistrationResult>,
-  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

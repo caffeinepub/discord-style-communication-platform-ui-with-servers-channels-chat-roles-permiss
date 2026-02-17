@@ -1,4 +1,25 @@
 {
   "kind": "feature_evidence_report",
-  "features": []
+  "features": [
+    {
+      "featureId": "feature-ensure-the-frontend-create-server-dialog-provides-a-clear-error-when-server-creation-fails-and-does-not-silently-do-nothing",
+      "featureTitle": "Ensure the frontend Create Server dialog provides a clear error when server creation fails and does not silently do nothing.",
+      "files": [
+        "frontend/src/components/servers/CreateServerDialog.tsx",
+        "frontend/src/hooks/useQueries.ts"
+      ],
+      "components": [
+        "authorization@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
+      ],
+      "confidence": "high"
+    }
+  ]
 }

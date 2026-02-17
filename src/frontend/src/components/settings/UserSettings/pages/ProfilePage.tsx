@@ -68,7 +68,7 @@ export default function ProfilePage() {
 
   const isUsernameChanged = currentUsername && username !== currentUsername;
 
-  if (profileLoading || usernameLoading) {
+  if (profileLoading || usernameLoading || emailLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -94,9 +94,10 @@ export default function ProfilePage() {
             <Input
               id="account-email"
               type="email"
-              value={emailLoading ? 'Loading...' : (accountEmail || 'No email on record')}
+              value={accountEmail || ''}
               disabled
               className="bg-muted"
+              placeholder="No email on record"
             />
             <p className="text-xs text-muted-foreground">
               {accountEmail 

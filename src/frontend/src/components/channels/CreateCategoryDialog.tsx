@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { useAddCategoryToServer } from '../../hooks/useQueries';
+import { useCreateCategory } from '../../hooks/useQueries';
 import { useBackendActionGuard } from '@/hooks/useBackendActionGuard';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -28,7 +28,7 @@ export default function CreateCategoryDialog({
   serverId,
 }: CreateCategoryDialogProps) {
   const [categoryName, setCategoryName] = useState('');
-  const addCategory = useAddCategoryToServer();
+  const addCategory = useCreateCategory();
   const { disabled: backendDisabled, reason: backendReason } = useBackendActionGuard();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,7 +38,7 @@ export default function CreateCategoryDialog({
     try {
       await addCategory.mutateAsync({
         serverId,
-        categoryName: categoryName.trim(),
+        name: categoryName.trim(),
       });
       // Only close and reset on success
       setCategoryName('');

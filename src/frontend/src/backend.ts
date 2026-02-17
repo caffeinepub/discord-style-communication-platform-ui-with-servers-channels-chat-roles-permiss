@@ -89,19 +89,17 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface Session {
-    token: string;
-    expiresAt: bigint;
-    email: string;
+export interface CreateServerPayload {
+    name: string;
+    description: string;
+    bannerURL: string;
+    isPublic: boolean;
+    iconURL: string;
 }
 export interface RegisterPayload {
     username: string;
     password: string;
     email: string;
-}
-export interface LoginPayload {
-    password: string;
-    loginIdentifier: string;
 }
 export type RegistrationResult = {
     __kind__: "error";
@@ -118,8 +116,17 @@ export interface UserProfile {
     avatarUrl: string;
     bannerUrl: string;
 }
+export interface Server {
+    id: string;
+    name: string;
+    description: string;
+    bannerURL: string;
+    isPublic: boolean;
+    iconURL: string;
+}
 export enum RegistrationError {
     emailTaken = "emailTaken",
+    roleAssignmentFailed = "roleAssignmentFailed",
     alreadyRegistered = "alreadyRegistered",
     unknown_ = "unknown",
     usernameTaken = "usernameTaken"
@@ -132,15 +139,18 @@ export enum UserRole {
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
+    createServer(payload: CreateServerPayload): Promise<void>;
+    getAllServers(): Promise<Array<Server>>;
     getCallerUserRole(): Promise<UserRole>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getCallerUsername(): Promise<string | null>;
+    getServerById(id: string): Promise<Server | null>;
+    getUserProfile(username: string): Promise<UserProfile | null>;
+    getUsernameForUser(user: Principal): Promise<string | null>;
     isCallerAdmin(): Promise<boolean>;
-    login(payload: LoginPayload): Promise<Session | null>;
+    isMemberOfServer(serverId: string): Promise<boolean>;
     register(payload: RegisterPayload): Promise<RegistrationResult>;
-    saveCallerUserProfile(profile: UserProfile): Promise<void>;
 }
-import type { RegistrationError as _RegistrationError, RegistrationResult as _RegistrationResult, Session as _Session, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { RegistrationError as _RegistrationError, RegistrationResult as _RegistrationResult, Server as _Server, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -171,46 +181,102 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getCallerUserProfile(): Promise<UserProfile | null> {
+    async createServer(arg0: CreateServerPayload): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+                const result = await this.actor.createServer(arg0);
+                return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            const result = await this.actor.createServer(arg0);
+            return result;
+        }
+    }
+    async getAllServers(): Promise<Array<Server>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllServers();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllServers();
+            return result;
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n4(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n3(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n4(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n3(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
+    async getCallerUsername(): Promise<string | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCallerUsername();
+                return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallerUsername();
+            return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getServerById(arg0: string): Promise<Server | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getServerById(arg0);
+                return from_candid_opt_n6(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getServerById(arg0);
+            return from_candid_opt_n6(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUserProfile(arg0: string): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getUsernameForUser(arg0: Principal): Promise<string | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getUsernameForUser(arg0);
+                return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUsernameForUser(arg0);
+            return from_candid_opt_n5(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -227,66 +293,57 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async login(arg0: LoginPayload): Promise<Session | null> {
+    async isMemberOfServer(arg0: string): Promise<boolean> {
         if (this.processError) {
             try {
-                const result = await this.actor.login(arg0);
-                return from_candid_opt_n6(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.login(arg0);
-            return from_candid_opt_n6(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async register(arg0: RegisterPayload): Promise<RegistrationResult> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.register(arg0);
-                return from_candid_RegistrationResult_n7(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.register(arg0);
-            return from_candid_RegistrationResult_n7(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.saveCallerUserProfile(arg0);
+                const result = await this.actor.isMemberOfServer(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.saveCallerUserProfile(arg0);
+            const result = await this.actor.isMemberOfServer(arg0);
             return result;
         }
     }
+    async register(arg0: RegisterPayload): Promise<RegistrationResult> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.register(arg0);
+                return from_candid_RegistrationResult_n8(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.register(arg0);
+            return from_candid_RegistrationResult_n8(this._uploadFile, this._downloadFile, result);
+        }
+    }
 }
-function from_candid_RegistrationError_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RegistrationError): RegistrationError {
-    return from_candid_variant_n10(_uploadFile, _downloadFile, value);
+function from_candid_RegistrationError_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RegistrationError): RegistrationError {
+    return from_candid_variant_n11(_uploadFile, _downloadFile, value);
 }
-function from_candid_RegistrationResult_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RegistrationResult): RegistrationResult {
-    return from_candid_variant_n8(_uploadFile, _downloadFile, value);
+function from_candid_RegistrationResult_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _RegistrationResult): RegistrationResult {
+    return from_candid_variant_n9(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n5(_uploadFile, _downloadFile, value);
+function from_candid_UserRole_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n4(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_opt_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Session]): Session | null {
+function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Server]): Server | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_variant_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     emailTaken: null;
+} | {
+    roleAssignmentFailed: null;
 } | {
     alreadyRegistered: null;
 } | {
@@ -294,9 +351,9 @@ function from_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Ui
 } | {
     usernameTaken: null;
 }): RegistrationError {
-    return "emailTaken" in value ? RegistrationError.emailTaken : "alreadyRegistered" in value ? RegistrationError.alreadyRegistered : "unknown" in value ? RegistrationError.unknown : "usernameTaken" in value ? RegistrationError.usernameTaken : value;
+    return "emailTaken" in value ? RegistrationError.emailTaken : "roleAssignmentFailed" in value ? RegistrationError.roleAssignmentFailed : "alreadyRegistered" in value ? RegistrationError.alreadyRegistered : "unknown" in value ? RegistrationError.unknown : "usernameTaken" in value ? RegistrationError.usernameTaken : value;
 }
-function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -305,7 +362,7 @@ function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uin
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_variant_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     error: _RegistrationError;
 } | {
     success: null;
@@ -318,7 +375,7 @@ function from_candid_variant_n8(_uploadFile: (file: ExternalBlob) => Promise<Uin
 } {
     return "error" in value ? {
         __kind__: "error",
-        error: from_candid_RegistrationError_n9(_uploadFile, _downloadFile, value.error)
+        error: from_candid_RegistrationError_n10(_uploadFile, _downloadFile, value.error)
     } : "success" in value ? {
         __kind__: "success",
         success: value.success

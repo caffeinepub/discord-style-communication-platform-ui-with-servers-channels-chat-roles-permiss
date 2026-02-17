@@ -20,7 +20,6 @@ export default function FriendsHomeView() {
     if (!friendInput.trim()) return;
 
     try {
-      // Send the username string directly
       await sendRequest.mutateAsync(friendInput.trim());
       setFriendInput('');
     } catch (error) {
@@ -52,8 +51,8 @@ export default function FriendsHomeView() {
                 {friends.length === 0 && (
                   <p className="text-center text-muted-foreground py-8">No friends online</p>
                 )}
-                {friends.map((friendId) => (
-                  <FriendRow key={friendId.toString()} friendId={friendId} />
+                {friends.map((username) => (
+                  <FriendRow key={username} username={username} />
                 ))}
               </div>
             </TabsContent>
@@ -63,8 +62,8 @@ export default function FriendsHomeView() {
                 {friends.length === 0 && (
                   <p className="text-center text-muted-foreground py-8">No friends yet</p>
                 )}
-                {friends.map((friendId) => (
-                  <FriendRow key={friendId.toString()} friendId={friendId} />
+                {friends.map((username) => (
+                  <FriendRow key={username} username={username} />
                 ))}
               </div>
             </TabsContent>
@@ -76,10 +75,10 @@ export default function FriendsHomeView() {
                 )}
                 {requests.map((request) => (
                   <div
-                    key={request.from.toString()}
+                    key={request.from}
                     className="flex items-center justify-between p-3 rounded-lg bg-accent/30"
                   >
-                    <span className="text-sm font-medium">{request.from.toString().slice(0, 10)}...</span>
+                    <span className="text-sm font-medium">{request.from}</span>
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => acceptRequest.mutate(request.from)}>
                         Accept

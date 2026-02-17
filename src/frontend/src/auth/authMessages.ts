@@ -10,6 +10,7 @@ export const AUTH_MESSAGES = {
   USERNAME_OR_EMAIL_TAKEN: 'Username or email is already taken. Please try a different one or sign in.',
   ALREADY_REGISTERED: 'This Internet Identity has already been used to create an account. Please use Sign In instead, or log out and use a different Internet Identity to create a new account.',
   REGISTRATION_FAILED: 'Registration failed. Please try again.',
+  ROLE_ASSIGNMENT_FAILED: 'Registration is temporarily unavailable due to a backend configuration issue. Please try again later or contact support.',
   POST_REGISTRATION_LOGIN_FAILED: 'Account created successfully! However, automatic sign-in failed. Please use the Sign In tab to log in with your new credentials.',
   
   // Session errors
@@ -38,6 +39,12 @@ export function sanitizeAuthMessageForFlow(
   // If the message is in our allowlist, return it as-is
   if (ALLOWED_AUTH_MESSAGES.has(message)) {
     return message;
+  }
+  
+  // Check for specific backend trap errors that need special handling
+  if (message.includes('Only admins can assign user roles') || 
+      message.includes('Unauthorized') && message.includes('role')) {
+    return AUTH_MESSAGES.ROLE_ASSIGNMENT_FAILED;
   }
   
   // Return flow-appropriate fallback for non-allowlisted messages
@@ -100,7 +107,7 @@ export function mapRegistrationError(error: any): string {
   }
   
   // Handle enum string values from backend
-  // The RegistrationError enum has values: emailTaken, usernameTaken, alreadyRegistered, unknown_
+  // The RegistrationError enum has values: emailTaken, usernameTaken, alreadyRegistered, roleAssignmentFailed, unknown_
   const errorStr = typeof error === 'string' ? error : String(error);
   
   switch (errorStr) {
@@ -109,6 +116,8 @@ export function mapRegistrationError(error: any): string {
       return AUTH_MESSAGES.USERNAME_OR_EMAIL_TAKEN;
     case 'alreadyRegistered':
       return AUTH_MESSAGES.ALREADY_REGISTERED;
+    case 'roleAssignmentFailed':
+      return AUTH_MESSAGES.ROLE_ASSIGNMENT_FAILED;
     case 'unknown_':
     case 'unknown':
       return AUTH_MESSAGES.REGISTRATION_FAILED;

@@ -1,33 +1,34 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Project includes user registration with role assignment; fix backend so sign-up assigns a default role without requiring admin privileges.",
-  "architectural_notes": [
-    "Registration flow must not call admin-protected role assignment; new users should receive a default role without admin checks."
-  ],
+  "summary": "New project",
+  "architectural_notes": [],
   "known_issues": [
-    "Sign-up fails with error: \"Unauthorized: Only admins can assign user roles\" due to registration calling admin-only role assignment."
+    "Create server button does not work (server creation fails when user presses 'Create Server')."
   ],
   "isFixRequest": true,
-  "existing_features": [],
+  "existing_features": [
+    {
+      "id": "feature-ensure-the-frontend-create-server-dialog-provides-a-clear-error-when-server-creation-fails-and-does-not-silently-do-nothing",
+      "title": "Ensure the frontend Create Server dialog provides a clear error when server creation fails and does not silently do nothing.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    }
+  ],
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Fix sign-up: automatically assign a default user role during registration without requiring admin permissions",
-      "reqIds": [],
-      "status": "in_progress"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Update backend registration so that every newly registered account is automatically assigned the default \"user\" role without requiring the caller to be an admin, ensuring sign-up no longer fails with \"Unauthorized: Only admins can assign user roles\".",
+      "summary": "Implement server creation and listing in the Motoko backend so the frontend \"Create Server\" flow works end-to-end.",
       "reqIds": [
         "REQ-1"
       ],
       "status": "pending"
     },
     {
-      "id": "AR-3",
-      "summary": "Ensure the backend \"register\" method never traps due to role assignment during sign-up; if role assignment fails for any reason, the method must return RegistrationResult.#error with an appropriate RegistrationError instead of trapping.",
+      "id": "AR-2",
+      "summary": "Add/align any additional backend server endpoints that the existing UI immediately depends on after server creation (server ordering and basic membership), to prevent follow-on failures after a successful create.",
       "reqIds": [
         "REQ-2"
       ],

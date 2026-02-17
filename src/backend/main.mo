@@ -1,25 +1,36 @@
+import List "mo:core/List";
 import Map "mo:core/Map";
-import Text "mo:core/Text";
+import Iter "mo:core/Iter";
 import Principal "mo:core/Principal";
-import Time "mo:core/Time";
+import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
 import Auth "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
-  let credentialsStore = Map.empty<Principal, Credentials>();
-  let userProfiles = Map.empty<Principal, UserProfile>();
-
+  // Persistent State
   var accessControlState : Auth.AccessControlState = Auth.initState();
 
-  type RegisterPayload = {
+  let userProfiles = Map.empty<Text, UserProfile>();
+  let usernames = Map.empty<Text, Principal>();
+  let credentialsStore = Map.empty<Principal, Credentials>();
+
+  // --- Persistent Servers State ---
+  let servers = Map.empty<Text, Server>();
+  let serverMembers = Map.empty<Text, List.List<Principal>>();
+
+  // Types
+  public type RegisterPayload = {
     username : Text;
     email : Text;
     password : Text;
   };
 
-  type LoginPayload = {
-    loginIdentifier : Text;
+  public type UpdateCredentialsPayload = {
+    username : Text;
+    email : Text;
     password : Text;
   };
 
@@ -32,6 +43,13 @@ actor {
     badges : [Text];
   };
 
+  public type Credentials = {
+    username : Text;
+    email : Text;
+    password : Text;
+    principal : Principal;
+  };
+
   public type RegistrationResult = {
     #success;
     #error : RegistrationError;
@@ -41,149 +59,154 @@ actor {
     #alreadyRegistered;
     #usernameTaken;
     #emailTaken;
+    #roleAssignmentFailed;
     #unknown;
   };
 
-  public type Session = {
-    token : Text;
-    expiresAt : Int;
-    email : Text;
+  public type Server = {
+    id : Text;
+    name : Text;
+    description : Text;
+    isPublic : Bool;
+    iconURL : Text;
+    bannerURL : Text;
   };
 
-  public type Credentials = {
-    username : Text;
-    email : Text;
-    password : Text;
-    principal : Principal;
+  public type CreateServerPayload = {
+    name : Text;
+    description : Text;
+    isPublic : Bool;
+    iconURL : Text;
+    bannerURL : Text;
   };
 
-  include MixinAuthorization(accessControlState);
+  public shared ({ caller }) func createServer(payload : CreateServerPayload) : async () {
+    if (not (Auth.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create servers");
+    };
 
-  // Converts everything to lowercase and trims spaces.
+    let newServer : Server = {
+      id = payload.name;
+      name = payload.name;
+      description = payload.description;
+      isPublic = payload.isPublic;
+      iconURL = payload.iconURL;
+      bannerURL = payload.bannerURL;
+    };
+
+    servers.add(newServer.id, newServer);
+
+    // Add creator as first member
+    let membersList = List.empty<Principal>();
+    membersList.add(caller);
+    serverMembers.add(newServer.id, membersList);
+  };
+
+  public query ({ caller }) func getAllServers() : async [Server] {
+    if (not (Auth.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view servers");
+    };
+    servers.toArray().map<(Text, Server), Server>(func((_, server)) { server });
+  };
+
+  public query ({ caller }) func getServerById(id : Text) : async ?Server {
+    if (not (Auth.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view servers");
+    };
+    servers.get(id);
+  };
+
+  public query ({ caller }) func isMemberOfServer(serverId : Text) : async Bool {
+    if (not (Auth.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can check membership");
+    };
+    switch (serverMembers.get(serverId)) {
+      case (null) { false };
+      case (?members) {
+        members.any(func(member) { member == caller });
+      };
+    };
+  };
+
+  // SANITIZE FUNCTION NOT USED
   func sanitizeText(input : Text) : Text {
     let trimmed = input.trimStart(#char(' '));
     let trimmedEnd = trimmed.trimEnd(#char(' '));
     trimmedEnd.toLower();
   };
 
-  // Register a new user in the backend.
-  public shared ({ caller }) func register(payload : RegisterPayload) : async RegistrationResult {
-    let sanitizedUsername = sanitizeText(payload.username);
-    let sanitizedEmail = sanitizeText(payload.email);
+  // Find profile by username
+  public query ({ caller }) func getUserProfile(username : Text) : async ?UserProfile {
+    if (not (Auth.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view profiles");
+    };
+    userProfiles.get(username);
+  };
 
-    // Check if the caller principal already exists in credentialsStore
+  public shared ({ caller }) func register(payload : RegisterPayload) : async RegistrationResult {
     if (credentialsStore.containsKey(caller)) {
       return #error(#alreadyRegistered);
     };
 
-    // Check if the username is already taken (case-insensitive check)
-    let usernameExists = credentialsStore.values().any(
-      func(credentials) {
-        credentials.username.toLower() == sanitizedUsername
-      }
-    );
-
+    let usernameExists = usernames.containsKey(payload.username);
     if (usernameExists) {
       return #error(#usernameTaken);
     };
 
-    // Check if the email is already taken (case-insensitive)
     let emailExists = credentialsStore.values().any(
-      func(credentials) { credentials.email.toLower() == sanitizedEmail }
+      func(credentials) { credentials.email == payload.email }
     );
-
     if (emailExists) {
       return #error(#emailTaken);
     };
 
     let credentials : Credentials = {
-      username = sanitizedUsername;
-      email = sanitizedEmail;
+      username = payload.username;
+      email = payload.email;
       password = payload.password;
       principal = caller;
     };
 
-    // Store credentials for the principal
-    credentialsStore.add(caller, credentials);
-
-    // Create initial user profile
     let initialProfile : UserProfile = {
-      name = sanitizedUsername;
+      name = payload.username;
       aboutMe = "";
       customStatus = "";
       avatarUrl = "";
       bannerUrl = "";
       badges = [];
     };
-    userProfiles.add(caller, initialProfile);
 
-    // Assign default "user" role to the newly registered account
-    // This must not trap - catch any errors and return appropriate error result
-    try {
-      Auth.assignRole(accessControlState, caller, caller, #user);
-      #success;
-    } catch (e) {
-      // If role assignment fails, return error instead of trapping
-      // Clean up the registration data
-      credentialsStore.remove(caller);
-      userProfiles.remove(caller);
-      #error(#unknown);
-    };
+    credentialsStore.add(caller, credentials);
+    userProfiles.add(payload.username, initialProfile);
+    usernames.add(payload.username, caller);
+
+    // Assign user role to the newly registered user
+    // Note: The first user to call initialize() becomes admin
+    // All subsequent registrations get #user role
+    Auth.assignRole(accessControlState, caller, caller, #user);
+
+    #success;
   };
 
-  public shared ({ caller }) func login(payload : LoginPayload) : async ?Session {
-    let sanitizedIdentifier = sanitizeText(payload.loginIdentifier);
-
-    // Try to find by username or email (case-insensitive)
-    let credentialsOpt = credentialsStore.values().find(
-      func(creds) {
-        creds.username.toLower() == sanitizedIdentifier or creds.email.toLower() == sanitizedIdentifier
-      }
-    );
-
-    switch (credentialsOpt) {
-      case (null) { null };
-      case (?credentials) {
-        if (credentials.password != payload.password) {
-          return null;
-        };
-
-        // Verify the caller matches the stored principal
-        if (caller != credentials.principal) {
-          return null;
-        };
-
-        let token = credentials.principal.toText().concat("_").concat(Time.now().toText());
-        let session : Session = {
-          token;
-          expiresAt = Time.now() + 86_400_000_000_000;
-          email = credentials.email;
-        };
-
-        ?session;
-      };
-    };
-  };
-
-  // Profile Management
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (Auth.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view profiles");
-    };
-    userProfiles.get(caller);
-  };
-
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+  public query ({ caller }) func getUsernameForUser(user : Principal) : async ?Text {
     if (caller != user and not Auth.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
+      Runtime.trap("Unauthorized: Can only view your own username");
     };
-    userProfiles.get(user);
+    switch (credentialsStore.get(user)) {
+      case (null) { null };
+      case (?credentials) { ?credentials.username };
+    };
   };
 
-  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
+  public query ({ caller }) func getCallerUsername() : async ?Text {
     if (not (Auth.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+      Runtime.trap("Unauthorized: Only users can access their account settings");
     };
-    userProfiles.add(caller, profile);
+    switch (credentialsStore.get(caller)) {
+      case (null) { null };
+      case (?credentials) { ?credentials.username };
+    };
   };
+
+  include MixinAuthorization(accessControlState);
 };

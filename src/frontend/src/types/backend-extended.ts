@@ -92,8 +92,8 @@ export type UserStatus =
   | { __kind__: 'Invisible' };
 
 export interface FriendRequest {
-  from: Principal;
-  to: Principal;
+  from: string;
+  to: string;
   timestamp: bigint;
 }
 

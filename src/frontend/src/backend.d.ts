@@ -7,19 +7,17 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface Session {
-    token: string;
-    expiresAt: bigint;
-    email: string;
+export interface CreateServerPayload {
+    name: string;
+    description: string;
+    bannerURL: string;
+    isPublic: boolean;
+    iconURL: string;
 }
 export interface RegisterPayload {
     username: string;
     password: string;
     email: string;
-}
-export interface LoginPayload {
-    password: string;
-    loginIdentifier: string;
 }
 export type RegistrationResult = {
     __kind__: "error";
@@ -36,8 +34,17 @@ export interface UserProfile {
     avatarUrl: string;
     bannerUrl: string;
 }
+export interface Server {
+    id: string;
+    name: string;
+    description: string;
+    bannerURL: string;
+    isPublic: boolean;
+    iconURL: string;
+}
 export enum RegistrationError {
     emailTaken = "emailTaken",
+    roleAssignmentFailed = "roleAssignmentFailed",
     alreadyRegistered = "alreadyRegistered",
     unknown_ = "unknown",
     usernameTaken = "usernameTaken"
@@ -49,11 +56,14 @@ export enum UserRole {
 }
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    getCallerUserProfile(): Promise<UserProfile | null>;
+    createServer(payload: CreateServerPayload): Promise<void>;
+    getAllServers(): Promise<Array<Server>>;
     getCallerUserRole(): Promise<UserRole>;
-    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    getCallerUsername(): Promise<string | null>;
+    getServerById(id: string): Promise<Server | null>;
+    getUserProfile(username: string): Promise<UserProfile | null>;
+    getUsernameForUser(user: Principal): Promise<string | null>;
     isCallerAdmin(): Promise<boolean>;
-    login(payload: LoginPayload): Promise<Session | null>;
+    isMemberOfServer(serverId: string): Promise<boolean>;
     register(payload: RegisterPayload): Promise<RegistrationResult>;
-    saveCallerUserProfile(profile: UserProfile): Promise<void>;
 }

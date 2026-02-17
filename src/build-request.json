@@ -1,58 +1,85 @@
 {
   "kind": "build_request",
-  "title": "Fix sign-up by auto-assigning default user role without admin permissions",
+  "title": "Fix Create Server button (implement missing backend server APIs)",
   "projectName": "Caffeine Chat",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Update backend registration so that every newly registered account is automatically assigned the default \"user\" role without requiring the caller to be an admin, ensuring sign-up no longer fails with \"Unauthorized: Only admins can assign user roles\".",
+      "text": "Implement server creation and listing in the Motoko backend so the frontend \"Create Server\" flow works end-to-end.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "recent-messages-7"
+          "msg-3"
         ],
         "quotes": [
-          "1"
+          "making servers doesnt work when I press the create server button"
         ]
       },
       "acceptanceCriteria": [
-        "A brand-new principal can call register successfully without any pre-existing roles/permissions.",
-        "After successful registration, getCallerUserProfile does not trap with \"Unauthorized: Only users can view profiles\" for the same principal.",
-        "The registration flow does not trigger or surface the error text \"Unauthorized: Only admins can assign user roles\" during sign-up."
+        "Backend actor exposes a callable method `createServer(name: Text, description: Text)` that returns a created server (or created server id) without trapping for a valid logged-in user.",
+        "Backend actor exposes a callable method `getAllServers()` that returns the caller's visible/joined servers in a format compatible with the existing frontend `Server` type usage (including `id` and `name`).",
+        "Creating a server via `createServer` causes that new server to appear in subsequent `getAllServers()` results for the creator."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Ensure the backend \"register\" method never traps due to role assignment during sign-up; if role assignment fails for any reason, the method must return RegistrationResult.#error with an appropriate RegistrationError instead of trapping.",
+      "text": "Add/align any additional backend server endpoints that the existing UI immediately depends on after server creation (server ordering and basic membership), to prevent follow-on failures after a successful create.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "recent-messages-3",
-          "recent-messages-6"
+          "msg-3"
         ],
         "quotes": [
-          "Unauthorized: Only admins can assign user roles",
-          "it gives this error when is ign up"
+          "making servers doesnt work when I press the create server button"
         ]
       },
       "acceptanceCriteria": [
-        "Register does not trap during role assignment; it returns a RegistrationResult value in all cases.",
-        "Frontend receives a structured RegistrationResult response (success or error) rather than a canister trap for the sign-up path."
+        "Backend actor exposes `getServer(serverId)` and returns `null` (not trap) when a server id is unknown or not visible to the caller.",
+        "Backend actor exposes `getServerOrdering()` and `setServerOrdering(ordering)` (even if initially implemented as simple per-user persistence) so the server rail ordering query does not error.",
+        "Backend actor exposes `joinServer(serverId)` and `leaveServer(serverId)` so Discovery join buttons do not error when used."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Ensure the frontend Create Server dialog provides a clear error when server creation fails and does not silently do nothing.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-3"
+        ],
+        "quotes": [
+          "making servers doesnt work when I press the create server button"
+        ]
+      },
+      "acceptanceCriteria": [
+        "If `createServer` fails, the user sees an English toast error message (using the existing mutation `onError` behavior) and the dialog remains open with the entered values preserved.",
+        "If `createServer` succeeds, the dialog closes, inputs clear, and the new server appears in the server rail after React Query invalidation (no manual refresh required)."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
-    "Do not edit files in frontend immutable paths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui."
+    "Backend must remain a single-actor Motoko canister with all logic in `backend/main.mo`.",
+    "Create or update `backend/migration.mo` only if required by existing stable state upgrade needs; do not add a migration unnecessarily.",
+    "Do not edit any frontend files under `frontend/src/hooks/useInternetIdentity.ts`, `frontend/src/hooks/useInternetIdentity.tsx`, `frontend/src/hooks/useActor.ts`, `frontend/src/main.tsx`, or anything in `frontend/src/components/ui` (compose instead).",
+    "Use English for all user-facing UI text."
   ],
   "nonGoals": [
-    "Do not make all users admins by default.",
-    "Do not remove the role/permission system from the app.",
-    "Do not redesign the authentication UI beyond what is required to confirm the backend fix."
+    "Implement full server settings editing (e.g., `updateServerSettings`) beyond what is necessary to make server creation and basic navigation work.",
+    "Implement full channel/category/role/message systems unless required to prevent immediate runtime errors in the create-server path."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

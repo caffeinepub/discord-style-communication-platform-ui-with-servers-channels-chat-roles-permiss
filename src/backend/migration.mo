@@ -1,33 +1,56 @@
 import Map "mo:core/Map";
+import List "mo:core/List";
 import Principal "mo:core/Principal";
+import Text "mo:core/Text";
 
 module {
-  type OldSession = {
-    token : Text;
-    accountId : ?Text;
-    expiresAt : Int;
+  type Credentials = {
+    username : Text;
     email : Text;
-  };
-
-  type OldActor = {
-    sessionStore : Map.Map<Text, OldSession>;
-    principalToToken : Map.Map<Principal, Text>;
-  };
-
-  type NewSession = {
-    token : Text;
-    accountId : ?Text;
-    expiresAt : Int;
-    email : Text;
+    password : Text;
     principal : Principal;
   };
 
+  type UserProfile = {
+    name : Text;
+    aboutMe : Text;
+    customStatus : Text;
+    avatarUrl : Text;
+    bannerUrl : Text;
+    badges : [Text];
+  };
+
+  type OldActor = {
+    userProfiles : Map.Map<Text, UserProfile>;
+    usernames : Map.Map<Text, Principal>;
+    credentialsStore : Map.Map<Principal, Credentials>;
+  };
+
+  // New server types
+  type Server = {
+    id : Text;
+    name : Text;
+    description : Text;
+    isPublic : Bool;
+    iconURL : Text;
+    bannerURL : Text;
+  };
+
   type NewActor = {
-    sessionStore : Map.Map<Text, NewSession>;
+    userProfiles : Map.Map<Text, UserProfile>;
+    usernames : Map.Map<Text, Principal>;
+    credentialsStore : Map.Map<Principal, Credentials>;
+    servers : Map.Map<Text, Server>;
+    serverMembers : Map.Map<Text, List.List<Principal>>;
   };
 
   public func run(old : OldActor) : NewActor {
-    let newSessionStore = Map.empty<Text, NewSession>();
-    { sessionStore = newSessionStore };
+    let emptyServers = Map.empty<Text, Server>();
+    let emptyServerMembers = Map.empty<Text, List.List<Principal>>();
+    {
+      old with
+      servers = emptyServers;
+      serverMembers = emptyServerMembers;
+    };
   };
 };

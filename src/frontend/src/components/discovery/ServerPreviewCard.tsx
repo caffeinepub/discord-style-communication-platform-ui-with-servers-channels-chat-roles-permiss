@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users } from 'lucide-react';
-import type { Server } from '../../types/backend-extended';
+import type { Server as BackendServer } from '../../backend';
 
 interface ServerPreviewCardProps {
-  server: Server;
+  server: BackendServer;
   onJoin: () => void;
 }
 
@@ -26,7 +26,7 @@ export default function ServerPreviewCard({ server, onJoin }: ServerPreviewCardP
       <CardContent>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4" />
-          <span>{server.members.length} members</span>
+          <span>Public server</span>
         </div>
       </CardContent>
       <CardFooter>

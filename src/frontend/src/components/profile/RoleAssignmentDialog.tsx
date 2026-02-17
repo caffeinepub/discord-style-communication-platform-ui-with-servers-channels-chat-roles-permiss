@@ -1,19 +1,19 @@
 import { useState } from 'react';
-import { Principal } from '@dfinity/principal';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useGetRoles, useAssignRoleToUser, useRemoveRoleFromUser } from '@/hooks/useQueries';
+import { useGetRoles, useAssignRoleToMember, useRemoveRoleFromMember } from '@/hooks/useQueries';
+import { Principal } from '@dfinity/principal';
 import { sanitizeRoleColor } from '@/utils/roleColor';
-import type { Role } from '@/types/backend-extended';
 
 interface RoleAssignmentDialogProps {
   open: boolean;
@@ -30,107 +30,78 @@ export default function RoleAssignmentDialog({
   userId,
   currentRoleIds,
 }: RoleAssignmentDialogProps) {
-  const { data: roles = [], isLoading: rolesLoading } = useGetRoles(serverId);
-  const assignRole = useAssignRoleToUser();
-  const removeRole = useRemoveRoleFromUser();
-  
-  const [pendingChanges, setPendingChanges] = useState<Set<bigint>>(new Set());
+  const { data: roles = [] } = useGetRoles(serverId);
+  const assignRole = useAssignRoleToMember();
+  const removeRole = useRemoveRoleFromMember();
+  const [pendingRoles, setPendingRoles] = useState<Set<string>>(new Set());
 
-  const isRoleAssigned = (roleId: bigint): boolean => {
-    return currentRoleIds.some(id => id === roleId);
-  };
+  const handleToggleRole = async (roleId: bigint, isCurrentlyAssigned: boolean) => {
+    const roleIdStr = roleId.toString();
+    setPendingRoles((prev) => new Set(prev).add(roleIdStr));
 
-  const handleToggleRole = async (role: Role) => {
-    const roleId = role.id;
-    
-    // Prevent multiple simultaneous changes to the same role
-    if (pendingChanges.has(roleId)) return;
-    
-    setPendingChanges(prev => new Set(prev).add(roleId));
-    
     try {
-      if (isRoleAssigned(roleId)) {
-        await removeRole.mutateAsync({ serverId, roleId, userId });
+      if (isCurrentlyAssigned) {
+        await removeRole.mutateAsync({ serverId, userId, roleId });
       } else {
-        await assignRole.mutateAsync({ serverId, roleId, userId });
+        await assignRole.mutateAsync({ serverId, userId, roleId });
       }
     } finally {
-      setPendingChanges(prev => {
+      setPendingRoles((prev) => {
         const next = new Set(prev);
-        next.delete(roleId);
+        next.delete(roleIdStr);
         return next;
       });
     }
   };
 
-  const isAnyPending = pendingChanges.size > 0;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Manage Roles</DialogTitle>
           <DialogDescription>
-            Assign or remove roles for this member
+            Assign or remove roles for this member.
           </DialogDescription>
         </DialogHeader>
-
         <ScrollArea className="max-h-[400px] pr-4">
-          {rolesLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : roles.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No roles available in this server
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {roles.map((role) => {
-                const roleColor = sanitizeRoleColor(role.color);
-                const isAssigned = isRoleAssigned(role.id);
-                const isPending = pendingChanges.has(role.id);
+          <div className="space-y-4 py-4">
+            {roles.map((role) => {
+              const isAssigned = currentRoleIds.some((id) => id === role.id);
+              const isPending = pendingRoles.has(role.id.toString());
+              const sanitizedColor = sanitizeRoleColor(role.color);
 
-                return (
-                  <div
-                    key={role.id.toString()}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/30 transition-colors"
+              return (
+                <div key={role.id.toString()} className="flex items-center space-x-3">
+                  <Checkbox
+                    id={`role-${role.id}`}
+                    checked={isAssigned}
+                    onCheckedChange={() => handleToggleRole(role.id, isAssigned)}
+                    disabled={isPending}
+                  />
+                  <Label
+                    htmlFor={`role-${role.id}`}
+                    className="flex items-center gap-2 cursor-pointer"
                   >
-                    <Checkbox
-                      checked={isAssigned}
-                      onCheckedChange={() => handleToggleRole(role)}
-                      disabled={isPending}
-                      className="shrink-0"
-                    />
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {roleColor && (
-                        <div
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: roleColor }}
-                        />
-                      )}
-                      <span className="text-sm font-medium truncate">
-                        {role.name}
-                      </span>
-                    </div>
-                    {isPending && (
-                      <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+                    {sanitizedColor && (
+                      <span
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: sanitizedColor }}
+                      />
                     )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                    <span>{role.name}</span>
+                  </Label>
+                </div>
+              );
+            })}
+            {roles.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No roles available
+              </p>
+            )}
+          </div>
         </ScrollArea>
-
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isAnyPending}
-          >
-            Close
-          </Button>
+          <Button onClick={() => onOpenChange(false)}>Done</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

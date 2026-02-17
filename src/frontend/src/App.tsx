@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import LoginScreen from './pages/LoginScreen';
 import ProfileSetupDialog from './components/profile/ProfileSetupDialog';
 import ResponsiveShell from './components/layout/ResponsiveShell';
-import { NavigationProvider } from './state/navigation';
+import { NavigationProvider, useNavigation } from './state/navigation';
 import { SettingsProvider } from './state/settings';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ThemeProvider } from 'next-themes';
@@ -12,6 +12,7 @@ import UserProfileOverlay from './components/profile/UserProfileOverlay';
 import { setupXPathElementRemoval } from './utils/hideElementByXPath';
 import { AuthProvider } from './auth/AuthProvider';
 import { BackendConnectionBanner } from './components/system/BackendConnectionBanner';
+import { Principal } from '@dfinity/principal';
 
 function AppContent() {
   const { authStatus } = useAuth();
@@ -65,21 +66,33 @@ function AppContent() {
       <TooltipProvider>
         <SettingsProvider>
           <NavigationProvider>
-            <div className="flex flex-col h-screen overflow-hidden">
-              <BackendConnectionBanner />
-              <div className="flex-1 overflow-hidden">
-                <ResponsiveShell />
-              </div>
-            </div>
-            <ProfileSetupDialog
-              open={showProfileSetup}
-              onComplete={handleProfileSetupComplete}
-            />
-            <UserProfileOverlay />
+            <AuthenticatedApp showProfileSetup={showProfileSetup} onProfileSetupComplete={handleProfileSetupComplete} />
           </NavigationProvider>
         </SettingsProvider>
       </TooltipProvider>
     </ThemeProvider>
+  );
+}
+
+function AuthenticatedApp({ showProfileSetup, onProfileSetupComplete }: { showProfileSetup: boolean; onProfileSetupComplete: () => void }) {
+  const { selectedMemberId } = useNavigation();
+
+  return (
+    <>
+      <div className="flex flex-col h-screen overflow-hidden">
+        <BackendConnectionBanner />
+        <div className="flex-1 overflow-hidden">
+          <ResponsiveShell />
+        </div>
+      </div>
+      <ProfileSetupDialog
+        open={showProfileSetup}
+        onComplete={onProfileSetupComplete}
+      />
+      {selectedMemberId && (
+        <UserProfileOverlay userId={Principal.fromText(selectedMemberId)} />
+      )}
+    </>
   );
 }
 

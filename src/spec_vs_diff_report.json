@@ -1,13 +1,37 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T04:23:42.225Z",
-  "summary": "Backend register now attempts to assign the default #user role inside a try/catch and returns #error(#unknown) on failure, avoiding traps. However, the role assignment call still appears to use the same admin-gated Auth.assignRole path that previously caused \"Unauthorized: Only admins can assign user roles\", so the change may not actually make new-user registration succeed without admin privileges.",
+  "generatedAt": "2026-02-17T06:17:19.264Z",
+  "summary": "Core backend server APIs requested for Create Server flow are only partially implemented: `getAllServers()` exists, but `createServer` signature/return type do not match the spec and several required endpoints (`getServer`, ordering, join/leave) are missing or mismatched. Frontend changes include Create Server dialog improvements, but many additional UI changes appear unrelated to the stated goal.",
   "missing_requirements": [
     {
       "id": "REQ-1",
-      "requirement": "Update backend registration so that every newly registered account is automatically assigned the default \"user\" role without requiring the caller to be an admin, ensuring sign-up no longer fails with \"Unauthorized: Only admins can assign user roles\".",
-      "reason": "The diff still assigns the role via `Auth.assignRole(accessControlState, caller, caller, #user)`, which (based on the reported bug) is the admin-protected code path. No alternative non-admin/default-role assignment mechanism is shown, so a brand-new principal may still be unable to get the role and thus may not be able to register successfully with a usable profile.",
+      "requirement": "Expose `createServer(name: Text, description: Text)` that returns a created server (or id) and does not trap for a valid logged-in user.",
+      "reason": "Backend implements `createServer(payload : CreateServerPayload) : async ()` (no return value) and it traps on unauthorized. Signature and return do not match the required method shape.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "Expose `getServer(serverId)` that returns `null` (not trap) when server id is unknown or not visible to caller.",
+      "reason": "Backend provides `getServerById(id : Text)` instead of the required `getServer(serverId)` endpoint name. Visibility handling is not evidenced; method name mismatch can break existing UI calls.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "Expose `getServerOrdering()` and `setServerOrdering(ordering)` so the server rail ordering query does not error.",
+      "reason": "No `getServerOrdering` / `setServerOrdering` methods are shown in the backend diff.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "Expose `joinServer(serverId)` and `leaveServer(serverId)` so Discovery join buttons do not error when used.",
+      "reason": "No `joinServer` / `leaveServer` methods are shown in the backend diff.",
       "evidence": [
         "backend/main.mo"
       ]
@@ -15,16 +39,69 @@
   ],
   "hallucinated_features": [
     {
-      "description": "Updated/added project tracking metadata in project_state.json (new_feature_requests/status) that was not part of the backend registration requirements.",
-      "reason": "The BuildRequest only specifies backend behavior changes in backend/main.mo and constraints about not editing certain frontend paths; it does not request changes to project_state.json.",
+      "description": "Added a backend migration module introducing new stable state fields for servers and serverMembers.",
+      "reason": "BuildRequest allows migration only if required; diff evidence does not show an existing stable-state incompatibility requiring migration.",
       "evidence": [
-        "project_state.json"
+        "backend/migration.mo",
+        "backend/main.mo"
+      ]
+    },
+    {
+      "description": "Backend added extra server-related API `isMemberOfServer` not requested.",
+      "reason": "Not part of REQ-1/REQ-2 acceptance criteria.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "description": "Frontend modifications to CreateCategoryDialog/CreateChannelDialog/CreateChannelInSettingsDialog adding error UI/tooltip logic.",
+      "reason": "REQ-3 is specifically about the Create Server dialog behavior; category/channel dialogs are out of scope per the non-goals unless required to prevent immediate runtime errors on create-server path (not evidenced here).",
+      "evidence": [
+        "frontend/src/components/channels/CreateCategoryDialog.tsx",
+        "frontend/src/components/channels/CreateChannelDialog.tsx",
+        "frontend/src/components/settings/ServerSettings/components/CreateChannelInSettingsDialog.tsx"
+      ]
+    },
+    {
+      "description": "Frontend changes to server discovery UI components (DiscoveryView, ServerPreviewCard).",
+      "reason": "Not requested by REQ-3; REQ-2 is backend join/leave endpoints, not UI refactors.",
+      "evidence": [
+        "frontend/src/components/discovery/DiscoveryView.tsx",
+        "frontend/src/components/discovery/ServerPreviewCard.tsx"
+      ]
+    },
+    {
+      "description": "Frontend changes to role management UI (RoleAssignmentDialog, RolesPage).",
+      "reason": "Not requested; non-goals explicitly avoid full role systems unless needed to prevent immediate runtime errors in create-server path (not evidenced).",
+      "evidence": [
+        "frontend/src/components/profile/RoleAssignmentDialog.tsx",
+        "frontend/src/components/settings/ServerSettings/pages/RolesPage.tsx"
+      ]
+    },
+    {
+      "description": "Frontend changes to ChannelsPage including channel/category ordering logic and mutations.",
+      "reason": "Non-goal: full channel/category systems unless required to prevent immediate runtime errors in create-server path (not evidenced).",
+      "evidence": [
+        "frontend/src/components/settings/ServerSettings/pages/ChannelsPage.tsx"
       ]
     }
   ],
-  "confidence": 0.7,
+  "confidence": 0.74,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/channels/CreateCategoryDialog.tsx",
+    "frontend/src/components/channels/CreateChannelDialog.tsx",
+    "frontend/src/components/discovery/DiscoveryView.tsx",
+    "frontend/src/components/discovery/ServerPreviewCard.tsx",
+    "frontend/src/components/nav/ServerRail.tsx",
+    "frontend/src/components/profile/RoleAssignmentDialog.tsx",
+    "frontend/src/components/servers/CreateServerDialog.tsx",
+    "frontend/src/components/settings/ServerSettings/components/CreateChannelInSettingsDialog.tsx",
+    "frontend/src/components/settings/ServerSettings/pages/ChannelsPage.tsx",
+    "frontend/src/components/settings/ServerSettings/pages/RolesPage.tsx",
+    "frontend/src/hooks/useQueries.ts",
     "project_state.json"
   ]
 }

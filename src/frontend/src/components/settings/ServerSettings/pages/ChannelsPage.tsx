@@ -221,7 +221,6 @@ export function ChannelsPage({ serverId }: ChannelsPageProps) {
         open={createChannelOpen}
         onOpenChange={setCreateChannelOpen}
         serverId={serverId}
-        categories={orderedCategories}
       />
     </div>
   );

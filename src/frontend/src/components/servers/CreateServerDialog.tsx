@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateServer } from '../../hooks/useQueries';
 import { useBackendActionGuard } from '@/hooks/useBackendActionGuard';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 interface CreateServerDialogProps {
   open: boolean;
@@ -24,29 +25,42 @@ export default function CreateServerDialog({ open, onOpenChange }: CreateServerD
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const createServer = useCreateServer();
-  const { disabled: backendDisabled, reason: backendReason } = useBackendActionGuard();
+  const { disabled: backendDisabled } = useBackendActionGuard();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || backendDisabled) return;
+    
+    if (!name.trim()) {
+      return;
+    }
+
+    if (backendDisabled) {
+      toast.error('Backend connection not ready. Please wait or press Retry.');
+      return;
+    }
 
     try {
       await createServer.mutateAsync({
         name: name.trim(),
         description: description.trim(),
       });
+      // Only clear and close on success
       setName('');
       setDescription('');
       onOpenChange(false);
     } catch (error) {
-      // Error is handled by the mutation's onError
+      // Error is handled by the mutation's onError with toast
+      // Keep dialog open and preserve values
+      console.error('Create server error:', error);
     }
   };
 
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen) {
+    if (!newOpen && !createServer.isPending) {
+      // Only clear when closing and not pending
       setName('');
       setDescription('');
+      createServer.reset();
     }
     onOpenChange(newOpen);
   };
@@ -54,68 +68,69 @@ export default function CreateServerDialog({ open, onOpenChange }: CreateServerD
   const isSubmitDisabled = !name.trim() || createServer.isPending || backendDisabled;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Create Server</DialogTitle>
-            <DialogDescription>
-              Create a new server to chat with friends and communities.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="server-name">Server Name</Label>
-              <Input
-                id="server-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="My Awesome Server"
-                maxLength={50}
-                autoFocus
-                disabled={backendDisabled}
-              />
+    <TooltipProvider>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="sm:max-w-[425px]">
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>Create Server</DialogTitle>
+              <DialogDescription>
+                Create a new server to chat with friends and communities.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="server-name">Server Name</Label>
+                <Input
+                  id="server-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="My Awesome Server"
+                  maxLength={50}
+                  autoFocus
+                  disabled={backendDisabled || createServer.isPending}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="server-description">Description (Optional)</Label>
+                <Textarea
+                  id="server-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="A place for awesome people"
+                  maxLength={200}
+                  rows={3}
+                  disabled={backendDisabled || createServer.isPending}
+                />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="server-description">Description (Optional)</Label>
-              <Textarea
-                id="server-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="A place for awesome people"
-                maxLength={200}
-                rows={3}
-                disabled={backendDisabled}
-              />
-            </div>
-            {backendDisabled && backendReason && (
-              <p className="text-sm text-muted-foreground">{backendReason}</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={createServer.isPending}
-            >
-              Cancel
-            </Button>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button type="submit" disabled={isSubmitDisabled}>
-                    {createServer.isPending ? 'Creating...' : 'Create Server'}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {backendDisabled && backendReason && (
-                <TooltipContent>{backendReason}</TooltipContent>
-              )}
-            </Tooltip>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={createServer.isPending}
+              >
+                Cancel
+              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button type="submit" disabled={isSubmitDisabled}>
+                      {createServer.isPending ? 'Creating...' : 'Create Server'}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {backendDisabled && (
+                  <TooltipContent>
+                    Backend connection not ready. Please wait or press Retry.
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </TooltipProvider>
   );
 }

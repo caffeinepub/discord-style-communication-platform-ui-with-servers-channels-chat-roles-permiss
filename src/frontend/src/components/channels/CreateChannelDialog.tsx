@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Hash, Volume2, AlertCircle } from 'lucide-react';
-import { useAddTextChannel, useAddVoiceChannel } from '../../hooks/useQueries';
+import { useAddTextChannelToCategory, useAddVoiceChannelToCategory } from '../../hooks/useQueries';
 import { useBackendActionGuard } from '@/hooks/useBackendActionGuard';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -34,8 +34,8 @@ export default function CreateChannelDialog({
 }: CreateChannelDialogProps) {
   const [channelName, setChannelName] = useState('');
   const [channelType, setChannelType] = useState<ChannelType>('text');
-  const addTextChannel = useAddTextChannel();
-  const addVoiceChannel = useAddVoiceChannel();
+  const addTextChannel = useAddTextChannelToCategory();
+  const addVoiceChannel = useAddVoiceChannelToCategory();
   const { disabled: backendDisabled, reason: backendReason } = useBackendActionGuard();
 
   const isPending = addTextChannel.isPending || addVoiceChannel.isPending;
@@ -50,13 +50,13 @@ export default function CreateChannelDialog({
         await addTextChannel.mutateAsync({
           serverId,
           categoryId,
-          channelName: channelName.trim(),
+          name: channelName.trim(),
         });
       } else {
         await addVoiceChannel.mutateAsync({
           serverId,
           categoryId,
-          channelName: channelName.trim(),
+          name: channelName.trim(),
         });
       }
       // Only close and reset on success
@@ -141,6 +141,7 @@ export default function CreateChannelDialog({
                 </div>
               </RadioGroup>
             </div>
+
             <div className="grid gap-2">
               <Label htmlFor="channel-name">Channel Name</Label>
               <Input
@@ -153,9 +154,6 @@ export default function CreateChannelDialog({
                 disabled={backendDisabled || isPending}
               />
             </div>
-            {backendDisabled && backendReason && (
-              <p className="text-sm text-muted-foreground">{backendReason}</p>
-            )}
           </div>
           <DialogFooter>
             <Button
@@ -168,14 +166,16 @@ export default function CreateChannelDialog({
             </Button>
             <Tooltip>
               <TooltipTrigger asChild>
-                <span>
+                <span tabIndex={0}>
                   <Button type="submit" disabled={isSubmitDisabled}>
                     {isPending ? 'Creating...' : 'Create Channel'}
                   </Button>
                 </span>
               </TooltipTrigger>
               {backendDisabled && backendReason && (
-                <TooltipContent>{backendReason}</TooltipContent>
+                <TooltipContent>
+                  <p>{backendReason}</p>
+                </TooltipContent>
               )}
             </Tooltip>
           </DialogFooter>

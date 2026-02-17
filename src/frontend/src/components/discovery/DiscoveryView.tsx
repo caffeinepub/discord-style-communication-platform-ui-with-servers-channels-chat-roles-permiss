@@ -10,7 +10,7 @@ export default function DiscoveryView() {
   const joinServer = useJoinServer();
 
   // Filter servers: only show community-enabled servers
-  const communityServers = servers.filter((server) => server.communityMode);
+  const communityServers = Array.isArray(servers) ? servers.filter((server) => server.isPublic) : [];
 
   const filteredServers = communityServers.filter((server) =>
     server.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -36,9 +36,9 @@ export default function DiscoveryView() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredServers.map((server) => (
             <ServerPreviewCard
-              key={server.id.toString()}
+              key={server.id}
               server={server}
-              onJoin={() => joinServer.mutate(server.id)}
+              onJoin={() => joinServer.mutate(server.id as any)}
             />
           ))}
         </div>

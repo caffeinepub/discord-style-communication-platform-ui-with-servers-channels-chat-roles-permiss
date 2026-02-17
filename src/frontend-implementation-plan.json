@@ -1,6 +1,27 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Frontend-only plan: No changes required for backend-only registration role fix",
-  "requirements": []
+  "title": "Caffeine Chat — Fix Create Server dialog error handling and post-create refresh",
+  "requirements": [
+    {
+      "id": "REQ-3",
+      "summary": "Ensure Create Server dialog surfaces creation failures via English toast messaging and reliably refreshes the server rail on success.",
+      "acceptanceCriteria": [
+        "If `createServer` fails, the user sees an English toast error message (using the existing mutation `onError` behavior) and the dialog remains open with the entered values preserved.",
+        "If `createServer` succeeds, the dialog closes, inputs clear, and the new server appears in the server rail after React Query invalidation (no manual refresh required)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Harden `useCreateServer` so it calls the backend create-server capability using a compatible invocation (supporting the existing frontend type expectations and preventing signature mismatches from causing silent failures), while keeping the existing English toast `onError` behavior and ensuring React Query invalidates the server list queries on success."
+        },
+        {
+          "path": "frontend/src/components/servers/CreateServerDialog.tsx",
+          "operation": "modify",
+          "description": "Update submit handling so attempts that cannot proceed do not silently no-op (e.g., show an English toast when submission is blocked by backend-disabled state), and ensure that on mutation errors the dialog stays open and preserves the entered values while relying on the existing mutation `onError` toast for failure messaging; keep the current success behavior (clear inputs + close) so invalidation-driven server rail refresh occurs."
+        }
+      ]
+    }
+  ]
 }

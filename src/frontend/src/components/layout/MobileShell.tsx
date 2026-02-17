@@ -75,7 +75,7 @@ export default function MobileShell() {
         <Sheet open={showMembers} onOpenChange={setShowMembers}>
           <SheetContent side="right" className="w-64 p-0 flex flex-col">
             <div className="flex-1 overflow-hidden">
-              <MemberListPanel />
+              <MemberListPanel serverId={selectedServerId} />
             </div>
             <div className="p-2 border-t border-border">
               <Button

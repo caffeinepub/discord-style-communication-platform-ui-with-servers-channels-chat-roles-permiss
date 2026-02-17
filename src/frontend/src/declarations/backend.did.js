@@ -13,6 +13,21 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
+export const CreateServerPayload = IDL.Record({
+  'name' : IDL.Text,
+  'description' : IDL.Text,
+  'bannerURL' : IDL.Text,
+  'isPublic' : IDL.Bool,
+  'iconURL' : IDL.Text,
+});
+export const Server = IDL.Record({
+  'id' : IDL.Text,
+  'name' : IDL.Text,
+  'description' : IDL.Text,
+  'bannerURL' : IDL.Text,
+  'isPublic' : IDL.Bool,
+  'iconURL' : IDL.Text,
+});
 export const UserProfile = IDL.Record({
   'customStatus' : IDL.Text,
   'aboutMe' : IDL.Text,
@@ -21,15 +36,6 @@ export const UserProfile = IDL.Record({
   'avatarUrl' : IDL.Text,
   'bannerUrl' : IDL.Text,
 });
-export const LoginPayload = IDL.Record({
-  'password' : IDL.Text,
-  'loginIdentifier' : IDL.Text,
-});
-export const Session = IDL.Record({
-  'token' : IDL.Text,
-  'expiresAt' : IDL.Int,
-  'email' : IDL.Text,
-});
 export const RegisterPayload = IDL.Record({
   'username' : IDL.Text,
   'password' : IDL.Text,
@@ -37,6 +43,7 @@ export const RegisterPayload = IDL.Record({
 });
 export const RegistrationError = IDL.Variant({
   'emailTaken' : IDL.Null,
+  'roleAssignmentFailed' : IDL.Null,
   'alreadyRegistered' : IDL.Null,
   'unknown' : IDL.Null,
   'usernameTaken' : IDL.Null,
@@ -49,17 +56,20 @@ export const RegistrationResult = IDL.Variant({
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'createServer' : IDL.Func([CreateServerPayload], [], []),
+  'getAllServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getUserProfile' : IDL.Func(
+  'getCallerUsername' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
+  'getServerById' : IDL.Func([IDL.Text], [IDL.Opt(Server)], ['query']),
+  'getUserProfile' : IDL.Func([IDL.Text], [IDL.Opt(UserProfile)], ['query']),
+  'getUsernameForUser' : IDL.Func(
       [IDL.Principal],
-      [IDL.Opt(UserProfile)],
+      [IDL.Opt(IDL.Text)],
       ['query'],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-  'login' : IDL.Func([LoginPayload], [IDL.Opt(Session)], []),
+  'isMemberOfServer' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
   'register' : IDL.Func([RegisterPayload], [RegistrationResult], []),
-  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
 });
 
 export const idlInitArgs = [];
@@ -70,6 +80,21 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
+  const CreateServerPayload = IDL.Record({
+    'name' : IDL.Text,
+    'description' : IDL.Text,
+    'bannerURL' : IDL.Text,
+    'isPublic' : IDL.Bool,
+    'iconURL' : IDL.Text,
+  });
+  const Server = IDL.Record({
+    'id' : IDL.Text,
+    'name' : IDL.Text,
+    'description' : IDL.Text,
+    'bannerURL' : IDL.Text,
+    'isPublic' : IDL.Bool,
+    'iconURL' : IDL.Text,
+  });
   const UserProfile = IDL.Record({
     'customStatus' : IDL.Text,
     'aboutMe' : IDL.Text,
@@ -78,15 +103,6 @@ export const idlFactory = ({ IDL }) => {
     'avatarUrl' : IDL.Text,
     'bannerUrl' : IDL.Text,
   });
-  const LoginPayload = IDL.Record({
-    'password' : IDL.Text,
-    'loginIdentifier' : IDL.Text,
-  });
-  const Session = IDL.Record({
-    'token' : IDL.Text,
-    'expiresAt' : IDL.Int,
-    'email' : IDL.Text,
-  });
   const RegisterPayload = IDL.Record({
     'username' : IDL.Text,
     'password' : IDL.Text,
@@ -94,6 +110,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const RegistrationError = IDL.Variant({
     'emailTaken' : IDL.Null,
+    'roleAssignmentFailed' : IDL.Null,
     'alreadyRegistered' : IDL.Null,
     'unknown' : IDL.Null,
     'usernameTaken' : IDL.Null,
@@ -106,17 +123,20 @@ export const idlFactory = ({ IDL }) => {
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'createServer' : IDL.Func([CreateServerPayload], [], []),
+    'getAllServers' : IDL.Func([], [IDL.Vec(Server)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getUserProfile' : IDL.Func(
+    'getCallerUsername' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
+    'getServerById' : IDL.Func([IDL.Text], [IDL.Opt(Server)], ['query']),
+    'getUserProfile' : IDL.Func([IDL.Text], [IDL.Opt(UserProfile)], ['query']),
+    'getUsernameForUser' : IDL.Func(
         [IDL.Principal],
-        [IDL.Opt(UserProfile)],
+        [IDL.Opt(IDL.Text)],
         ['query'],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
-    'login' : IDL.Func([LoginPayload], [IDL.Opt(Session)], []),
+    'isMemberOfServer' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'register' : IDL.Func([RegisterPayload], [RegistrationResult], []),
-    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   });
 };
 
