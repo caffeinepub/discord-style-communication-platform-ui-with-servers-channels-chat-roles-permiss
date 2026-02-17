@@ -1,32 +1,25 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix incorrect registration error messaging (frontend)",
+  "title": "Caffeine Chat – Fix misleading sign-up error messaging for notAGuest",
   "requirements": [
     {
-      "id": "REQ-2",
-      "summary": "Map backend registration failure reasons to accurate, centralized, user-friendly messages and avoid showing the taken message unless a real collision is reported.",
+      "id": "REQ-4",
+      "summary": "Update frontend registration error mapping so the UI message matches the real cause when registration is blocked because the caller is not a guest (signed in / not eligible), and only claims an existing registration when the backend explicitly indicates it.",
       "acceptanceCriteria": [
-        "If the backend indicates 'username taken' or 'email taken', the UI shows the existing message `Username or email is already taken. Please try a different one or sign in.` (or a more specific taken message if introduced).",
-        "If the backend indicates the caller is already registered / not a guest, the UI shows a distinct message (e.g., `This account is already registered. Please sign in instead.`) and does not show the taken message.",
-        "No registration error path shows the taken message unless a true collision is reported by the backend.",
-        "All user-facing auth messages remain centralized in `frontend/src/auth/authMessages.ts` and are used consistently by `frontend/src/auth/AuthProvider.tsx` and `frontend/src/pages/LoginScreen.tsx`."
+        "If the backend returns the notAGuest registration error, the UI shows an English message that indicates the user is already signed in (or otherwise not eligible to register) and what to do next.",
+        "No user-facing text claims an account is registered unless the backend condition truly reflects an existing registration for that principal."
       ],
       "file_operations": [
         {
           "path": "frontend/src/auth/authMessages.ts",
           "operation": "modify",
-          "description": "Add a distinct centralized message for the 'already registered / not a guest' registration case, and export a small helper that maps backend registration failure reasons (e.g., notAGuest/usernameTaken/emailTaken) to the correct AUTH_MESSAGES entry so AuthProvider and LoginScreen can use a single source of truth."
+          "description": "Adjust AUTH_MESSAGES and mapRegistrationError() so that legacy/backend 'notAGuest' is mapped to a new user-facing message explaining the user is already signed in / not eligible to register (with next steps like signing out or using Sign In), and ensure 'alreadyRegistered' (when present) maps to the existing ALREADY_REGISTERED message. Update getErrorFlow()/allowlist implications accordingly so the new message is displayed in the sign-up flow."
         },
         {
           "path": "frontend/src/auth/AuthProvider.tsx",
           "operation": "modify",
-          "description": "Update the register flow to interpret the backend's registration result as a failure-reason value (not a session) and map it via the centralized authMessages helper: show USERNAME_OR_EMAIL_TAKEN only for usernameTaken/emailTaken, show the new 'already registered' message for notAGuest, and use REGISTRATION_FAILED for unknown errors. Ensure thrown/returned errors use only centralized messages so LoginScreen displays accurate text."
-        },
-        {
-          "path": "frontend/src/pages/LoginScreen.tsx",
-          "operation": "modify",
-          "description": "Ensure the registration UI continues to display the AuthProvider-provided registration errors verbatim (so backend reason mapping is respected) and remove/avoid any local fallback that could reintroduce the ambiguous 'taken' message for non-collision cases; keep all backend-auth error text sourced from frontend/src/auth/authMessages.ts via AuthProvider."
+          "description": "Verify registration error handling continues to surface the mapped/allowlisted message from mapRegistrationError() (including the updated notAGuest message) without being sanitized into a generic fallback, ensuring the corrected text reaches the UI."
         }
       ]
     }

@@ -114,7 +114,7 @@ export interface LoginPayload {
 }
 export enum RegistrationError {
     emailTaken = "emailTaken",
-    notAGuest = "notAGuest",
+    alreadyRegistered = "alreadyRegistered",
     usernameTaken = "usernameTaken"
 }
 export enum UserRole {
@@ -320,11 +320,11 @@ function from_candid_record_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint
 function from_candid_variant_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     emailTaken: null;
 } | {
-    notAGuest: null;
+    alreadyRegistered: null;
 } | {
     usernameTaken: null;
 }): RegistrationError {
-    return "emailTaken" in value ? RegistrationError.emailTaken : "notAGuest" in value ? RegistrationError.notAGuest : "usernameTaken" in value ? RegistrationError.usernameTaken : value;
+    return "emailTaken" in value ? RegistrationError.emailTaken : "alreadyRegistered" in value ? RegistrationError.alreadyRegistered : "usernameTaken" in value ? RegistrationError.usernameTaken : value;
 }
 function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;

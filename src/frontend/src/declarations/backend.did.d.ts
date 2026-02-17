@@ -20,7 +20,7 @@ export interface RegisterPayload {
   'email' : string,
 }
 export type RegistrationError = { 'emailTaken' : null } |
-  { 'notAGuest' : null } |
+  { 'alreadyRegistered' : null } |
   { 'usernameTaken' : null };
 export interface Session {
   'token' : string,

@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Project includes a sign-in/registration flow; currently investigating a registration error where unique usernames/emails are incorrectly flagged as already taken.",
+  "summary": "New project",
   "architectural_notes": [],
   "known_issues": [
-    "Registration/sign-up sometimes returns error 'Username or email is already taken. Please try a different one or sign in.' even when the username/email is not actually taken."
+    "Registration flow incorrectly reports \"This account is already registered\" for emails/users that are not actually registered (false-positive duplicate account error)."
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-update-the-frontend-registration-flow-to-map-backend-registration-failure-reasons-to-accurate-user-friendly-english-messages-do-not-show-username-or-email-is-already-taken-unless-the-backend-explicitly-indicates-username-email-collision",
-      "title": "Update the frontend registration flow to map backend registration failure reasons to accurate, user-friendly English messages (do not show 'Username or email is already taken' unless the backend explicitly indicates username/email collision).",
+      "id": "feature-update-frontend-registration-error-messaging-to-avoid-telling-users-an-account-exists-when-the-error-is-actually-caused-by-being-signed-in-not-being-a-guest-use-clear-english-user-facing-text-that-matches-the-real-cause-and-remediation-steps",
+      "title": "Update frontend registration error messaging to avoid telling users an account exists when the error is actually caused by being signed in / not being a guest. Use clear English user-facing text that matches the real cause and remediation steps.",
       "reqIds": [
-        "REQ-2"
+        "REQ-4"
       ],
       "version": 1
     }
@@ -20,9 +20,25 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Update the backend registration API to return a specific, non-ambiguous error when registration fails (e.g., distinguish between: caller is not a guest/already registered, username already taken, email already taken) instead of returning `null` for all failure cases.",
+      "summary": "Update the backend registration logic so that a user is only blocked from registering when the caller principal already has stored credentials (i.e., has actually registered before), rather than blocking purely based on the caller’s current AccessControl role being non-guest.",
       "reqIds": [
         "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Add a backend index for credentials by principal and keep it in sync on registration so the backend can reliably determine whether the caller principal has previously registered.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "If the backend state schema is changed to add a principal-indexed credentials store, implement a conditional upgrade migration that backfills the principal index from existing stored credentials.",
+      "reqIds": [
+        "REQ-3"
       ],
       "status": "pending"
     }

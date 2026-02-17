@@ -2,26 +2,7 @@ import Map "mo:core/Map";
 import Principal "mo:core/Principal";
 
 module {
-  type OldSession = {
-    token : Text;
-    accountId : Text;
-    expiresAt : Int;
-    email : ?Text;
-  };
-
-  type OldActor = {
-    userProfiles : Map.Map<Principal, { name : Text; aboutMe : Text; customStatus : Text; avatarUrl : Text; bannerUrl : Text; badges : [Text] }>;
-    sessionStore : Map.Map<Text, OldSession>;
-  };
-
-  type NewSession = {
-    token : Text;
-    accountId : ?Text;
-    expiresAt : Int;
-    email : Text;
-  };
-
-  type NewCredentials = {
+  type Credentials = {
     username : Text;
     email : Text;
     password : Text;
@@ -29,29 +10,28 @@ module {
     principal : Principal;
   };
 
+  type OldActor = {
+    credentialsByUsername : Map.Map<Text, Credentials>;
+    credentialsByEmail : Map.Map<Text, Credentials>;
+  };
+
   type NewActor = {
-    userProfiles : Map.Map<Principal, { name : Text; aboutMe : Text; customStatus : Text; avatarUrl : Text; bannerUrl : Text; badges : [Text] }>;
-    sessionStore : Map.Map<Text, NewSession>;
-    credentialsStore : Map.Map<Text, NewCredentials>;
-    principalToToken : Map.Map<Principal, Text>;
+    credentialsByUsername : Map.Map<Text, Credentials>;
+    credentialsByEmail : Map.Map<Text, Credentials>;
+    credentialsByPrincipal : Map.Map<Principal, Credentials>;
   };
 
   public func run(old : OldActor) : NewActor {
-    let newSessions = old.sessionStore.map<Text, OldSession, NewSession>(
-      func(_key, oldSession) {
-        {
-          oldSession with
-          accountId = ?oldSession.accountId;
-          email = switch (oldSession.email) { case (null) { "" }; case (?e) { e } };
-        };
-      }
-    );
+    let credentialsByPrincipal = Map.empty<Principal, Credentials>();
+
+    // Populate the new principal index from credentialsByUsername
+    for ((_, credentials) in old.credentialsByUsername.entries()) {
+      credentialsByPrincipal.add(credentials.principal, credentials);
+    };
 
     {
-      userProfiles = old.userProfiles;
-      sessionStore = newSessions;
-      credentialsStore = Map.empty<Text, NewCredentials>();
-      principalToToken = Map.empty<Principal, Text>();
+      old with
+      credentialsByPrincipal
     };
   };
 };

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/useAuth';
+import { getErrorFlow } from '../auth/authMessages';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,6 @@ export default function LoginScreen() {
   const [signInIdentifier, setSignInIdentifier] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
   const [signInLoading, setSignInLoading] = useState(false);
-  const [signInError, setSignInError] = useState<string | null>(null);
 
   // Sign Up form state
   const [signUpUsername, setSignUpUsername] = useState('');
@@ -27,19 +27,21 @@ export default function LoginScreen() {
   const [signUpPassword, setSignUpPassword] = useState('');
   const [signUpConfirmPassword, setSignUpConfirmPassword] = useState('');
   const [signUpLoading, setSignUpLoading] = useState(false);
-  const [signUpError, setSignUpError] = useState<string | null>(null);
+  
+  // Local validation errors (client-side only)
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSignInError(null);
+    setValidationError(null);
     setSignInLoading(true);
 
     try {
       await login(signInIdentifier, signInPassword);
       // Success - AuthProvider will handle state transition to authenticated
     } catch (err: any) {
-      // Display the error message from AuthProvider
-      setSignInError(err.message || 'Sign in failed');
+      // Error is already set in AuthProvider context
+      // No need to set local error - it will be displayed via authError
     } finally {
       setSignInLoading(false);
     }
@@ -47,27 +49,27 @@ export default function LoginScreen() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSignUpError(null);
+    setValidationError(null);
 
-    // Validation
+    // Client-side validation
     if (!signUpUsername.trim()) {
-      setSignUpError('Username is required');
+      setValidationError('Username is required');
       return;
     }
     if (!signUpEmail.trim()) {
-      setSignUpError('Email is required');
+      setValidationError('Email is required');
       return;
     }
     if (!signUpPassword) {
-      setSignUpError('Password is required');
+      setValidationError('Password is required');
       return;
     }
     if (signUpPassword !== signUpConfirmPassword) {
-      setSignUpError('Passwords do not match');
+      setValidationError('Passwords do not match');
       return;
     }
     if (signUpPassword.length < 8) {
-      setSignUpError('Password must be at least 8 characters');
+      setValidationError('Password must be at least 8 characters');
       return;
     }
 
@@ -77,12 +79,17 @@ export default function LoginScreen() {
       await register(signUpUsername, signUpEmail, signUpPassword);
       // Success - AuthProvider will handle state transition to authenticated
     } catch (err: any) {
-      // Display the error message from AuthProvider (already mapped via mapRegistrationError)
-      setSignUpError(err.message || 'Registration failed. Please try again.');
+      // Error is already set in AuthProvider context
+      // No need to set local error - it will be displayed via authError
     } finally {
       setSignUpLoading(false);
     }
   };
+
+  // Determine which error to show based on active tab and error flow
+  const errorFlow = authError ? getErrorFlow(authError) : null;
+  const showSignInError = authError && (errorFlow === 'signin' || errorFlow === 'connection' || errorFlow === 'session');
+  const showSignUpError = authError && (errorFlow === 'signup' || errorFlow === 'connection');
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted/20">
@@ -98,14 +105,6 @@ export default function LoginScreen() {
             <h1 className="text-3xl font-bold tracking-tight">Welcome</h1>
             <p className="text-muted-foreground">Sign in to your account or create a new one</p>
           </div>
-
-          {/* Show auth error from context if present */}
-          {authError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{authError}</AlertDescription>
-            </Alert>
-          )}
 
           <Card>
             <CardHeader className="space-y-1 pb-4">
@@ -134,10 +133,11 @@ export default function LoginScreen() {
                     </Alert>
                   ) : (
                     <form onSubmit={handleSignIn} className="space-y-4">
-                      {signInError && (
+                      {/* Show auth error only if it's relevant to sign-in flow */}
+                      {showSignInError && (
                         <Alert variant="destructive">
                           <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>{signInError}</AlertDescription>
+                          <AlertDescription>{authError}</AlertDescription>
                         </Alert>
                       )}
 
@@ -181,10 +181,19 @@ export default function LoginScreen() {
                 {/* Sign Up Tab */}
                 <TabsContent value="signup" className="space-y-4 mt-4">
                   <form onSubmit={handleSignUp} className="space-y-4">
-                    {signUpError && (
+                    {/* Show validation errors (client-side) */}
+                    {validationError && (
                       <Alert variant="destructive">
                         <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>{signUpError}</AlertDescription>
+                        <AlertDescription>{validationError}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Show auth error only if it's relevant to sign-up flow */}
+                    {showSignUpError && !validationError && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{authError}</AlertDescription>
                       </Alert>
                     )}
 
@@ -256,18 +265,17 @@ export default function LoginScreen() {
           {/* Footer */}
           <div className="text-center text-sm text-muted-foreground">
             <p>
-              Built with ❤️ using{' '}
+              Built with love using{' '}
               <a
-                href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(
-                  typeof window !== 'undefined' ? window.location.hostname : 'unknown-app'
-                )}`}
+                href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline hover:text-foreground transition-colors"
+                className="text-primary hover:underline"
               >
                 caffeine.ai
               </a>
             </p>
+            <p className="mt-1">© {new Date().getFullYear()} All rights reserved.</p>
           </div>
         </div>
       </div>

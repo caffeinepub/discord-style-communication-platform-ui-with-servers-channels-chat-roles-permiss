@@ -1,56 +1,88 @@
 {
   "kind": "build_request",
-  "title": "Fix false 'Username or email is already taken' registration error",
+  "title": "Fix false-positive “already registered” error during sign up",
   "projectName": "Caffeine Chat",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Update the backend registration API to return a specific, non-ambiguous error when registration fails (e.g., distinguish between: caller is not a guest/already registered, username already taken, email already taken) instead of returning `null` for all failure cases.",
+      "text": "Update the backend registration logic so that a user is only blocked from registering when the caller principal already has stored credentials (i.e., has actually registered before), rather than blocking purely based on the caller’s current AccessControl role being non-guest.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-4"
         ],
         "quotes": [
-          "it says Username or email is already taken. Please try a different one or sign in. when it isnt already taken"
+          "now its saying This account is already registered. Please sign in instead. even though there is no account registered for that."
         ]
       },
       "acceptanceCriteria": [
-        "When a caller who is not a guest attempts to register, the backend responds with a distinct failure reason that is not conflated with 'username/email taken'.",
-        "When the username exists, the backend responds with a distinct 'username taken' reason.",
-        "When the email exists, the backend responds with a distinct 'email taken' reason.",
-        "The backend does not trap for these expected registration failure cases; it returns a normal response the frontend can interpret."
+        "When a principal that has no stored credentials attempts to register, the backend does not return the notAGuest error.",
+        "When a principal that already has stored credentials attempts to register again, the backend returns a deterministic error indicating the account is already registered (existing notAGuest or a more specific variant).",
+        "Username and email uniqueness checks still work and return the correct error variants when taken."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Update the frontend registration flow to map backend registration failure reasons to accurate, user-friendly English messages (do not show 'Username or email is already taken' unless the backend explicitly indicates username/email collision).",
-      "target": "frontend",
+      "text": "Add a backend index for credentials by principal and keep it in sync on registration so the backend can reliably determine whether the caller principal has previously registered.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-4"
         ],
         "quotes": [
-          "it says Username or email is already taken. Please try a different one or sign in. when it isnt already taken"
+          "now its saying This account is already registered. Please sign in instead. even though there is no account registered for that."
         ]
       },
       "acceptanceCriteria": [
-        "If the backend indicates 'username taken' or 'email taken', the UI shows the existing message `Username or email is already taken. Please try a different one or sign in.` (or a more specific taken message if introduced).",
-        "If the backend indicates the caller is already registered / not a guest, the UI shows a distinct message (e.g., `This account is already registered. Please sign in instead.`) and does not show the taken message.",
-        "No registration error path shows the taken message unless a true collision is reported by the backend.",
-        "All user-facing auth messages remain centralized in `frontend/src/auth/authMessages.ts` and are used consistently by `frontend/src/auth/AuthProvider.tsx` and `frontend/src/pages/LoginScreen.tsx`."
+        "After a successful registration, the backend can look up the caller principal and find their credentials via the principal index.",
+        "The principal index remains consistent with the username- and email-indexed credential stores for newly created registrations."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "If the backend state schema is changed to add a principal-indexed credentials store, implement a conditional upgrade migration that backfills the principal index from existing stored credentials.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "now its saying This account is already registered. Please sign in instead. even though there is no account registered for that."
+        ]
+      },
+      "acceptanceCriteria": [
+        "Upgrading an existing deployment that already has registered users results in the principal index being populated for those users.",
+        "Upgrading a fresh deployment (no prior credentials) does not trap and results in an empty principal index."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Update frontend registration error messaging to avoid telling users an account exists when the error is actually caused by being signed in / not being a guest. Use clear English user-facing text that matches the real cause and remediation steps.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-4"
+        ],
+        "quotes": [
+          "now its saying This account is already registered. Please sign in instead. even though there is no account registered for that."
+        ]
+      },
+      "acceptanceCriteria": [
+        "If the backend returns the notAGuest registration error, the UI shows an English message that indicates the user is already signed in (or otherwise not eligible to register) and what to do next.",
+        "No user-facing text claims an account is registered unless the backend condition truly reflects an existing registration for that principal."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in `backend/main.mo`.",
-    "Do not edit files in `frontend/src/components/ui` or any paths listed as immutable in SYSTEM_CONTEXT."
+    "Backend must remain a single Motoko actor with all logic in backend/main.mo.",
+    "Only create/modify backend/migration.mo if needed for a state upgrade (conditional migration policy).",
+    "Do not edit any files under frontend/src/components/ui or any path listed in frontend.immutablePaths."
   ],
   "nonGoals": [
-    "Implementing password hashing or changing authentication/security model.",
-    "Adding third-party authentication providers or external databases.",
-    "Adding new product features unrelated to registration error correctness."
+    "Implementing password reset, account recovery, or email verification.",
+    "Adding third-party authentication beyond Internet Identity.",
+    "Adding an external database or off-chain storage."
   ],
   "imageRequirements": {
     "required": [],

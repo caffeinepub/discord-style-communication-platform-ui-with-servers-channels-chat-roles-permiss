@@ -38,7 +38,7 @@ export const RegisterPayload = IDL.Record({
 });
 export const RegistrationError = IDL.Variant({
   'emailTaken' : IDL.Null,
-  'notAGuest' : IDL.Null,
+  'alreadyRegistered' : IDL.Null,
   'usernameTaken' : IDL.Null,
 });
 
@@ -92,7 +92,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const RegistrationError = IDL.Variant({
     'emailTaken' : IDL.Null,
-    'notAGuest' : IDL.Null,
+    'alreadyRegistered' : IDL.Null,
     'usernameTaken' : IDL.Null,
   });
   

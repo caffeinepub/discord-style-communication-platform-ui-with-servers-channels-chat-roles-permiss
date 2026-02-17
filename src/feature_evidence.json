@@ -2,12 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-frontend-registration-flow-to-map-backend-registration-failure-reasons-to-accurate-user-friendly-english-messages-do-not-show-username-or-email-is-already-taken-unless-the-backend-explicitly-indicates-username-email-collision",
-      "featureTitle": "Update the frontend registration flow to map backend registration failure reasons to accurate, user-friendly English messages (do not show 'Username or email is already taken' unless the backend explicitly indicates username/email collision).",
+      "featureId": "feature-update-frontend-registration-error-messaging-to-avoid-telling-users-an-account-exists-when-the-error-is-actually-caused-by-being-signed-in-not-being-a-guest-use-clear-english-user-facing-text-that-matches-the-real-cause-and-remediation-steps",
+      "featureTitle": "Update frontend registration error messaging to avoid telling users an account exists when the error is actually caused by being signed in / not being a guest. Use clear English user-facing text that matches the real cause and remediation steps.",
       "files": [
-        "frontend/src/auth/AuthProvider.tsx",
-        "frontend/src/auth/authMessages.ts",
-        "frontend/src/pages/LoginScreen.tsx"
+        "frontend/src/auth/authMessages.ts"
       ],
       "components": [
         "authorization@4.0.0",
@@ -18,7 +16,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-2"
+        "REQ-4"
       ],
       "confidence": "high"
     }

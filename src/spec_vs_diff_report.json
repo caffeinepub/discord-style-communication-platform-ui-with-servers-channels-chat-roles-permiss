@@ -1,40 +1,33 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T00:38:02.221Z",
-  "summary": "Backend registration now returns distinct error variants for not-a-guest, username taken, and email taken; frontend adds centralized auth messages and a mapper to convert backend registration errors into accurate user-facing text, with AuthProvider importing the mapper and LoginScreen displaying AuthProvider-provided error messages.",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-17T01:16:31.484Z",
+  "summary": "Backend registration now checks a new credentials-by-principal index and returns an #alreadyRegistered variant when the caller principal already has credentials; a migration module backfills that index from existing credentials. Frontend adds new auth messaging/mapping utilities, but the specific REQ-4 requirement about handling the backend’s notAGuest error is not evidenced in the diff.",
+  "missing_requirements": [
     {
-      "description": "Login flow now verifies the calling principal matches the registered principal (potential authentication/security model change).",
-      "reason": "BuildRequest focuses on registration error correctness and explicitly lists changing the authentication/security model as a non-goal; the diff shows added principal-matching enforcement in login.",
+      "id": "REQ-4",
+      "requirement": "If the backend returns the notAGuest registration error, the UI shows an English message that indicates the user is already signed in (or otherwise not eligible to register) and what to do next; and no user-facing text claims an account is registered unless the backend condition truly reflects an existing registration for that principal.",
+      "reason": "The diff shows frontend mapping for an \"alreadyRegistered\" backend error, but there is no evidence of handling/messaging for a \"notAGuest\" registration error variant as explicitly required.",
       "evidence": [
-        "backend/main.mo (login): `// Verify the caller matches the registered principal` and `if (caller != credentials.principal) { return null; };`"
-      ]
-    },
-    {
-      "description": "Added/expanded non-registration auth messaging and behavior (e.g., 'Sign In is temporarily unavailable' message and a sign-in availability feature flag).",
-      "reason": "Not requested by REQ-1/REQ-2, which only address registration error disambiguation and mapping to correct messages.",
-      "evidence": [
-        "frontend/src/auth/authMessages.ts: `LOGIN_NOT_AVAILABLE` message",
-        "frontend/src/pages/LoginScreen.tsx: `const SIGN_IN_AVAILABLE = true;`"
-      ]
-    },
-    {
-      "description": "Added defensive runtime check/error handling for missing `validateSession` method on the backend actor.",
-      "reason": "Not requested; REQ-2 only requires correct registration error mapping and centralized messages usage.",
-      "evidence": [
-        "frontend/src/auth/AuthProvider.tsx: `if (typeof actor.validateSession !== 'function') { ... }`"
+        "frontend/src/auth/authMessages.ts"
       ]
     }
   ],
-  "confidence": 0.72,
+  "hallucinated_features": [
+    {
+      "description": "Allowlisted auth message sanitization (sanitizeAuthMessage), error-flow categorization (getErrorFlow), and generic login/session/connection message constants beyond the registration messaging change.",
+      "reason": "BuildRequest REQ-4 is limited to updating registration error messaging to avoid misleading \"account exists\" text for notAGuest scenarios; the added allowlisting/sanitization and broader auth-flow categorization are not requested.",
+      "evidence": [
+        "frontend/src/auth/authMessages.ts"
+      ]
+    }
+  ],
+  "confidence": 0.64,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/auth/AuthProvider.tsx",
     "frontend/src/auth/authMessages.ts",
-    "frontend/src/pages/LoginScreen.tsx",
     "project_state.json"
   ]
 }

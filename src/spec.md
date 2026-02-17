@@ -1,11 +1,12 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the incorrect “Username or email is already taken” registration error by returning clear backend failure reasons and showing accurate frontend messages.
+**Goal:** Fix the false-positive “already registered” error during sign up by ensuring registration is blocked only when the caller principal truly has existing stored credentials, and improve the related frontend error message.
 
 **Planned changes:**
-- Update the backend registration API to return distinct, non-ambiguous failure reasons (not a guest/already registered vs username taken vs email taken) instead of returning `null` for all failures.
-- Update the frontend registration flow to map backend failure reasons to correct, user-friendly messages, only showing the “taken” message when an actual username/email collision is reported.
-- Keep all auth-related user-facing messages centralized in `frontend/src/auth/authMessages.ts` and used consistently by `frontend/src/auth/AuthProvider.tsx` and `frontend/src/pages/LoginScreen.tsx`.
+- Update backend registration checks to determine “already registered” based on whether the caller principal has stored credentials, not on the caller’s current AccessControl role being non-guest.
+- Add and maintain a backend index of credentials keyed by principal to reliably detect prior registrations, keeping it consistent with existing username/email credential indexes.
+- If adding the new principal-indexed store changes backend state, implement a conditional upgrade migration that backfills the principal index from existing credentials (and safely no-ops on fresh deployments).
+- Update frontend registration error messaging so the “not a guest / already signed in” condition shows accurate, clear instructions and does not imply an account exists unless it truly does.
 
-**User-visible outcome:** Registration errors accurately explain the real problem (already registered/not a guest vs username taken vs email taken), and users no longer see the “Username or email is already taken” message unless it’s actually true.
+**User-visible outcome:** Users who have not registered can sign up without seeing an incorrect “already registered” message, and users who are already signed in or already registered see an accurate, actionable registration error message.

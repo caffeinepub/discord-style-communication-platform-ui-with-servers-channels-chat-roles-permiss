@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { sessionStorage } from './sessionStorage';
 import { useBackendConnection } from '../hooks/useBackendConnection';
-import { AUTH_MESSAGES, mapRegistrationError } from './authMessages';
+import { AUTH_MESSAGES, mapRegistrationError, sanitizeAuthMessage } from './authMessages';
 import type { RegisterPayload, LoginPayload, Session, RegistrationError } from '../backend';
 
 export type AuthStatus = 'initializing' | 'authenticated' | 'unauthenticated' | 'error';
@@ -200,6 +200,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         errorMessage = AUTH_MESSAGES.INVALID_CREDENTIALS;
       }
       
+      // Sanitize to ensure only allowlisted messages
+      errorMessage = sanitizeAuthMessage(errorMessage);
+      
       setError(errorMessage);
       setAuthStatus('unauthenticated');
       throw new Error(errorMessage);
@@ -219,7 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Defensive check: ensure register exists
       if (typeof actor.register !== 'function') {
-        const errorMsg = 'Backend actor missing register method. Please refresh the page.';
+        const errorMsg = AUTH_MESSAGES.REGISTRATION_FAILED;
         setError(errorMsg);
         setAuthStatus('unauthenticated');
         throw new Error(errorMsg);
@@ -237,7 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (errorResponse !== null) {
         // Registration failed - map the error to a user-friendly message
-        const errorMsg = mapRegistrationError(errorResponse as any);
+        const errorMsg = mapRegistrationError(errorResponse);
         setError(errorMsg);
         setAuthStatus('unauthenticated');
         throw new Error(errorMsg);
@@ -249,9 +252,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await login(username, password);
       
     } catch (err: any) {
-      // If error was already thrown with a message, preserve it
-      // Otherwise use a generic registration failed message
-      const errorMessage = err.message || AUTH_MESSAGES.REGISTRATION_FAILED;
+      // Sanitize error message to ensure only allowlisted messages reach the UI
+      let errorMessage = err.message || AUTH_MESSAGES.REGISTRATION_FAILED;
+      
+      // Strip any multi-line content or unexpected text
+      // Only keep the first line if it's an allowlisted message
+      const firstLine = errorMessage.split('\n')[0].trim();
+      errorMessage = sanitizeAuthMessage(firstLine);
       
       setError(errorMessage);
       setAuthStatus('unauthenticated');

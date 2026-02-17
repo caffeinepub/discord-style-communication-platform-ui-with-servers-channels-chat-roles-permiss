@@ -32,7 +32,7 @@ export interface LoginPayload {
 }
 export enum RegistrationError {
     emailTaken = "emailTaken",
-    notAGuest = "notAGuest",
+    alreadyRegistered = "alreadyRegistered",
     usernameTaken = "usernameTaken"
 }
 export enum UserRole {

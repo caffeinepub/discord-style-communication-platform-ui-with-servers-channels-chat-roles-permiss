@@ -6,7 +6,9 @@ import Time "mo:core/Time";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import Runtime "mo:core/Runtime";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -47,32 +49,33 @@ actor {
   };
 
   public type RegistrationError = {
-    #notAGuest;
+    #alreadyRegistered;
     #usernameTaken;
     #emailTaken;
   };
 
   let userProfiles = Map.empty<Principal, UserProfile>();
   let sessionStore = Map.empty<Text, Session>();
-  let credentialsStore = Map.empty<Text, Credentials>();
   let principalToToken = Map.empty<Principal, Text>();
+  let credentialsByUsername = Map.empty<Text, Credentials>();
+  let credentialsByEmail = Map.empty<Text, Credentials>();
+  let credentialsByPrincipal = Map.empty<Principal, Credentials>();
 
   public shared ({ caller }) func register(payload : RegisterPayload) : async ?RegistrationError {
-    // Only guests (unauthenticated users) can register
-    if (AccessControl.getUserRole(accessControlState, caller) != #guest) {
-      return ?#notAGuest;
+    // Check if the caller principal has stored credentials (not just a role check)
+    if (credentialsByPrincipal.containsKey(caller)) {
+      // Caller principal is already registered
+      return ?#alreadyRegistered;
     };
 
-    // Check if username already exists
-    switch (credentialsStore.get(payload.username)) {
-      case (?_) { return ?#usernameTaken };
-      case null {};
+    // Check uniqueness by username
+    if (credentialsByUsername.containsKey(payload.username)) {
+      return ?#usernameTaken;
     };
 
-    // Check if email is already taken
-    switch (credentialsStore.get(payload.email)) {
-      case (?_) { return ?#emailTaken };
-      case null {};
+    // Check uniqueness by email
+    if (credentialsByEmail.containsKey(payload.email)) {
+      return ?#emailTaken;
     };
 
     let accountId = payload.username.concat("Account");
@@ -84,9 +87,12 @@ actor {
       principal = caller;
     };
 
-    // Store credentials by both username and email for lookup
-    credentialsStore.add(payload.username, credentials);
-    credentialsStore.add(payload.email, credentials);
+    // Store credentials by username and email separately
+    credentialsByUsername.add(payload.username, credentials);
+    credentialsByEmail.add(payload.email, credentials);
+
+    // Store credentials indexed by principal
+    credentialsByPrincipal.add(caller, credentials);
 
     // Assign user role to the newly registered principal
     AccessControl.assignRole(accessControlState, caller, caller, #user);
@@ -118,7 +124,13 @@ actor {
   };
 
   public shared ({ caller }) func login(payload : LoginPayload) : async ?Session {
-    switch (credentialsStore.get(payload.loginIdentifier)) {
+    // Try to find credentials by username, then by email
+    let credentialsOpt = switch (credentialsByUsername.get(payload.loginIdentifier)) {
+      case (?creds) { ?creds };
+      case (null) { credentialsByEmail.get(payload.loginIdentifier) };
+    };
+
+    switch (credentialsOpt) {
       case (null) { null };
       case (?credentials) {
         if (credentials.password != payload.password) {
@@ -152,10 +164,21 @@ actor {
   };
 
   public query ({ caller }) func validateSession(token : Text) : async ?Session {
-    switch (sessionStore.get(token)) {
+    // Verify that the caller owns this token
+    switch (principalToToken.get(caller)) {
       case (null) { null };
-      case (?session) {
-        if (Time.now() > session.expiresAt) { null } else { ?session };
+      case (?callerToken) {
+        if (callerToken != token) {
+          // Caller doesn't own this token
+          return null;
+        };
+
+        switch (sessionStore.get(token)) {
+          case (null) { null };
+          case (?session) {
+            if (Time.now() > session.expiresAt) { null } else { ?session };
+          };
+        };
       };
     };
   };
